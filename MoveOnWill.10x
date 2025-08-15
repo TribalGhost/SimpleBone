@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<N10X>
+	<Workspace>
+		<IncludeFilter>*.cpp*,*Code*,*.h*,</IncludeFilter>
+		<ExcludeFilter>*.obj,*.lib,*.pch,*.dll,*.pdb,.vs,Debug,Release,x64,obj,*.user,Intermediate,.git,CodeGenerationbuild,*d_game_generated.cpp*,</ExcludeFilter>
+		<SyncFiles>true</SyncFiles>
+		<Recursive>true</Recursive>
+		<ShowEmptyFolders>true</ShowEmptyFolders>
+		<IncludeFilesWithoutExt>false</IncludeFilesWithoutExt>
+		<IsFolder>false</IsFolder>
+		<UseVisualStudioEnvBat>true</UseVisualStudioEnvBat>
+		<CaptureExeOutput>false</CaptureExeOutput>
+		<Configurations>
+			<Configuration>Debug</Configuration>
+			<Configuration>Release</Configuration>
+		</Configurations>
+		<Platforms>
+			<Platform>x64</Platform>
+		</Platforms>
+		<AdditionalIncludePaths>
+			<AdditionalIncludePath>D:\vs\VC\Tools\MSVC\14.41.34120\include</AdditionalIncludePath>
+			<AdditionalIncludePath>D:\vs\VC\Tools\MSVC\14.41.34120\ATLMFC\include</AdditionalIncludePath>
+			<AdditionalIncludePath>D:\vs\VC\Auxiliary\VS\include</AdditionalIncludePath>
+			<AdditionalIncludePath>D:\Windows Kits\10\include\10.0.22621.0\ucrt</AdditionalIncludePath>
+			<AdditionalIncludePath>D:\Windows Kits\10\\include\10.0.22621.0\\um</AdditionalIncludePath>
+			<AdditionalIncludePath>D:\Windows Kits\10\\include\10.0.22621.0\\shared</AdditionalIncludePath>
+			<AdditionalIncludePath>D:\Windows Kits\10\\include\10.0.22621.0\\winrt</AdditionalIncludePath>
+			<AdditionalIncludePath>D:\Windows Kits\10\\include\10.0.22621.0\\cppwinrt</AdditionalIncludePath>
+			<AdditionalIncludePath>C:\Program Files (x86)\Windows Kits\NETFXSDK\4.8\include\um</AdditionalIncludePath>
+		</AdditionalIncludePaths>
+		<Defines></Defines>
+		<ConfigProperties>
+			<ConfigAndPlatform>
+				<Name>Debug:x64</Name>
+				<BuildCommand>Build.bat</BuildCommand>
+				<RebuildCommand></RebuildCommand>
+				<BuildFileCommand></BuildFileCommand>
+				<CleanCommand></CleanCommand>
+				<BuildWorkingDirectory></BuildWorkingDirectory>
+				<CancelBuild></CancelBuild>
+				<Exe></Exe>
+				<Args></Args>
+				<WorkingDirectory></WorkingDirectory>
+				<DebugCommand></DebugCommand>
+				<DebuggerExe></DebuggerExe>
+				<DebugSln></DebugSln>
+				<Defines></Defines>
+				<ForceIncludes></ForceIncludes>
+			</ConfigAndPlatform>
+			<Config>
+				<Name>Debug</Name>
+				<Defines></Defines>
+			</Config>
+			<Platform>
+				<Name>x64</Name>
+				<Defines></Defines>
+			</Platform>
+		</ConfigProperties>
+		<Children></Children>
+	</Workspace>
+</N10X>
