@@ -1,0 +1,26 @@
+// raddbg 0.9.21 project file
+
+recent_file: path: "code/d_game.c"
+recent_file: path: "code/d_render.c"
+recent_file: path: "code/d_gamefunction.c"
+recent_file: path: "code/d_blender_file.h"
+recent_file: path: "code/d_main.c"
+recent_file: path: "../raylib-master/src/external/glfw/src/window.c"
+recent_file: path: "code/external_include/raymath.h"
+recent_file: path: "../raylib-master/src/rlgl.h"
+recent_file: path: "code/d_codegeneration.c"
+recent_file: path: "../a/_work/1/s/src/vctools/crt/vcstartup/src/startup/exe_common.inl"
+recent_file: path: "CodeGenerationbuild/CodeGeneration.exe"
+recent_file: path: "code/d_function.c"
+target:
+{
+  executable: "build/DAPP.exe"
+  working_directory: build
+  enabled: 1
+}
+target:
+{
+  executable: "CodeGenerationbuild/CodeGeneration.exe"
+  working_directory: CodeGenerationbuild
+  enabled: 0
+}

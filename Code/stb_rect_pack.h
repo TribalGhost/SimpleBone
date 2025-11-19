@@ -19,7 +19,7 @@
 // More docs to come.
 //
 // No memory allocations; uses qsort() and assert() from stdlib.
-// Can override those by defining STBRP_SORT and STBRP_ASSERT.
+// Can override those by defining STBRP_SORT and STBRP_CATCH.
 //
 // This library currently uses the Skyline Bottom-Left algorithm.
 //
@@ -50,7 +50,7 @@
 //     0.08  (2015-09-13)  really fix bug with empty rects (w=0 or h=0)
 //     0.07  (2015-09-13)  fix bug with empty rects (w=0 or h=0)
 //     0.06  (2015-04-15)  added STBRP_SORT to allow replacing qsort
-//     0.05:  added STBRP_ASSERT to allow replacing assert
+//     0.05:  added STBRP_CATCH to allow replacing assert
 //     0.04:  fixed minor bug in STBRP_LARGE_RECTS support
 //     0.01:  initial release
 //
@@ -180,9 +180,9 @@ extern "C" {
 #define STBRP_SORT qsort
 #endif
 
-#ifndef STBRP_ASSERT
+#ifndef STBRP_CATCH
 #include <assert.h>
-#define STBRP_ASSERT assert
+#define STBRP_CATCH assert
 #endif
 
 #ifdef _MSC_VER
@@ -202,11 +202,11 @@ STBRP_DEF void stbrp_setup_heuristic(stbrp_context* context, int heuristic)
 {
     switch (context->init_mode) {
         case STBRP__INIT_skyline:
-        STBRP_ASSERT(heuristic == STBRP_HEURISTIC_Skyline_BL_sortHeight || heuristic == STBRP_HEURISTIC_Skyline_BF_sortHeight);
+        STBRP_CATCH(heuristic == STBRP_HEURISTIC_Skyline_BL_sortHeight || heuristic == STBRP_HEURISTIC_Skyline_BF_sortHeight);
         context->heuristic = heuristic;
         break;
         default:
-        STBRP_ASSERT(0);
+        STBRP_CATCH(0);
     }
 }
 
@@ -264,17 +264,17 @@ static int stbrp__skyline_find_min_y(stbrp_context* c, stbrp_node* first, int x0
     
     STBRP__NOTUSED(c);
     
-    STBRP_ASSERT(first->x <= x0);
+    STBRP_CATCH(first->x <= x0);
     
 #if 0
     // skip in case we're past the node
     while (node->next->x <= x0)
         ++node;
 #else
-    STBRP_ASSERT(node->next->x > x0); // we ended up handling this in the caller for efficiency
+    STBRP_CATCH(node->next->x > x0); // we ended up handling this in the caller for efficiency
 #endif
     
-    STBRP_ASSERT(node->x <= x0);
+    STBRP_CATCH(node->x <= x0);
     
     min_y = 0;
     waste_area = 0;
@@ -322,7 +322,7 @@ static stbrp__findresult stbrp__skyline_find_best_pos(stbrp_context* c, int widt
     // align to multiple of c->align
     width = (width + c->align - 1);
     width -= width % c->align;
-    STBRP_ASSERT(width % c->align == 0);
+    STBRP_CATCH(width % c->align == 0);
     
     // if it can't possibly fit, bail immediately
     if (width > c->width || height > c->height) {
@@ -387,19 +387,19 @@ static stbrp__findresult stbrp__skyline_find_best_pos(stbrp_context* c, int widt
         while (tail) {
             int xpos = tail->x - width;
             int y, waste;
-            STBRP_ASSERT(xpos >= 0);
+            STBRP_CATCH(xpos >= 0);
             // find the left position that matches this
             while (node->next->x <= xpos) {
                 prev = &node->next;
                 node = node->next;
             }
-            STBRP_ASSERT(node->next->x > xpos && node->x <= xpos);
+            STBRP_CATCH(node->next->x > xpos && node->x <= xpos);
             y = stbrp__skyline_find_min_y(c, node, xpos, width, &waste);
             if (y + height <= c->height) {
                 if (y <= best_y) {
                     if (y < best_y || waste < best_waste || (waste == best_waste && xpos < best_x)) {
                         best_x = xpos;
-                        STBRP_ASSERT(y <= best_y);
+                        STBRP_CATCH(y <= best_y);
                         best_y = y;
                         best_waste = waste;
                         best = prev;
@@ -472,10 +472,10 @@ static stbrp__findresult stbrp__skyline_pack_rectangle(stbrp_context* context, i
 #ifdef _DEBUG
     cur = context->active_head;
     while (cur->x < context->width) {
-        STBRP_ASSERT(cur->x < cur->next->x);
+        STBRP_CATCH(cur->x < cur->next->x);
         cur = cur->next;
     }
-    STBRP_ASSERT(cur->next == NULL);
+    STBRP_CATCH(cur->next == NULL);
     
     {
         int count = 0;
@@ -489,7 +489,7 @@ static stbrp__findresult stbrp__skyline_pack_rectangle(stbrp_context* context, i
             cur = cur->next;
             ++count;
         }
-        STBRP_ASSERT(count == context->num_nodes + 2);
+        STBRP_CATCH(count == context->num_nodes + 2);
     }
 #endif
     

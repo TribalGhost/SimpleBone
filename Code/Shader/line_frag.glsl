@@ -22,21 +22,21 @@ out vec4 finalColor;
 
 void main()
 {
-
+    
 	finalColor = fragColor;
-
+    
 	vec2 position = fragPosition.xy;
 	vec2 lineStart = fragLineStart.xy;
 	vec2 lineEnd = fragLineEnd.xy;
-
+    
 	position.xy = ((position.xy - 1.0) / 2.0) * screenSize;
 	lineStart.xy = ((lineStart.xy - 1.0) / 2.0) * screenSize;
 	lineEnd.xy = ((lineEnd.xy - 1.0) / 2.0) * screenSize;
-
+    
 	float distance = sdSegment(position.xy , lineStart.xy, lineEnd.xy);
 	//distance *= fragPosition.z;
-
-	#if 1
+    
+#if 1
 	//why multiply 5??
 	if ( distance * 5 < fragLineSize)
 	{
@@ -46,13 +46,13 @@ void main()
 	{
 		gl_FragDepth = -1;
 	}
-	#endif
-
+#endif
+    
 	float blur = 5;
 	float alpha = smoothstep( fragLineSize + blur , fragLineSize - blur, distance *5);
-
+    
 	finalColor.a *= alpha;
-
-	//finalColor.a += 0.1f;
-
+    
+	//finalColor.a += 0.5f;
+    
 }

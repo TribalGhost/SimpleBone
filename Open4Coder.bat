@@ -1,8 +1,4 @@
+call ..\MSVC\setup_x64.bat
 
-for /f "usebackq delims=" %%i in (`vswhere.exe -prerelease -latest -property installationPath`) do (
-set InstallDir=%%i
-)
-call %InstallDir%\VC\Auxiliary\Build\vcvarsall.bat x64
-
+::start ..\raddbg\raddbg.exe
 start D:\4coder\4ed.exe
-start ..\raddbg\raddbg.exe build\DAPP.exe

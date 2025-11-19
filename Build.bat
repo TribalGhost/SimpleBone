@@ -8,7 +8,7 @@ pushd CodeGenerationbuild
 
 set CodeGenBuildStartTime=%time%
 
-cl /w /Zi /MD /Gm- ..\code\d_codegeneration.cpp /link /INCREMENTAL:no /libpath:..\lib /out:CodeGeneration.exe /SUBSYSTEM:CONSOLE /ENTRY:mainCRTStartup
+cl /w /Zi /FC /MD /Gm- ..\code\d_codegeneration.c /link /INCREMENTAL:no /libpath:..\lib /out:CodeGeneration.exe /SUBSYSTEM:CONSOLE /ENTRY:mainCRTStartup
 
 set CodeGenBuildEndTime=%time%
 
@@ -24,7 +24,7 @@ cls
 mkdir build
 pushd build
 
-set build_parameters=-w /Zi /utf-8 /MD /Od /INCREMENTAL:no /FC
+set build_parameters=/w /Zi /utf-8 /MD /Od /FC /we4020 /we4024 /we4133 /we4477 /we4047 /we4716 /we4002 /we4457 /we4715 /we4456 /we4459
 
 for /f "tokens=2 delims==" %%a in ('wmic OS Get localdatetime /value') do set "dt=%%a"
 set "YY=%dt:~2,2%" & set "YYYY=%dt:~0,4%" & set "MM=%dt:~4,2%" & set "DD=%dt:~6,2%"
@@ -39,7 +39,9 @@ del *.pdb
 
 set DLLBuildStartTime=%time%
 
-cl  %build_parameters% ..\code\d_game_generated.cpp raylib.lib -LD /link /PDB:DGame_%timestamp%.pdb /dll raylib.lib user32.lib opengl32.lib winmm.lib gdi32.lib shell32.lib ole32.lib comdlg32.lib /libpath:..\lib /out:DGame.dll /export:GameLoad
+::cl -w /FC /TC /O1 ..\code\Test.c
+
+cl  %build_parameters% ..\code\d_game.c raylib.lib -LD /link /INCREMENTAL:no /PDB:DGame_%timestamp%.pdb /dll raylib.lib user32.lib opengl32.lib winmm.lib gdi32.lib shell32.lib ole32.lib comdlg32.lib /libpath:..\lib /out:DGame.dll /export:game_load
 
 set DLLBuildEndTime=%time%
 
@@ -47,7 +49,7 @@ del Lock.tmp
 
 set MainBuildStartTime=%time%
 
-cl %build_parameters% ..\code\d_main.cpp /link raylib.lib user32.lib opengl32.lib kernel32.lib winmm.lib gdi32.lib shell32.lib ole32.lib comdlg32.lib /libpath:..\lib /out:DAPP.exe /SUBSYSTEM:CONSOLE /ENTRY:mainCRTStartup
+cl %build_parameters% ..\code\d_main.c /link /INCREMENTAL:no raylib.lib user32.lib opengl32.lib kernel32.lib winmm.lib gdi32.lib shell32.lib ole32.lib comdlg32.lib /libpath:..\lib /out:DAPP.exe /SUBSYSTEM:CONSOLE /ENTRY:mainCRTStartup
 
 set MainBuildEndTime=%time%
 

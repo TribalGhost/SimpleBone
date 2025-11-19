@@ -20,11 +20,14 @@
  *
  *  @ingroup window
  */
+
+typedef struct GLFWwindow GLFWwindow;
 struct GLFWwindow;
 
 //linking gl function, i don't even know what gl version i'm using here lol
 //i guess it was 3 or higher? i think i called some gl 4.0 function
 //but it was compiled by raylib.lib so i can't tell
+
 #include "external_include/glad.h" 
 #include "external_include/glfw3.h" //me trying avoiding win32
 
@@ -34,6 +37,7 @@ struct GLFWwindow;
 #include <wchar.h> //for chinese characters
 #include <stdio.h> //just file io and printing stuff
 
+typedef struct Color Color;
 struct Color {
     unsigned char r;
     unsigned char g;
@@ -41,7 +45,7 @@ struct Color {
     unsigned char a;
 };
 
-
+typedef struct Vector4 Vector4;
 struct Vector4
 {
 	float x;
@@ -50,12 +54,14 @@ struct Vector4
 	float w;
 };
 
+typedef struct Vector2 Vector2;
 struct Vector2
 {
 	float x;
 	float y;
 };
 
+typedef struct Vector3 Vector3;
 struct Vector3
 {
 	float x;
@@ -63,6 +69,7 @@ struct Vector3
 	float z;
 };
 
+typedef struct Quaternion Quaternion;
 struct Quaternion
 {
 	float x;
@@ -71,6 +78,7 @@ struct Quaternion
 	float w;
 };
 
+typedef struct D_Rectangle D_Rectangle;
 struct D_Rectangle {
     float x;
     float y;
@@ -78,6 +86,7 @@ struct D_Rectangle {
     float height;
 };
 
+typedef struct Image Image;
 struct Image {
     void *data;
     int width;
@@ -87,6 +96,7 @@ struct Image {
 };
 
 // Texture, tex data stored in GPU memory (VRAM)
+typedef struct Texture Texture;
 struct Texture {
     unsigned int id;        // OpenGL texture id
     int width;              // Texture base width
@@ -99,6 +109,7 @@ struct Texture {
 typedef Texture Texture2D;
 
 // Camera, defines position/orientation in 3d space
+typedef struct Camera3D Camera3D;
 struct Camera3D {
     Vector3 position;       // Camera position
     Vector3 target;         // Camera target it looks-at
@@ -107,6 +118,7 @@ struct Camera3D {
     int projection;         // Camera projection: CAMERA_PERSPECTIVE or CAMERA_ORTHOGRAPHIC
 };
 
+typedef struct Matrix Matrix;
 // Matrix, 4x4 components, column major, OpenGL style, right-handed
 struct Matrix {
     float m0;
@@ -134,6 +146,7 @@ struct Matrix {
     float m15; // Matrix fourth row (4 components)
 };
 
+typedef struct Ray Ray;
 // Ray, ray for raycasting
 struct Ray {
     Vector3 position;       // Ray position (origin)
@@ -145,6 +158,7 @@ struct Ray {
 #define RAYMATH_STATIC_INLINE
 #include "external_include/raymath.h" //handy function for vector and math (don't fail your math examine)
 
+typedef struct stbtt__buf stbtt__buf;
 struct stbtt__buf
 {
     unsigned char *data;
@@ -152,6 +166,7 @@ struct stbtt__buf
     int size;
 };
 
+typedef struct stbtt_fontinfo stbtt_fontinfo;
 struct stbtt_fontinfo
 {
     void           * userdata;
@@ -187,6 +202,7 @@ struct stbtt_fontinfo
 
 typedef int stbrp_coord;
 
+typedef struct stbrp_node stbrp_node;
 struct stbrp_node
 {
     stbrp_coord  x;
@@ -194,6 +210,7 @@ struct stbrp_node
     stbrp_node* next;
 };
 
+typedef struct stbrp_context stbrp_context;
 struct stbrp_context
 {
     int width;
@@ -212,3 +229,4 @@ struct stbrp_context
 #define STB_RECT_PACK_IMPLEMENTATION
 #include "stb_rect_pack.h" //packing texture into texture atlas
 #include "stb_truetype.h" //handling text
+

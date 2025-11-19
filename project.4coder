@@ -7,11 +7,13 @@ patterns = {
 "*.h",
 "*.bat",
 "*.4coder",
+"*.glsl",
 };
 blacklist_patterns = {
 ".*",
-"*_generated.cpp",
-
+"*_generated.c",
+".vs",
+"enc_temp_folder",
 "glad.h",
 "glad_gles2.h",
 "glfw3.h",
