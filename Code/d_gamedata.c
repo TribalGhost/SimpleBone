@@ -366,12 +366,23 @@ enum EditorType
 {
     edit_base_pose,
     edit_animation,
-    edit_map,
+    edit_world,
+    demo,
     
     edit_type_count,
 };
 
 global int editor_type = edit_base_pose;
+
+typedef struct DemoData DemoData;
+struct DemoData
+{
+    Vector3 character_position;
+    Vector3 character_velocity;
+    Vector3 character_direction;
+};
+
+global DemoData demo_data = {};
 
 typedef struct EditorData EditorData;
 struct EditorData
@@ -451,6 +462,8 @@ global D_Rectangle current_viewport = {};
 global bool within_viewport = false;
 global Vector2 mouse_position = {};
 
+global int grid_direction_index = 0;
+
 typedef struct SplitViewport SplitViewport;
 struct SplitViewport
 {
@@ -473,3 +486,9 @@ global long long game_update_count = 0;
 #define SUBDIVISION (10)
 #define GRID_SIZE (1.0)
 #define UNIT_SIZE (GRID_SIZE / SUBDIVISION)
+
+global Vector3 * vertices_a = 0;
+global int vertices_a_count = 0;
+
+global Vector3 * vertices_b = 0; 
+global int vertices_b_count = 0;

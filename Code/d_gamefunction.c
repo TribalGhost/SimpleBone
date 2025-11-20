@@ -2009,6 +2009,17 @@ internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box)
     return false;
 }
 
+internal Vector3 position_to_grid(Vector3 position , int size)
+{
+    position = Vector3Scale(position , 1.0 / size);
+    position.x = ceil(position.x);
+    position.y = ceil(position.y);
+    position.z = ceil(position.z);
+    position = Vector3Scale(position , size);
+    
+    return position;
+}
+
 //not needed yet
 //i come up something better
 internal Vector3 get_furthest_point_by_direction( Vector3 direction , Vector3 * points , int point_count)
@@ -2030,13 +2041,132 @@ internal Vector3 get_furthest_point_by_direction( Vector3 direction , Vector3 * 
     return furthest_point;
 }
 
-internal Vector3 position_to_grid(Vector3 position , int size)
+internal Vector3 get_support(Vector3 direction)
 {
-    position = Vector3Scale(position , 1.0 / size);
-    position.x = ceil(position.x);
-    position.y = ceil(position.y);
-    position.z = ceil(position.z);
-    position = Vector3Scale(position , size);
+    Vector3 farest_direction_a = get_furthest_point_by_direction(direction , vertices_a , vertices_a_count);
+    Vector3 farest_direction_b = get_furthest_point_by_direction(direction , vertices_b , vertices_b_count);
     
-    return position;
+    return Vector3Subtract(farest_direction_a , farest_direction_b);
+}
+
+internal bool same_direction_b(Vector3 start , Vector3 end_a , Vector3 end_b)
+{
+    Vector3 direction_a = Vector3Subtract(end_a , start);
+    Vector3 direction_b = Vector3Subtract(end_b , start);
+    return Vector3DotProduct( direction_a , direction_b ) > 0;
+}
+
+internal Vector3 triple_cross_product(Vector3 a , Vector3 b)
+{
+    Vector3 direction = Vector3CrossProduct(a , b);
+    direction = Vector3CrossProduct(direction , a);
+}
+
+internal bool GJK()
+{
+    Vector3 zero = {};
+    
+    Vector3 complex_points[4] = {};
+    int complex_point_count = 0;
+    
+    Vector3 direction = {0,1,0};
+    Vector3 farest_point = get_support(direction);
+    
+    complex_points[complex_point_count++] = farest_point;
+    direction = Vector3Negate(farest_point);
+    
+    for(;;)
+    {
+        farest_point = get_support(direction);
+        
+        if(Vector3DotProduct(farest_point , direction) > 0) return false;
+        
+        complex_points[complex_point_count++] = farest_point;
+        
+        if(complex_point_count == 2)
+        {
+            Vector3 point_a = complex_points[0];
+            Vector3 point_b = complex_points[1];
+            
+            Vector3 edge_direction = Vector3Subtract( point_a , point_b );
+            Vector3 origin_direction = Vector3Subtract(zero , point_b);
+            
+            if(Vector3DotProduct(edge_direction , origin_direction) > 0)
+            {
+                direction = Vector3CrossProduct(edge_direction , origin_direction);
+                direction = Vector3CrossProduct(direction , edge_direction);
+            }
+            else
+            {
+                direction = origin_direction;
+                complex_point_count = 0;
+                complex_points[complex_point_count++] = point_a;
+            }
+            
+        }
+        else if(complex_point_count == 3)
+        {
+            Vector3 point_a = complex_points[0];
+            Vector3 point_b = complex_points[1];
+            Vector3 point_c = complex_points[2];
+            
+            Vector3 a_to_c_vertical = triple_cross_product(point_a , point_c);
+            Vector3 a_to_origin = Vector3Subtract(zero , point_a);
+            
+            if(Vector3DotProduct(a_to_c_vertical , a_to_origin) > 0)
+            {
+                Vector3 b_to_c_vertical = triple_cross_product(point_b , point_c);
+                Vector3 b_to_origin = Vector3Subtract(zero , point_b);
+                
+                if(Vector3DotProduct(b_to_c_vertical , b_to_origin) > 0)
+                {
+                    Vector3 c_to_a = Vector3Subtract( point_a , point_c );
+                    Vector3 c_to_origin = Vector3Subtract(zero , point_c);
+                    
+                    if(Vector3DotProduct(c_to_a , c_to_origin) > 0)
+                    {
+                        direction = triple_cross_product(point_a , point_c);
+                    }
+                    else
+                    {
+                        direction = c_to_origin;
+                    }
+                    
+                }
+                else
+                {
+                    direction = Vector3Subtract(zero , point_c);
+                }
+            }
+            else
+            {
+                Vector3 b_to_c_vertical = triple_cross_product(point_b,point_c);
+                Vector3 b_to_origin = Vector3Subtract(origin , point_b);
+                
+                if(Vector3DotProduct(b_to_c_vertical , b_to_origin) > 0)
+                {
+                    Vector3 c_to_b = Vector3Subtract(point_b , point_c);
+                    Vector3 c_to_origin = Vector3Subtract(origin , point_c);
+                    
+                    if(Vector3DotProduct(c_to_b , c_to_origin) > 0)
+                    {
+                        direction = triple_cross_product(point_b , point_c);
+                    }
+                    else
+                    {
+                        direction = c_to_origin;
+                    }
+                }
+                else
+                {
+                }
+                
+            }
+        }
+        else if(complex_point_count == 4)
+        {
+            
+        }
+        
+    }
 }

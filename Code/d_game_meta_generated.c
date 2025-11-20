@@ -89,6 +89,7 @@ enum _type_meta
 	_MT_BoneSelectionResult,
 	_MT_D_Model,
 	_MT_EditorType,
+	_MT_DemoData,
 	_MT_EditorData,
 	_MT_SplitViewport,
 	_MT_GLFWwindow,
@@ -188,6 +189,7 @@ sizeof(BoneSelectionResultData),//BoneSelectionResultData
 sizeof(BoneSelectionResult),//BoneSelectionResult 
 sizeof(D_Model),//D_Model 
 sizeof(EditorType),//EditorType 
+sizeof(DemoData),//DemoData 
 sizeof(EditorData),//EditorData 
 sizeof(SplitViewport),//SplitViewport 
 0,//GLFWwindow 
@@ -286,6 +288,7 @@ const char * _type_meta_name[] =
 	"BoneSelectionResult",
 	"D_Model",
 	"EditorType",
+	"DemoData",
 	"EditorData",
 	"SplitViewport",
 	"GLFWwindow",
@@ -384,6 +387,7 @@ false,
 false,
 false,
 true,
+false,
 false,
 false,
 false,
@@ -522,7 +526,8 @@ global const char * EditorType_String[] =
 {
  "edit_base_pose",
  "edit_animation",
- "edit_map",
+ "edit_world",
+ "demo",
  "edit_type_count",
 };
 
@@ -586,6 +591,7 @@ enum introspected_struct
 	IS_BoneSelectionResultData, 
 	IS_BoneSelectionResult, 
 	IS_D_Model, 
+	IS_DemoData, 
 	IS_EditorData, 
 	IS_SplitViewport, 
 };
@@ -1207,6 +1213,14 @@ global const MemberMetaData member_meta_D_Model[16] =
 	{ "bone_children_hash_table" , false,false,false,0,_MT_HashTable,"HashTable",(int)&((D_Model *)0)->bone_children_hash_table ,sizeof(HashTable),}, 
 };
 
+global int member_meta_count_DemoData = 3;
+global const MemberMetaData member_meta_DemoData[3] =
+{
+	{ "character_position" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((DemoData *)0)->character_position ,sizeof(Vector3),}, 
+	{ "character_velocity" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((DemoData *)0)->character_velocity ,sizeof(Vector3),}, 
+	{ "character_direction" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((DemoData *)0)->character_direction ,sizeof(Vector3),}, 
+};
+
 global int member_meta_count_EditorData = 31;
 global const MemberMetaData member_meta_EditorData[31] =
 {
@@ -1345,6 +1359,7 @@ StructMetaData * all_struct = malloc(sizeof(StructMetaData) * _MT_type_count);
 	all_struct[_MT_BoneSelectionResult] = (StructMetaData)GetStructMeta(BoneSelectionResult);
 	all_struct[_MT_D_Model] = (StructMetaData)GetStructMeta(D_Model);
 	all_struct[_MT_EditorType] = (StructMetaData){};
+	all_struct[_MT_DemoData] = (StructMetaData)GetStructMeta(DemoData);
 	all_struct[_MT_EditorData] = (StructMetaData)GetStructMeta(EditorData);
 	all_struct[_MT_SplitViewport] = (StructMetaData)GetStructMeta(SplitViewport);
 	all_struct[_MT_GLFWwindow] = (StructMetaData){};
@@ -1603,8 +1618,12 @@ internal void sort_bone_hash_table(int bone_index , HashTable * hash_table_by_bo
 internal Quad direction_to_quad(Vector3 direction , float width);
 internal Vector3 * box_to_point(Box box);
 internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box);
-internal Vector3 get_furthest_point_by_direction( Vector3 direction , Vector3 * points , int point_count);
 internal Vector3 position_to_grid(Vector3 position , int size);
+internal Vector3 get_furthest_point_by_direction( Vector3 direction , Vector3 * points , int point_count);
+internal Vector3 get_support(Vector3 direction);
+internal bool same_direction_b(Vector3 start , Vector3 end_a , Vector3 end_b);
+internal Vector3 triple_cross_product(Vector3 a , Vector3 b);
+internal bool GJK();
 internal bool check_selected_bone_rotation( Bone * final_bone_array_copy, int single_bone_index , Clip * clip_to_assign);
 internal void bone_selection_and_edit_bone_state( int current_frame_index);
 internal void bone_mouse_menu( Bone * single_editing_bone , Clip * clip , int current_frame_index);
@@ -1613,6 +1632,7 @@ internal void update_bone_structure( Bone * bone_array);
 internal void bone_IK_update_B(Bone * bone_array , Bone * base_pose_bone_array , int target_bone_index , int pole_bone_index , int IK_bone_index , int iteration_count , int bone_chain_max_length);
 internal void bone_IK_update( Bone * bone_array , Bone * base_pose_bone_array , Bone * target_bone , Bone * pole_bone , Bone * IK_bone , int iteration_count , int bone_chain_max_length);
 internal void _bone_IK_update( Bone * bone_array , Bone * target_bone , Bone * pole_bone , Bone * IK_bone , int iteration_count , int bone_chain_max_length);
+internal void edit_map(Vector3 origin);
 internal void draw_origin_grid(Vector3 origin);
 internal void get_bone_from_existing_key_frame(Bone * bone_array , Clip * clip , int target_frame , int target_start_frame , int target_frame_count);
 internal void add_bone_state(Bone * bone_array , Bone * add_bone_array , int bone_index);

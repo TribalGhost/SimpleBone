@@ -869,7 +869,7 @@ internal void editor_GUI()
         }
     }
     
-    if(editor_type == edit_map)
+    if(editor_type == edit_world)
     {
         
         if(draw_menu_button_W(&top_right_bar , L"添加參考坐標"))

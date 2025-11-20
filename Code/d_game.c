@@ -17,7 +17,6 @@
 
 internal bool check_selected_bone_rotation( Bone * final_bone_array_copy, int single_bone_index , Clip * clip_to_assign)
 {
-    
     Bone * selected_bone = final_bone_array_copy + single_bone_index;
     
     Rect rotation_rect[R_count] = {};
@@ -1373,13 +1372,14 @@ internal void _bone_IK_update( Bone * bone_array , Bone * target_bone , Bone * p
     iterate_bone_structure(bone_array , bone_chain[0]);
 }
 
-internal void draw_origin_grid(Vector3 origin)
+internal void edit_map(Vector3 origin)
 {
+    
     Vector3 camera_direction = Vector3Subtract(game_camera.target , game_camera.position);
     
     Vector3 all_direction[3] = {up_direction  , right_direction , forward_direction};
     float dot_product = 0;
-    int grid_direction_index = -1;
+    grid_direction_index = -1;
     
     for(int i = 0 ; i < 3 ; i++)
     {
@@ -1423,60 +1423,69 @@ internal void draw_origin_grid(Vector3 origin)
     }
 #endif
     
-    Vector3 grid_direction = all_direction[grid_direction_index];
-    grid_direction = Vector3Normalize(grid_direction);
-    
-    Vector3 mouse_ray_target = Vector3Add(mouse_ray_3D.position , mouse_ray_3D.direction);
-    Vector3 mouse_ray_position = mouse_ray_3D.position;
-    float intersect_time = get_line_intersect_with_plane_time(mouse_ray_position , mouse_ray_target , grid_direction , origin);
-    Vector3 intersect_point = Vector3Lerp(mouse_ray_position , mouse_ray_target , intersect_time);
-    
-    Rect rect_in_cell = get_rect();
-    rect_in_cell.position = position_to_grid(Vector3Add(intersect_point , Vector3Scale(grid_direction , 0.0001f)) , GRID_SIZE);
-    
-    rect_in_cell.position.x -= GRID_SIZE * 0.5;
-    rect_in_cell.position.y -= GRID_SIZE * 0.5;
-    rect_in_cell.position.z -= GRID_SIZE * 0.5;
-    
-    rect_in_cell.position = Vector3Subtract(rect_in_cell.position , Vector3Scale(grid_direction , GRID_SIZE * 0.5) );
-    
-    rect_in_cell.size = (Vector2){GRID_SIZE , GRID_SIZE};
-    rect_in_cell.rotation = QuaternionFromVector3ToVector3( (Vector3){0,0,1} , grid_direction);
-    
-    draw_rect_D(rect_in_cell , 0 , WHITE);
-    
-    if(within_viewport)
+    if(editor_type == edit_world)
     {
-        bool collided = false;
+        Vector3 grid_direction = all_direction[grid_direction_index];
+        grid_direction = Vector3Normalize(grid_direction);
         
-        array_foreach(quad_index , &quads_in_map_array)
+        Vector3 mouse_ray_target = Vector3Add(mouse_ray_3D.position , mouse_ray_3D.direction);
+        Vector3 mouse_ray_position = mouse_ray_3D.position;
+        float intersect_time = get_line_intersect_with_plane_time(mouse_ray_position , mouse_ray_target , grid_direction , origin);
+        Vector3 intersect_point = Vector3Lerp(mouse_ray_position , mouse_ray_target , intersect_time);
+        
+        Rect rect_in_cell = get_rect();
+        rect_in_cell.position = position_to_grid(Vector3Add(intersect_point , Vector3Scale(grid_direction , 0.0001f)) , GRID_SIZE);
+        
+        rect_in_cell.position.x -= GRID_SIZE * 0.5;
+        rect_in_cell.position.y -= GRID_SIZE * 0.5;
+        rect_in_cell.position.z -= GRID_SIZE * 0.5;
+        
+        rect_in_cell.position = Vector3Subtract(rect_in_cell.position , Vector3Scale(grid_direction , GRID_SIZE * 0.5) );
+        
+        rect_in_cell.size = (Vector2){GRID_SIZE , GRID_SIZE};
+        rect_in_cell.rotation = QuaternionFromVector3ToVector3( (Vector3){0,0,1} , grid_direction);
+        
+        draw_rect_D(rect_in_cell , 0 , WHITE);
+        
+        if(within_viewport)
         {
-            RayCollision collision = get_collision_quad_3D(quads_in_map[quad_index]);
-            if(collision.hit)
+            bool collided = false;
+            
+            array_foreach(quad_index , &quads_in_map_array)
             {
-                collided = true;
-                
+                RayCollision collision = get_collision_quad_3D(quads_in_map[quad_index]);
+                if(collision.hit)
+                {
+                    collided = true;
+                    
+                    if(mouse_button_pressed(MOUSE_BUTTON_LEFT))
+                    {
+                        delete_from_array(&quads_in_map_array , quad_index);
+                    }
+                    
+                    break;
+                }
+            }
+            
+            if(!collided)
+            {
                 if(mouse_button_pressed(MOUSE_BUTTON_LEFT))
                 {
-                    delete_from_array(&quads_in_map_array , quad_index);
+                    REALLOCATE_ARRAY_IF_TOO_SMALL(Quad , quads_in_map , &quads_in_map_array);
+                    Quad * new_quad = quads_in_map + add_to_array(&quads_in_map_array);
+                    
+                    (*new_quad) = rect_to_quad(rect_in_cell);
                 }
-                
-                break;
             }
-        }
-        
-        if(!collided)
-        {
-            if(mouse_button_pressed(MOUSE_BUTTON_LEFT))
-            {
-                REALLOCATE_ARRAY_IF_TOO_SMALL(Quad , quads_in_map , &quads_in_map_array);
-                Quad * new_quad = quads_in_map + add_to_array(&quads_in_map_array);
-                
-                (*new_quad) = rect_to_quad(rect_in_cell);
-            }
+            
         }
         
     }
+    
+}
+
+internal void draw_origin_grid(Vector3 origin)
+{
     
 #if 1
 	int grid_hint_extend = 50;
@@ -1869,7 +1878,7 @@ internal void viewport_update()
     glClear(GL_DEPTH_BUFFER_BIT);
     
     Vector3 grid_origin = {};
-    if(editor_type == edit_map)
+    if(editor_type == edit_world)
     {
         if(selected_reference_frame_index != -1)
         {
@@ -1877,6 +1886,7 @@ internal void viewport_update()
         }
     }
     
+    edit_map(grid_origin);
     draw_origin_grid(grid_origin);
     
     D_game_draw();
@@ -1884,14 +1894,32 @@ internal void viewport_update()
     glClearDepth(1);
     glClear(GL_DEPTH_BUFFER_BIT);
     
-    array_foreach(quad_index , &quads_in_map_array)
+    Box player_box = get_box();
+    player_box.position = demo_data.character_position;
+    player_box.rotation = QuaternionFromVector3ToVector3( (Vector3){} , demo_data.character_direction );
+    
+    draw_box(player_box , BLUE);
+    
+    vertices_a = box_to_point(box);
+    vertices_a_count = box_vertex_count;
+    
+    if(editor_type == edit_world || editor_type == demo)
     {
-        draw_quad_D(quads_in_map[quad_index] , WHITE);
-        
-        RayCollision collision = get_collision_quad_3D(quads_in_map[quad_index]);
-        if(collision.hit)
+        array_foreach(quad_index , &quads_in_map_array)
         {
-            draw_quad_line(quads_in_map[quad_index] , BLACK , 5);
+            Quad quad = quads_in_map[quad_index];
+            vertices_b = quad.vertex_position;
+            vertices_b_count = quad_vertex_count;
+            
+            draw_quad_D(quad , MAROON);
+            
+            GJK();
+            
+            RayCollision collision = get_collision_quad_3D( quad );
+            if(collision.hit)
+            {
+                draw_quad_line( quad , BLACK , 5);
+            }
         }
     }
     
@@ -1937,7 +1965,7 @@ internal void viewport_update()
             bone_selection_and_edit_bone_state( editor->current_frame_at_timeline);
         }
         
-        if(editor_type == edit_map)
+        if(editor_type == edit_world)
         {
             if(selected_reference_frame_index != -1)
             {
@@ -2881,6 +2909,25 @@ internal void save_file()
         write_buffer(current_bone->parent_bone_index , "base_bone_parent" , int , bone_index , selected_model->bone_count);
     }
     
+    int quads_count = 0;
+    
+    array_foreach( quad_index , &quads_in_map_array )
+    {
+        quads_count++;
+    }
+    
+    write_data(quads_count , "map_quad_count" , int);
+    
+    array_foreach( quad_index , &quads_in_map_array )
+    {
+        Quad quad = quads_in_map[quad_index];
+        
+        write_buffer(quad.vertex_position[vertex_top_left] , "map_quad_top_left_vertex" , Vector3 , quad_index , quads_count);
+        write_buffer(quad.vertex_position[vertex_top_right] , "map_quad_top_right_vertex" , Vector3 , quad_index , quads_count);
+        write_buffer(quad.vertex_position[vertex_bottom_left] , "map_quad_bottom_left_vertex" , Vector3 , quad_index , quads_count);
+        write_buffer(quad.vertex_position[vertex_bottom_right] , "map_quad_bottom_right_vertex" , Vector3 , quad_index , quads_count);
+    }
+    
     int save_header_size = (current_data_header - data_header_array) * sizeof(DataHeader);
     int save_size = current_save_memory_location - save_memory;
     
@@ -3105,6 +3152,24 @@ internal void load_file()
             }
             
         }
+    }
+    
+    int quads_count = 0;
+    int quads_capacity = 1;
+    read_data(quads_count , "map_quad_count" , int);
+    for( ;quads_capacity < quads_count; quads_capacity *=2 );
+    quads_in_map_array = allocate_array(quads_capacity);
+    quads_in_map = allocate_temp(Quad , quads_capacity);
+    
+    for(int quad_index = 0 ; quad_index < quads_count ; quad_index++)
+    {
+        Quad * quad = quads_in_map + add_to_array(&quads_in_map_array);
+        
+        read_buffer(quad->vertex_position[vertex_top_left] , "map_quad_top_left_vertex" , Vector3 , quad_index);
+        read_buffer(quad->vertex_position[vertex_top_right] , "map_quad_top_right_vertex" , Vector3 , quad_index);
+        read_buffer(quad->vertex_position[vertex_bottom_left] , "map_quad_bottom_left_vertex" , Vector3 , quad_index);
+        read_buffer(quad->vertex_position[vertex_bottom_right] , "map_quad_bottom_right_vertex" , Vector3 , quad_index);
+        
     }
     
 #endif
