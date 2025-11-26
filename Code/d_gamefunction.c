@@ -2011,6 +2011,14 @@ internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box)
     return false;
 }
 
+internal Vector3 project_direction_on_plane(Vector3 normal , Vector3 direction)
+{
+    Vector3 side_axis = Vector3CrossProduct(direction , normal);
+    Vector3 direction_axis = Vector3CrossProduct( side_axis , normal);
+    direction = Vector3Project(direction , direction_axis);
+    return direction;
+}
+
 internal Vector3 position_to_grid(Vector3 position , float size)
 {
     position = Vector3Scale(position , 1.0 / size);
@@ -2552,11 +2560,13 @@ internal Vector3 closest_point_on_triangle(Vector3 a , Vector3 b , Vector3 c , V
     return closest_point;
 }
 
-internal bool shape_ray_test(Vector3 ray_direction , float * time_of_impact , Vector3 * impact_point)
+//Vector3 ray_direction , float * time_of_impact , Vector3 * impact_point
+internal bool check_shape_impact(ShapeImpactData * data)
 {
     float small_number = 0.000001f;
     
     bool result = false;
+    data->time_of_impact = -FLT_MAX;
     
     float ray_time = 0;
     Vector3 ray_end = {};
@@ -2573,7 +2583,7 @@ internal bool shape_ray_test(Vector3 ray_direction , float * time_of_impact , Ve
         }
         
         Vector3 simplex[3] = {};
-        Vector3 search_direction = Vector3Negate(ray_direction);
+        Vector3 search_direction = Vector3Negate(data->ray_direction);
         
         simplex[0] = get_support_point(search_direction);
         simplex[1] = get_support_point(Vector3Negate(search_direction));
@@ -2667,8 +2677,8 @@ internal bool shape_ray_test(Vector3 ray_direction , float * time_of_impact , Ve
                 Vector3 c_to_a = Vector3Subtract(a , c);
                 Vector3 simplex_normal = Vector3CrossProduct(a_to_b , c_to_a);
                 
-                float hit_point_time = get_line_intersect_with_plane_time((Vector3){} , ray_direction , simplex_normal , a);
-                Vector3 hit_point = Vector3Lerp((Vector3){} , ray_direction , hit_point_time);
+                float hit_point_time = get_line_intersect_with_plane_time((Vector3){} , data->ray_direction , simplex_normal , a);
+                Vector3 hit_point = Vector3Lerp((Vector3){} , data->ray_direction , hit_point_time);
                 
                 Vector3 a_to_hit_point = Vector3Subtract(hit_point , a);
                 Vector3 a_to_b_vertical_inward = triple_cross_product(a_to_b , b_to_c);
@@ -2688,9 +2698,17 @@ internal bool shape_ray_test(Vector3 ray_direction , float * time_of_impact , Ve
                             float hit_point_distance = Vector3DistanceSqr(hit_point , ray_end);
                             if(hit_point_distance < 0.1)
                             {
+                                if(data->stop_if_too_far)
+                                {
+                                    if(hit_point_time > 1)
+                                    {
+                                        return false;
+                                    }
+                                }
                                 
-                                (*impact_point) = hit_point;
-                                (*time_of_impact) = hit_point_time;
+                                data->impact_normal = simplex_normal;
+                                data->impact_point = hit_point;
+                                data->time_of_impact = hit_point_time;
                                 //ray_end = hit_point;
                                 result = true;
                             }
@@ -2721,26 +2739,15 @@ internal bool shape_ray_test(Vector3 ray_direction , float * time_of_impact , Ve
         if(result) break;
         
         Vector3 surface_normal = Vector3Subtract(ray_end , closest_point);
-        float dot_product_length = Vector3DotProduct(surface_normal , ray_direction);
+        float dot_product_length = Vector3DotProduct(surface_normal , data->ray_direction);
         if( dot_product_length >= 0) 
         {
             if(fabs(dot_product_length) < small_number)
             {
-                (*impact_point) = ray_end;
-                (*time_of_impact) = ray_time;
+                data->impact_point = ray_end;
+                data->time_of_impact = ray_time;
+                data->impact_normal = surface_normal;
                 result = true;
-            }
-            else
-            {
-                //i don't even need to check inside or not!
-#if 0
-                if(check_shape(ray_end))
-                {
-                    (*impact_point) = ray_end;
-                    (*time_of_impact) = ray_time;
-                    result = true;
-                }
-#endif
             }
             
             //draw_arrow_line_B((Vector3){} , ray_end , YELLOW);
@@ -2751,9 +2758,21 @@ internal bool shape_ray_test(Vector3 ray_direction , float * time_of_impact , Ve
             break;
         }
         
-        ray_time = ray_time - (Vector3DotProduct(surface_normal , surface_normal) / Vector3DotProduct(surface_normal , ray_direction));
+        ray_time = ray_time - (Vector3DotProduct(surface_normal , surface_normal) / Vector3DotProduct(surface_normal , data->ray_direction));
         
-        ray_end = Vector3Scale(ray_direction , ray_time);
+        if(data->stop_if_too_far)
+        {
+            if(ray_time >= 1.0)
+            {
+                return false;
+            }
+            else if(ray_time < 0)
+            {
+                return false;
+            }
+        }
+        
+        ray_end = Vector3Scale(data->ray_direction , ray_time);
         ray_end = Vector3Add( (Vector3){} , ray_end);
     }
     

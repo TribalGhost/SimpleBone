@@ -1421,8 +1421,8 @@ internal void edit_map(Vector3 origin)
     
     if(editor_type == edit_world)
     {
-        Vector3 origin
-            Vector3 grid_direction = all_direction[grid_direction_index];
+        //Vector3 origin
+        Vector3 grid_direction = all_direction[grid_direction_index];
         grid_direction = Vector3Normalize(grid_direction);
         
         Vector3 mouse_ray_target = Vector3Add(mouse_ray_3D.position , mouse_ray_3D.direction);
@@ -1431,6 +1431,7 @@ internal void edit_map(Vector3 origin)
         Vector3 intersect_point = Vector3Lerp(mouse_ray_position , mouse_ray_target , intersect_time);
         
         Rect rect_in_cell = get_rect();
+        intersect_point = Vector3Subtract(intersect_point , origin);
         rect_in_cell.position = position_to_grid(Vector3Add(intersect_point , Vector3Scale(grid_direction , 0.0001f)) , GRID_SIZE);
         
         rect_in_cell.position.x -= GRID_SIZE * 0.5;
@@ -1438,6 +1439,7 @@ internal void edit_map(Vector3 origin)
         rect_in_cell.position.z -= GRID_SIZE * 0.5;
         
         rect_in_cell.position = Vector3Subtract(rect_in_cell.position , Vector3Scale(grid_direction , GRID_SIZE * 0.5) );
+        rect_in_cell.position = Vector3Add(rect_in_cell.position , origin);
         
         rect_in_cell.size = (Vector2){GRID_SIZE , GRID_SIZE};
         rect_in_cell.rotation = QuaternionFromVector3ToVector3( (Vector3){0,0,1} , grid_direction);
@@ -1821,7 +1823,6 @@ internal float get_corner_weight(float vertical , float horizontal)
 
 internal void viewport_update()
 {
-    
     draw_background();
     
     //Vector3 ray_position = Vector3Add(mouse_ray_3D.position , mouse_ray_3D.direction);
@@ -1907,22 +1908,56 @@ internal void viewport_update()
     test_box.size = (Vector3){0.65,1.36,0.6};
     draw_box(test_box , BLUE);
     
-    Vector3 ray_direction = Vector3Subtract(grid_origin , test_box.position);
+    Vector3 ray_direction = Vector3Subtract( (Vector3){ 1.2 , -0.6 , 0.3} , test_box.position);
     draw_arrow_ray_D( test_box.position , ray_direction , Fade(WHITE , 0.5f));
     
     Vector3 * test_box_vertices = box_to_point(test_box);
     
-    local_persist Vector3 player_position = {};
-    local_persist Vector3 player_velocity = {};
-    Box player_box = get_box();
-    player_box.position = player_position;
-    player_box.size = (Vector3){1.4 , 2.6 , 1.2};
-    player_box.rotation = QuaternionFromVector3ToVector3( (Vector3){0,1,0} , Vector3Normalize( (Vector3){0.3,-2.5,1}) );
-    
-    if(editor_type == edit_world || editor_type == demo)
+    if(within_viewport)
     {
-        if(within_viewport)
+        if(editor_type == edit_world || editor_type == demo)
         {
+            local_persist Vector3 player_position = {};
+            local_persist Vector3 player_velocity = {};
+            Box player_box = get_box();
+            player_box.position = player_position;
+            player_box.size = (Vector3){0.56 , 0.6 , 0.4};
+            player_box.rotation = QuaternionFromVector3ToVector3( (Vector3){0,1,0} , Vector3Normalize( (Vector3){0.3,-2.5,1}) );
+            Vector3 * player_box_vertices = box_to_point(player_box);
+            
+            player_velocity = Vector3Add(player_velocity , (Vector3){0,-UNIT_SIZE * 0.05f,0});
+            bool player_impacted = false;
+            float closest_hit_time = FLT_MAX;
+            Vector3 surface_normal = {};
+            
+            float player_forward = 0;
+            float player_right = 0;
+            
+            if(key_pressing(KEY_W)) player_forward += 1;
+            if(key_pressing(KEY_S)) player_forward -= 1;
+            if(key_pressing(KEY_D)) player_right += 1;
+            if(key_pressing(KEY_A)) player_right -= 1;
+            
+            player_forward *= UNIT_SIZE * 0.1f;
+            player_right *= UNIT_SIZE * 0.1f;
+            
+            Vector3 player_forward_direction = Vector3Subtract(game_camera.target , game_camera.position);
+            Vector3 player_right_direction = Vector3CrossProduct(player_forward_direction , (Vector3){0,1,0});
+            player_forward_direction = Vector3CrossProduct((Vector3){0,1,0} , player_right_direction);
+            
+            player_forward_direction = Vector3Normalize(player_forward_direction);
+            player_right_direction = Vector3Normalize(player_right_direction);
+            
+            player_velocity = Vector3Add(player_velocity , Vector3Scale(player_forward_direction , player_forward));
+            player_velocity = Vector3Add(player_velocity , Vector3Scale(player_right_direction , player_right));
+            
+            if(key_pressed(KEY_SPACE))
+            {
+                player_velocity = Vector3Add(player_velocity , (Vector3){0,UNIT_SIZE * 2.0f,0});
+            }
+            
+            player_velocity = Vector3Scale(player_velocity , 0.9f);
+            
             array_foreach(quad_index , &quads_in_map_array)
             {
                 Quad quad = quads_in_map[quad_index];
@@ -1933,40 +1968,85 @@ internal void viewport_update()
                 vertices_a = test_box_vertices;
                 vertices_a_count = box_vertex_count;
                 
+#if 0
                 for(int vertex_index = 0 ; vertex_index < quad_vertex_count ; vertex_index++)
                 {
                     Box temp_box = test_box;
                     temp_box.position = quad.vertex_position[vertex_index];
                     draw_box_line(temp_box , Fade(WHITE, 0.05) , 5);
                 }
+#endif
                 
-                float time_of_impact = 0;
-                Vector3 impact_point = {};
-                
-                if(shape_ray_test(ray_direction , &time_of_impact , &impact_point))
+                ShapeImpactData test_impact = {};
+                test_impact.ray_direction = ray_direction;
+#if 0
+                if(check_shape_impact(&test_impact))
                 {
                     Box collided_box = test_box;
-                    collided_box.position = Vector3Add(collided_box.position , Vector3Scale(ray_direction , time_of_impact));
-                    //collided_box.position = impact_point;
-                    
+                    collided_box.position = Vector3Add(collided_box.position , Vector3Scale(ray_direction , test_impact.time_of_impact));
                     draw_box(collided_box , Fade(BLUE , 0.4f));
-                    draw_quad_D(quad , MAROON);
                 }
-                else
-                {
-                    draw_quad_D(quad , PURPLE);
-                }
+#endif
                 
                 RayCollision collision = get_collision_quad_3D( quad );
                 if(collision.hit)
                 {
                     draw_quad_line( quad , BLACK , 5);
                 }
+                
+                float player_impact_time = 0;
+                float player_impact_position = {};
+                
+                ShapeImpactData player_impact = {};
+                player_impact.ray_direction = player_velocity;
+                player_impact.stop_if_too_far = true;
+                
+                vertices_a = player_box_vertices;
+                vertices_a_count = box_vertex_count;
+#if 1
+                if(check_shape_impact(&player_impact))
+                {
+                    //float player_impact_time = player_impact.time_of_impact;
+                    
+                    player_impacted = true;
+                    if(closest_hit_time > player_impact.time_of_impact) 
+                    {
+                        closest_hit_time = player_impact.time_of_impact;
+                        surface_normal = player_impact.impact_normal;
+                    }
+                    
+                    draw_quad_D(quad , MAROON);
+                }
+                else
+                {
+                    draw_quad_D(quad , PURPLE);
+                }
+#endif
             }
+            
+            if(player_impacted)
+            {
+                Vector3 normal_axis = Vector3CrossProduct(surface_normal , player_velocity);
+                
+                if(Vector3LengthSqr(normal_axis) > 0.00001f)
+                {
+                    printf("?? %lld\n" , game_update_count);
+                    player_velocity = project_direction_on_plane(surface_normal , player_velocity);
+                }
+                else
+                {
+                    if(closest_hit_time >= 0)
+                    {
+                        player_velocity = Vector3Scale(player_velocity , closest_hit_time);
+                    }
+                }
+            }
+            
+            player_position = Vector3Add(player_position , player_velocity);
+            draw_box(player_box , GOLD);
+            draw_box_line(player_box , BLACK , 2);
         }
     }
-    
-    draw_box(player_box , GOLD);
     
     if(bone_pose_to_draw_stack_count)
     {
@@ -2319,7 +2399,7 @@ internal void game_update()
     
     glDisable(GL_DEPTH_TEST);
     
-    float vertical_split = 1.0;
+    float vertical_split = 0.8;
     float horizontal_split = 0.5;
     
     D_Rectangle primary_viewport = {};

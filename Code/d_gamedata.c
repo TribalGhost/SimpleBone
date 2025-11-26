@@ -9,6 +9,17 @@ global char * game_animation_save_name = "Game\\Animation.txt";
 
 global bool shader_compile_failed = false;
 
+typedef struct ShapeImpactData ShapeImpactData;
+struct ShapeImpactData
+{
+    Vector3 ray_direction;
+    float time_of_impact;
+    Vector3 impact_point;
+    Vector3 impact_normal;
+    
+    bool stop_if_too_far;
+};
+
 typedef struct GJK_State GJK_State;
 struct GJK_State
 {
@@ -466,6 +477,7 @@ global Matrix project_matrix = {};
 global Matrix world_3D_to_screen_matrix = {};
 
 global D_Rectangle current_viewport = {};
+global bool update_once = false;
 global bool within_viewport = false;
 global Vector2 mouse_position = {};
 
