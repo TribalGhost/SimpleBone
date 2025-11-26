@@ -871,6 +871,10 @@ internal void editor_GUI()
     
     if(editor_type == edit_world)
     {
+        if(draw_menu_button_W(&top_right_bar , edit_quad ? L"正在編輯網格" : L"編輯網格"))
+        {
+            edit_quad = !edit_quad;
+        }
         
         if(draw_menu_button_W(&top_right_bar , L"添加參考坐標"))
         {

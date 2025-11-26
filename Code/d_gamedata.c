@@ -1,10 +1,4 @@
-//10X can't read macro anymore
-#ifndef global
-
-#define global static
-#define internal static
-
-#endif
+#define EPSILON 0.000001f
 
 global StructMetaData * _type_struct_meta_ = 0;
 
@@ -14,6 +8,18 @@ global char * game_state_save_name = "Game\\GameState";
 global char * game_animation_save_name = "Game\\Animation.txt";
 
 global bool shader_compile_failed = false;
+
+typedef struct GJK_State GJK_State;
+struct GJK_State
+{
+    Vector3 simplex[4];
+    int simplex_count;
+    Vector3 search_direction;
+    Vector3 origin;
+};
+
+global int test_ray_count = 4;
+global int test_simplex_count = 5;
 
 typedef enum BoxFace BoxFace;
 enum BoxFace
@@ -373,6 +379,7 @@ enum EditorType
 };
 
 global int editor_type = edit_base_pose;
+global bool edit_quad = false;
 
 typedef struct DemoData DemoData;
 struct DemoData
@@ -485,7 +492,7 @@ global long long game_update_count = 0;
 
 #define SUBDIVISION (10)
 #define GRID_SIZE (1.0)
-#define UNIT_SIZE (GRID_SIZE / SUBDIVISION)
+#define UNIT_SIZE (GRID_SIZE / ((double)SUBDIVISION))
 
 global Vector3 * vertices_a = 0;
 global int vertices_a_count = 0;

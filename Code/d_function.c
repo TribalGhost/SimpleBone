@@ -210,11 +210,9 @@ internal Ray get_screen_to_world_ray_EX(Vector2 position, Camera camera, int vie
 	return ray;
 }
 
-//why i take you out?
+//beware the normal isn't normalized
 internal RayCollision get_ray_collision_triangle(Ray ray, Vector3 p1, Vector3 p2, Vector3 p3)
 {
-#define EPSILON 0.000001f        // A small number
-    
 	RayCollision collision = { 0 };
 	Vector3 edge1 = { 0 };
 	Vector3 edge2 = { 0 };
@@ -261,7 +259,7 @@ internal RayCollision get_ray_collision_triangle(Ray ray, Vector3 p1, Vector3 p2
 		// Ray hit, get hit point and normal
 		collision.hit = true;
 		collision.distance = t;
-		collision.normal = Vector3Normalize(Vector3CrossProduct(edge1, edge2));
+		collision.normal = Vector3CrossProduct(edge1, edge2);
 		collision.point = Vector3Add(ray.position, Vector3Scale(ray.direction, t));
 	}
     

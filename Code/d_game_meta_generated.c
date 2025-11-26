@@ -68,6 +68,7 @@ enum _type_meta
 	_MT_D_Light_GPU_Data,
 	_MT_D_Light,
 	_MT_D_Vertex_Data,
+	_MT_GJK_State,
 	_MT_BoxFace,
 	_MT_BoxVertex,
 	_MT_GameMenuType,
@@ -168,6 +169,7 @@ sizeof(RenderState),//RenderState
 sizeof(D_Light_GPU_Data),//D_Light_GPU_Data 
 sizeof(D_Light),//D_Light 
 sizeof(D_Vertex_Data),//D_Vertex_Data 
+sizeof(GJK_State),//GJK_State 
 sizeof(BoxFace),//BoxFace 
 sizeof(BoxVertex),//BoxVertex 
 sizeof(GameMenuType),//GameMenuType 
@@ -267,6 +269,7 @@ const char * _type_meta_name[] =
 	"D_Light_GPU_Data",
 	"D_Light",
 	"D_Vertex_Data",
+	"GJK_State",
 	"BoxFace",
 	"BoxVertex",
 	"GameMenuType",
@@ -362,6 +365,7 @@ false,
 false,
 false,
 true,
+false,
 false,
 false,
 false,
@@ -576,6 +580,7 @@ enum introspected_struct
 	IS_D_Light_GPU_Data, 
 	IS_D_Light, 
 	IS_D_Vertex_Data, 
+	IS_GJK_State, 
 	IS_DrawingMenu, 
 	IS_BoneState, 
 	IS_KeyFrame, 
@@ -1056,6 +1061,15 @@ global const MemberMetaData member_meta_D_Vertex_Data[14] =
 	{ "corner_tex_coord" , false,true,true,quad_vertex_count,_MT_Vector2,"Vector2",(int)&((D_Vertex_Data *)0)->corner_tex_coord ,sizeof(void *),}, 
 };
 
+global int member_meta_count_GJK_State = 4;
+global const MemberMetaData member_meta_GJK_State[4] =
+{
+	{ "simplex" , false,false,true,4,_MT_Vector3,"Vector3",(int)&((GJK_State *)0)->simplex ,sizeof(Vector3),}, 
+	{ "simplex_count" , false,false,false,0,_MT_int,"int",(int)&((GJK_State *)0)->simplex_count ,sizeof(int),}, 
+	{ "search_direction" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((GJK_State *)0)->search_direction ,sizeof(Vector3),}, 
+	{ "origin" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((GJK_State *)0)->origin ,sizeof(Vector3),}, 
+};
+
 global int member_meta_count_DrawingMenu = 7;
 global const MemberMetaData member_meta_DrawingMenu[7] =
 {
@@ -1338,6 +1352,7 @@ StructMetaData * all_struct = malloc(sizeof(StructMetaData) * _MT_type_count);
 	all_struct[_MT_D_Light_GPU_Data] = (StructMetaData)GetStructMeta(D_Light_GPU_Data);
 	all_struct[_MT_D_Light] = (StructMetaData)GetStructMeta(D_Light);
 	all_struct[_MT_D_Vertex_Data] = (StructMetaData)GetStructMeta(D_Vertex_Data);
+	all_struct[_MT_GJK_State] = (StructMetaData)GetStructMeta(GJK_State);
 	all_struct[_MT_BoxFace] = (StructMetaData){};
 	all_struct[_MT_BoxVertex] = (StructMetaData){};
 	all_struct[_MT_GameMenuType] = (StructMetaData){};
@@ -1470,6 +1485,7 @@ internal void add_point_to_line_2D_C(Vector2 point, Color point_color , float po
 internal void add_point_to_line_2D_D(Vector2 point, Color point_color);
 internal unsigned int load_depth_texture(int width, int height);
 internal float get_line_intersect_with_plane_time(Vector3 start , Vector3 end , Vector3 plane_normal , Vector3 plane_origin);
+internal float ray_get_closest_point(Vector3 o , Vector3 n , Vector3 a);
 internal Vector3 transform_vector(Vector3 position , Matrix matrix);
 internal float remove_prespective(Vector3 q);
 internal Quad get_billboard_quad(Vector3 point, float width , float height);
@@ -1490,8 +1506,9 @@ internal void _draw_rect_text(Rect quad ,Vector4* color ,Vector2* texture_coord 
 internal void draw_background();
 internal void draw_screen_flat(int texture_index , Vector4 color , bool multi_sample);
 internal void draw_screen_flat_B(int texture_index ,Color color , bool multi_sample);
-internal void draw_box_EX( Vector3 position , Vector3 size , Quaternion rotation , Color box_color);
-internal void draw_box(Box box , Color color);
+internal void get_box_face( Rect * temp_box_rect , Box box);
+internal void draw_box( Box box , Color box_color);
+internal void draw_box_line(Box box , Color line_color , float line_size);
 internal void char_to_wide_char(wchar_t * dst , char* src ,int length);
 internal D_GlyphInfo D_get_glyph_from_codepoint(wchar_t current_codepoint,D_FontContext * font_context);
 internal float get_glyph_width(D_GlyphInfo glyph_info , D_FontContext *font_info , float space_size_offset , float space_scaler , float scale);
@@ -1618,12 +1635,19 @@ internal void sort_bone_hash_table(int bone_index , HashTable * hash_table_by_bo
 internal Quad direction_to_quad(Vector3 direction , float width);
 internal Vector3 * box_to_point(Box box);
 internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box);
-internal Vector3 position_to_grid(Vector3 position , int size);
+internal Vector3 position_to_grid(Vector3 position , float size);
 internal Vector3 get_furthest_point_by_direction( Vector3 direction , Vector3 * points , int point_count);
-internal Vector3 get_support(Vector3 direction);
+internal Vector3 get_support_point(Vector3 direction);
 internal bool same_direction_b(Vector3 start , Vector3 end_a , Vector3 end_b);
 internal Vector3 triple_cross_product(Vector3 a , Vector3 b);
-internal bool GJK();
+internal void search_triangle(GJK_State * state);
+internal bool iterate_simplex( GJK_State * state);
+internal void draw_simplex_triangle(Vector3 a , Vector3 b , Vector3 c);
+internal void draw_simplex(GJK_State * state);
+internal bool check_shape(Vector3 origin);
+internal Vector3 closest_point_on_line(Vector3 a , Vector3 b , Vector3 point);
+internal Vector3 closest_point_on_triangle(Vector3 a , Vector3 b , Vector3 c , Vector3 point);
+internal bool shape_ray_test(Vector3 ray_direction , float * time_of_impact , Vector3 * impact_point);
 internal bool check_selected_bone_rotation( Bone * final_bone_array_copy, int single_bone_index , Clip * clip_to_assign);
 internal void bone_selection_and_edit_bone_state( int current_frame_index);
 internal void bone_mouse_menu( Bone * single_editing_bone , Clip * clip , int current_frame_index);

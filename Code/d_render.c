@@ -1573,13 +1573,22 @@ internal unsigned int load_depth_texture(int width, int height)
 }
 
 //so far, solving equations seem to be better than using vector math
-//im confused tho, the equation tell me the length of plane normal doesn't matter
+//the equation tell me the length of plane normal doesn't matter
 internal float get_line_intersect_with_plane_time(Vector3 start , Vector3 end , Vector3 plane_normal , Vector3 plane_origin)
 {
 	float result = plane_normal.x * (plane_origin.x - start.x) + plane_normal.y * (plane_origin.y - start.y) + plane_normal.z * (plane_origin.z - start.z);
 	result /= plane_normal.x * (end.x - start.x) + plane_normal.y * (end.y - start.y) + plane_normal.z * (end.z - start.z);
     
 	return result;
+}
+
+internal float ray_get_closest_point(Vector3 o , Vector3 n , Vector3 a)
+{
+    float result = Vector3DotProduct(n,a);
+    result -= Vector3DotProduct(n,o);
+    result /= Vector3DotProduct(n,n);
+    
+    return result;
 }
 
 //steal from raylib and modified
@@ -1826,7 +1835,6 @@ internal void draw_quad_line(Quad quad , Color line_color , float line_size)
 	draw_round_line(top_left , bottom_left ,line_size , line_color , line_color);
 	draw_round_line(bottom_left , bottom_right ,line_size , line_color , line_color);
 	draw_round_line(bottom_right , top_right ,line_size , line_color , line_color);
-    
 }
 
 internal void draw_rect_line_B(Vector2 start_position , Vector2 end_position , Color line_color)
@@ -2152,11 +2160,11 @@ internal void draw_screen_flat_B(int texture_index ,Color color , bool multi_sam
 	draw_screen_flat(texture_index , color_to_linear(color) , multi_sample);
 }
 
-
-//TODO : if we need to draw many box maybe don't use this
-internal void draw_box_EX( Vector3 position , Vector3 size , Quaternion rotation , Color box_color)
+internal void get_box_face( Rect * temp_box_rect , Box box)
 {
-    Rect temp_box_rect[face_count] = {};
+    Vector3 position = box.position;
+    Vector3 size = box.size;
+    Quaternion rotation = box.rotation;
     
     for(int face_index = 0 ; face_index < face_count ; face_index++) 
     {
@@ -2190,14 +2198,29 @@ internal void draw_box_EX( Vector3 position , Vector3 size , Quaternion rotation
         temp_box_rect[face_index].rotation = QuaternionMultiply(rotation ,temp_box_rect[face_index].rotation );
     }
     
+}
+
+//TODO : if we need to draw many box maybe don't use this
+internal void draw_box( Box box , Color box_color)
+{
+    Rect temp_box_rect[face_count] = {};
+    
+    get_box_face(temp_box_rect , box);
+    
     for(int face_index = 0 ; face_index < face_count ; face_index++) 
     {
         draw_quad_D(rect_to_quad(temp_box_rect[face_index])  , box_color );
     }
-    
 }
 
-internal void draw_box(Box box , Color color)
+internal void draw_box_line(Box box , Color line_color , float line_size)
 {
-    draw_box_EX(box.position , box.size , box.rotation , color);
+    Rect temp_box_rect[face_count] = {};
+    
+    get_box_face(temp_box_rect , box);
+    
+    for(int face_index = 0 ; face_index < face_count ; face_index++) 
+    {
+        draw_quad_line(rect_to_quad(temp_box_rect[face_index])  , line_color , line_size );
+    }
 }

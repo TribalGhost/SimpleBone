@@ -36,13 +36,11 @@ internal bool check_selected_bone_rotation( Bone * final_bone_array_copy, int si
     bool hovering = false;
     for(int axis_index = R_Z ; axis_index < R_count ; axis_index++)
     {
-        
         rotation_rect_collision[axis_index] = get_collision_rect_3D_B(rotation_rect[axis_index]);
         if(rotation_rect_collision[axis_index].hit)
         {
             hovering = true;
         }
-        
     }
     
     local_persist Vector3 previous_drag_point = {};
@@ -50,9 +48,7 @@ internal bool check_selected_bone_rotation( Bone * final_bone_array_copy, int si
     
     if(mouse_button_pressed(MOUSE_BUTTON_LEFT))
     {
-        
         dragging_axis = R_None;
-        
     }
     
     RayCollision closest_collision = {};
@@ -1425,7 +1421,8 @@ internal void edit_map(Vector3 origin)
     
     if(editor_type == edit_world)
     {
-        Vector3 grid_direction = all_direction[grid_direction_index];
+        Vector3 origin
+            Vector3 grid_direction = all_direction[grid_direction_index];
         grid_direction = Vector3Normalize(grid_direction);
         
         Vector3 mouse_ray_target = Vector3Add(mouse_ray_3D.position , mouse_ray_3D.direction);
@@ -1445,41 +1442,45 @@ internal void edit_map(Vector3 origin)
         rect_in_cell.size = (Vector2){GRID_SIZE , GRID_SIZE};
         rect_in_cell.rotation = QuaternionFromVector3ToVector3( (Vector3){0,0,1} , grid_direction);
         
-        draw_rect_D(rect_in_cell , 0 , WHITE);
+        if(edit_quad)
+        {
+            draw_rect_D(rect_in_cell , 0 , Fade(WHITE , 0.3));
+        }
         
         if(within_viewport)
         {
-            bool collided = false;
-            
-            array_foreach(quad_index , &quads_in_map_array)
+            if(edit_quad)
             {
-                RayCollision collision = get_collision_quad_3D(quads_in_map[quad_index]);
-                if(collision.hit)
+                bool collided = false;
+                
+                array_foreach(quad_index , &quads_in_map_array)
                 {
-                    collided = true;
-                    
+                    RayCollision collision = get_collision_quad_3D(quads_in_map[quad_index]);
+                    if(collision.hit)
+                    {
+                        collided = true;
+                        
+                        if(mouse_button_pressed(MOUSE_BUTTON_LEFT))
+                        {
+                            if(!delete_from_array(&quads_in_map_array , quad_index)) CATCH;
+                        }
+                        
+                        break;
+                    }
+                }
+                
+                if(!collided)
+                {
                     if(mouse_button_pressed(MOUSE_BUTTON_LEFT))
                     {
-                        delete_from_array(&quads_in_map_array , quad_index);
+                        REALLOCATE_ARRAY_IF_TOO_SMALL(Quad , quads_in_map , &quads_in_map_array);
+                        Quad * new_quad = quads_in_map + add_to_array(&quads_in_map_array);
+                        
+                        (*new_quad) = rect_to_quad(rect_in_cell);
                     }
-                    
-                    break;
                 }
             }
-            
-            if(!collided)
-            {
-                if(mouse_button_pressed(MOUSE_BUTTON_LEFT))
-                {
-                    REALLOCATE_ARRAY_IF_TOO_SMALL(Quad , quads_in_map , &quads_in_map_array);
-                    Quad * new_quad = quads_in_map + add_to_array(&quads_in_map_array);
-                    
-                    (*new_quad) = rect_to_quad(rect_in_cell);
-                }
-            }
-            
         }
-        
     }
     
 }
@@ -1616,7 +1617,6 @@ internal void draw_origin_grid(Vector3 origin)
             
 			draw_round_line(start_position, top_point,grid_line_size ,line_color_V ,Fade(line_color_V ,0));
 			draw_round_line(start_position, bottom_point,grid_line_size ,line_color_V,Fade(line_color_V ,0));
-            
 		}
         
 	}
@@ -1894,34 +1894,79 @@ internal void viewport_update()
     glClearDepth(1);
     glClear(GL_DEPTH_BUFFER_BIT);
     
+    Box origin_box = get_box();
+    origin_box.size = (Vector3){UNIT_SIZE , UNIT_SIZE , UNIT_SIZE};
+    origin_box.size = Vector3Scale(origin_box.size , 0.5f);
+    
+    draw_box(origin_box , RED);
+    
+    Box test_box = get_box();
+    test_box.position = (Vector3){0.6,2.2,-5.3};
+    //test_box.position = (Vector3){};
+    test_box.rotation = QuaternionFromVector3ToVector3( (Vector3){0,1,0} , Vector3Normalize( (Vector3){1,2,3}) );
+    test_box.size = (Vector3){0.65,1.36,0.6};
+    draw_box(test_box , BLUE);
+    
+    Vector3 ray_direction = Vector3Subtract(grid_origin , test_box.position);
+    draw_arrow_ray_D( test_box.position , ray_direction , Fade(WHITE , 0.5f));
+    
+    Vector3 * test_box_vertices = box_to_point(test_box);
+    
+    local_persist Vector3 player_position = {};
+    local_persist Vector3 player_velocity = {};
     Box player_box = get_box();
-    player_box.position = demo_data.character_position;
-    player_box.rotation = QuaternionFromVector3ToVector3( (Vector3){} , demo_data.character_direction );
-    
-    draw_box(player_box , BLUE);
-    
-    vertices_a = box_to_point(box);
-    vertices_a_count = box_vertex_count;
+    player_box.position = player_position;
+    player_box.size = (Vector3){1.4 , 2.6 , 1.2};
+    player_box.rotation = QuaternionFromVector3ToVector3( (Vector3){0,1,0} , Vector3Normalize( (Vector3){0.3,-2.5,1}) );
     
     if(editor_type == edit_world || editor_type == demo)
     {
-        array_foreach(quad_index , &quads_in_map_array)
+        if(within_viewport)
         {
-            Quad quad = quads_in_map[quad_index];
-            vertices_b = quad.vertex_position;
-            vertices_b_count = quad_vertex_count;
-            
-            draw_quad_D(quad , MAROON);
-            
-            GJK();
-            
-            RayCollision collision = get_collision_quad_3D( quad );
-            if(collision.hit)
+            array_foreach(quad_index , &quads_in_map_array)
             {
-                draw_quad_line( quad , BLACK , 5);
+                Quad quad = quads_in_map[quad_index];
+                
+                vertices_b = quad.vertex_position;
+                vertices_b_count = quad_vertex_count;
+                
+                vertices_a = test_box_vertices;
+                vertices_a_count = box_vertex_count;
+                
+                for(int vertex_index = 0 ; vertex_index < quad_vertex_count ; vertex_index++)
+                {
+                    Box temp_box = test_box;
+                    temp_box.position = quad.vertex_position[vertex_index];
+                    draw_box_line(temp_box , Fade(WHITE, 0.05) , 5);
+                }
+                
+                float time_of_impact = 0;
+                Vector3 impact_point = {};
+                
+                if(shape_ray_test(ray_direction , &time_of_impact , &impact_point))
+                {
+                    Box collided_box = test_box;
+                    collided_box.position = Vector3Add(collided_box.position , Vector3Scale(ray_direction , time_of_impact));
+                    //collided_box.position = impact_point;
+                    
+                    draw_box(collided_box , Fade(BLUE , 0.4f));
+                    draw_quad_D(quad , MAROON);
+                }
+                else
+                {
+                    draw_quad_D(quad , PURPLE);
+                }
+                
+                RayCollision collision = get_collision_quad_3D( quad );
+                if(collision.hit)
+                {
+                    draw_quad_line( quad , BLACK , 5);
+                }
             }
         }
     }
+    
+    draw_box(player_box , GOLD);
     
     if(bone_pose_to_draw_stack_count)
     {
@@ -2059,13 +2104,14 @@ internal void viewport_update()
                     Vector3 position_in_cell = position_to_grid(origin_position , UNIT_SIZE);
                     
                     Vector3 * referece_frame = all_reference_frame + selected_reference_frame_index;
+                    
                     (*referece_frame) = position_in_cell;
+                    //(*referece_frame) = origin_position;
                 }
                 
                 draw_arrow_ray_D(grid_origin , right_direction , right_color);
                 draw_arrow_ray_D(grid_origin , up_direction , up_color);
                 draw_arrow_ray_D(grid_origin , forward_direction , forward_color);
-                
             }
         }
     }
@@ -2273,7 +2319,7 @@ internal void game_update()
     
     glDisable(GL_DEPTH_TEST);
     
-    float vertical_split = 0.6;
+    float vertical_split = 1.0;
     float horizontal_split = 0.5;
     
     D_Rectangle primary_viewport = {};
@@ -2760,7 +2806,7 @@ internal bool compare_string( char * string_A, char * string_B)
 local_persist bool initialized = false;\
 local_persist type * buffer = 0;\
 if(!initialized) {initialized = true; buffer = (type *)get_data_buffer_by_name(name);}\
-if(buffer) data_to_assign = buffer[index];\
+if(buffer) (data_to_assign) = buffer[index];\
 }
 
 internal unsigned char * get_data_buffer_by_name(char * name)
@@ -2918,14 +2964,33 @@ internal void save_file()
     
     write_data(quads_count , "map_quad_count" , int);
     
-    array_foreach( quad_index , &quads_in_map_array )
+    int quad_index = 0;
+    array_foreach( array_index , &quads_in_map_array )
     {
-        Quad quad = quads_in_map[quad_index];
+        Quad quad = quads_in_map[array_index];
         
         write_buffer(quad.vertex_position[vertex_top_left] , "map_quad_top_left_vertex" , Vector3 , quad_index , quads_count);
         write_buffer(quad.vertex_position[vertex_top_right] , "map_quad_top_right_vertex" , Vector3 , quad_index , quads_count);
         write_buffer(quad.vertex_position[vertex_bottom_left] , "map_quad_bottom_left_vertex" , Vector3 , quad_index , quads_count);
         write_buffer(quad.vertex_position[vertex_bottom_right] , "map_quad_bottom_right_vertex" , Vector3 , quad_index , quads_count);
+        quad_index++;
+    }
+    
+    write_data(selected_reference_frame_index , "selected reference frame" , int);
+    
+    int reference_frame_count = 0;
+    list_foreach(array_index , &reference_frame_list)
+    {
+        reference_frame_count++;
+    }
+    
+    write_data(reference_frame_count , "reference frame count" , int);
+    int reference_frame_index = 0;
+    list_foreach(array_index , &reference_frame_list)
+    {
+        Vector3 reference_frame = all_reference_frame[array_index];
+        write_buffer(reference_frame , "reference frame" , Vector3 , reference_frame_index , reference_frame_count);
+        reference_frame_index++;
     }
     
     int save_header_size = (current_data_header - data_header_array) * sizeof(DataHeader);
@@ -3169,10 +3234,24 @@ internal void load_file()
         read_buffer(quad->vertex_position[vertex_top_right] , "map_quad_top_right_vertex" , Vector3 , quad_index);
         read_buffer(quad->vertex_position[vertex_bottom_left] , "map_quad_bottom_left_vertex" , Vector3 , quad_index);
         read_buffer(quad->vertex_position[vertex_bottom_right] , "map_quad_bottom_right_vertex" , Vector3 , quad_index);
-        
     }
     
 #endif
+    
+    read_data(selected_reference_frame_index , "selected reference frame" , int);
+    
+    int reference_frame_count = 0;
+    read_data(reference_frame_count , "reference frame count" , int);
+    
+    for(int reference_frame_index = 0 ; reference_frame_index < reference_frame_count ; reference_frame_index++)
+    {
+        Vector3 refernce_frame = {};
+        read_buffer(refernce_frame , "reference frame" , Vector3 , reference_frame_index);
+        
+        REALLOCATE_LIST_IF_TOO_SMALL(Vector3 , all_reference_frame , &reference_frame_list);
+        int new_reference_frame_index= add_to_list_tail_B(&reference_frame_list);
+        all_reference_frame[new_reference_frame_index] = refernce_frame;
+    }
     
     free(whole_data);
 }

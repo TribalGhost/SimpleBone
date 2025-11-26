@@ -1909,7 +1909,7 @@ internal Quad direction_to_quad(Vector3 direction , float width)
 
 internal Vector3 * box_to_point(Box box)
 {
-    Vector3 * points = allocate_temp(Vector3 , box_vertex_count);
+    Vector3 * points = allocate_frame(Vector3 , box_vertex_count);
     
     points[bv_A] = (Vector3){ -box.size.x * 0.5f , box.size.y * 0.5f , box.size.z * 0.5f};
     points[bv_B] = (Vector3){ box.size.x * 0.5f , box.size.y * 0.5f , box.size.z * 0.5f};
@@ -1953,6 +1953,8 @@ internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box)
     int face_to_check_count = 0;
     
     //TODO: why some of the vector inverted?
+    
+    //not gonna fix this ,probably me assuming the axis of cross product wrong
     if(Vector3DotProduct(top_face_direction , direction) > 0) face_to_check[face_to_check_count++] = face_top;
     if(Vector3DotProduct(bottom_face_direction , direction) > 0) face_to_check[face_to_check_count++] = face_bottom;
     if(Vector3DotProduct(right_face_direction , direction) > 0) face_to_check[face_to_check_count++] = face_right;
@@ -2009,7 +2011,7 @@ internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box)
     return false;
 }
 
-internal Vector3 position_to_grid(Vector3 position , int size)
+internal Vector3 position_to_grid(Vector3 position , float size)
 {
     position = Vector3Scale(position , 1.0 / size);
     position.x = ceil(position.x);
@@ -2020,13 +2022,11 @@ internal Vector3 position_to_grid(Vector3 position , int size)
     return position;
 }
 
-//not needed yet
-//i come up something better
 internal Vector3 get_furthest_point_by_direction( Vector3 direction , Vector3 * points , int point_count)
 {
     
     Vector3 furthest_point = {};
-    float furthest_distance = 0;
+    float furthest_distance = -FLT_MAX;
     
     for(int point_index = 0 ; point_index < point_count ; point_index++)
     {
@@ -2041,12 +2041,12 @@ internal Vector3 get_furthest_point_by_direction( Vector3 direction , Vector3 * 
     return furthest_point;
 }
 
-internal Vector3 get_support(Vector3 direction)
+internal Vector3 get_support_point(Vector3 direction)
 {
-    Vector3 farest_direction_a = get_furthest_point_by_direction(direction , vertices_a , vertices_a_count);
+    Vector3 farest_direction_a = get_furthest_point_by_direction( Vector3Negate(direction) , vertices_a , vertices_a_count);
     Vector3 farest_direction_b = get_furthest_point_by_direction(direction , vertices_b , vertices_b_count);
     
-    return Vector3Subtract(farest_direction_a , farest_direction_b);
+    return Vector3Subtract(farest_direction_b , farest_direction_a);
 }
 
 internal bool same_direction_b(Vector3 start , Vector3 end_a , Vector3 end_b)
@@ -2056,117 +2056,706 @@ internal bool same_direction_b(Vector3 start , Vector3 end_a , Vector3 end_b)
     return Vector3DotProduct( direction_a , direction_b ) > 0;
 }
 
+//produce vertical direction to a and same direction to b
 internal Vector3 triple_cross_product(Vector3 a , Vector3 b)
 {
-    Vector3 direction = Vector3CrossProduct(a , b);
-    direction = Vector3CrossProduct(direction , a);
+    Vector3 third_vector = Vector3CrossProduct(b , a);
+    return Vector3CrossProduct(a , third_vector);
 }
 
-internal bool GJK()
+#define SAME_DIRECTION(direction_a , direction_b) (Vector3DotProduct(direction_a , direction_b) > 0)
+
+internal void search_triangle(GJK_State * state)
 {
-    Vector3 zero = {};
+    Vector3 a = state->simplex[0];
+    Vector3 b = state->simplex[1];
+    Vector3 c = state->simplex[2];
     
-    Vector3 complex_points[4] = {};
-    int complex_point_count = 0;
+    Vector3 a_to_b = Vector3Subtract(b , a);
+    Vector3 a_to_c = Vector3Subtract(c , a);
+    Vector3 a_to_origin = Vector3Subtract(state->origin , a);
     
-    Vector3 direction = {0,1,0};
-    Vector3 farest_point = get_support(direction);
+    Vector3 a_c_inward_direction = triple_cross_product(a_to_c , a_to_b);
     
-    complex_points[complex_point_count++] = farest_point;
-    direction = Vector3Negate(farest_point);
+    if(SAME_DIRECTION(a_c_inward_direction , a_to_origin))
+    {
+        Vector3 b_to_c = Vector3Subtract(c , b);
+        Vector3 b_to_a = Vector3Subtract(a , b);
+        Vector3 b_to_origin = Vector3Subtract(state->origin , b);
+        
+        Vector3 b_c_inward_direction = triple_cross_product(b_to_c , b_to_a);
+        
+        if(SAME_DIRECTION(b_c_inward_direction , b_to_origin))
+        {
+            Vector3 triangle_normal = Vector3CrossProduct(b_to_c , b_to_a);
+            if(SAME_DIRECTION(triangle_normal , b_to_origin))
+            {
+                state->search_direction = triangle_normal;
+            }
+            else
+            {
+                state->simplex[0] = c;
+                state->simplex[1] = b;
+                state->simplex[2] = a;
+                state->search_direction = Vector3Negate(triangle_normal);
+            }
+        }
+        else
+        {
+            Vector3 c_to_b = Vector3Negate(b_to_c);
+            Vector3 c_to_origin = Vector3Subtract(state->origin , c);
+            
+            if(SAME_DIRECTION(c_to_b , c_to_origin))
+            {
+                state->simplex[0] = b;
+                state->simplex[1] = c;
+                state->simplex_count = 2;
+                
+                state->search_direction = triple_cross_product(c_to_b , c_to_origin);
+            }
+            else
+            {
+                //would this even happen?
+                //because there shouldn't any further point than support point
+                
+                //it do happen but at that time the code was wrong
+                
+                //CATCH;
+                
+                state->simplex[0] = c;
+                state->simplex_count = 1;
+                
+                state->search_direction = c_to_origin;
+            }
+        }
+    }
+    else
+    {
+        Vector3 c_to_a = Vector3Negate(a_to_c);
+        Vector3 c_to_origin = Vector3Subtract(state->origin , c);
+        
+        if(SAME_DIRECTION(c_to_a , c_to_origin))
+        {
+            state->simplex[0] = a;
+            state->simplex[1] = c;
+            state->simplex_count = 2;
+            state->search_direction = triple_cross_product(c_to_a , c_to_origin);
+        }
+        else
+        {
+            state->simplex[0] = c;
+            state->simplex_count = 1;
+            state->search_direction = c_to_origin;
+        }
+    }
+}
+
+internal bool iterate_simplex( GJK_State * state)
+{
+    float small_number = 0.000001f;
+    
+    if(state->simplex_count == 2)
+    {
+        Vector3 a = state->simplex[0];
+        Vector3 b = state->simplex[1];
+        
+        Vector3 b_to_a = Vector3Subtract(a , b);
+        Vector3 b_to_origin = Vector3Subtract(state->origin , b);
+        
+        if(SAME_DIRECTION(b_to_a , b_to_origin))
+        {
+            state->search_direction = triple_cross_product(b_to_a , b_to_origin);
+            if(Vector3LengthSqr(state->search_direction) < small_number)
+            {
+                return true;
+            }
+        }
+        else
+        {
+            state->search_direction = b_to_origin;
+            state->simplex[0] = b;
+            state->simplex_count = 1;
+        }
+    }
+    else if(state->simplex_count == 3)
+    {
+        search_triangle(state);
+    }
+    else if(state->simplex_count == 4)
+    {
+        Vector3 a = state->simplex[0];
+        Vector3 b = state->simplex[1];
+        Vector3 c = state->simplex[2];
+        Vector3 d = state->simplex[3];
+        
+        Vector3 a_to_b = Vector3Subtract(b , a);
+        Vector3 a_to_d = Vector3Subtract(d , a);
+        Vector3 a_b_d_face_outward_direction = Vector3CrossProduct(a_to_b , a_to_d );
+        Vector3 a_to_origin = Vector3Subtract(state->origin , a);
+        
+        Vector3 b_to_c = Vector3Subtract(c , b);
+        Vector3 b_to_d = Vector3Subtract(d , b);
+        Vector3 b_c_d_face_outward_direction = Vector3CrossProduct(b_to_c , b_to_d);
+        Vector3 b_to_origin = Vector3Subtract(state->origin , b);
+        
+        Vector3 c_to_a = Vector3Subtract(a , c);
+        Vector3 c_to_d = Vector3Subtract(d , c);
+        Vector3 c_a_d_face_outward_direction = Vector3CrossProduct(c_to_a , c_to_d);
+        Vector3 c_to_origin = Vector3Subtract(state->origin , c);
+        
+        Vector3 a_to_c = Vector3Subtract(c , a);
+        Vector3 bottom_triangle_normal = Vector3CrossProduct(a_to_c , a_to_b);
+        if( fabs(Vector3DotProduct(bottom_triangle_normal , a_to_origin)) < small_number)
+        {
+            return true;
+        }
+        
+        if(!SAME_DIRECTION(a_b_d_face_outward_direction , a_to_origin))
+        {
+            if(!SAME_DIRECTION(b_c_d_face_outward_direction , b_to_origin))
+            {
+                if(!SAME_DIRECTION(c_a_d_face_outward_direction , c_to_origin))
+                {
+                    return true;
+                }
+                else
+                {
+                    float dot_product = fabs(Vector3DotProduct(c_a_d_face_outward_direction , c_to_origin));
+                    if( dot_product < small_number)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        state->simplex[0] = c;
+                        state->simplex[1] = a;
+                        state->simplex[2] = d;
+                        state->simplex_count = 3;
+                        search_triangle(state);
+                    }
+                }
+            }
+            else
+            {
+                if(!SAME_DIRECTION(c_a_d_face_outward_direction , c_to_origin))
+                {
+                    float dot_product = fabs(Vector3DotProduct(b_c_d_face_outward_direction , b_to_origin));
+                    if( dot_product < small_number)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        state->simplex[0] = b;
+                        state->simplex[1] = c;
+                        state->simplex[2] = d;
+                        state->simplex_count = 3;
+                        search_triangle(state);
+                    }
+                }
+                else
+                {
+                    state->simplex[0] = c;
+                    state->simplex[1] = d;
+                    state->simplex_count = 2;
+                    state->search_direction = triple_cross_product(c_to_d , c_to_origin);
+                }
+            }
+        }
+        else
+        {
+            if(!SAME_DIRECTION(b_c_d_face_outward_direction , b_to_origin))
+            {
+                if(!SAME_DIRECTION(c_a_d_face_outward_direction , c_to_origin))
+                {
+                    float dot_product = fabs(Vector3DotProduct(a_b_d_face_outward_direction , a_to_origin));
+                    if(dot_product < small_number)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        state->simplex[0] = a;
+                        state->simplex[1] = b;
+                        state->simplex[2] = d;
+                        state->simplex_count = 3;
+                        search_triangle(state);
+                    }
+                }
+                else
+                {
+                    state->simplex[0] = a;
+                    state->simplex[1] = d;
+                    state->simplex_count = 2;
+                    state->search_direction = triple_cross_product(a_to_d , a_to_origin);
+                }
+            }
+            else
+            {
+                if(!SAME_DIRECTION(c_a_d_face_outward_direction , c_to_origin))
+                {
+                    state->simplex[0] = b;
+                    state->simplex[1] = d;
+                    state->simplex_count = 2;
+                    state->search_direction = triple_cross_product(b_to_d , b_to_origin);
+                }
+                else
+                {
+                    state->simplex[0] = d;
+                    state->simplex_count = 1;
+                    state->search_direction = Vector3Subtract(state->origin , d);
+                }
+            }
+        }
+    }
+    
+    return false;
+}
+
+internal void draw_simplex_triangle(Vector3 a , Vector3 b , Vector3 c)
+{
+    draw_round_line(a , b , 5 , Fade(RED , 0.5) , Fade(GREEN, 0.5));
+    draw_round_line(b , c , 5 , Fade(GREEN , 0.5) , Fade(BLUE , 0.5));
+    draw_round_line(c , a , 5 , Fade(BLUE , 0.5) , Fade(RED , 0.5));
+}
+
+internal void draw_simplex(GJK_State * state)
+{
+    Vector3 a = state->simplex[0];
+    Vector3 b = state->simplex[1];
+    Vector3 c = state->simplex[2];
+    Vector3 d = state->simplex[3];
+    
+    if(state->simplex_count == 1)
+    {
+        draw_round_line((Vector3){} , a , 5 , RED , RED);
+    }
+    else if(state->simplex_count == 2)
+    {
+        draw_round_line(a , b , 5 , RED , GREEN);
+    }
+    else if(state->simplex_count == 3)
+    {
+        draw_round_line(a , b , 5 , RED , GREEN);
+        draw_round_line(b , c , 5 , GREEN , BLUE);
+        draw_round_line(c , a , 5 , BLUE , RED);
+    }
+    else if(state->simplex_count == 4)
+    {
+        draw_round_line(a , b , 5 , RED , GREEN);
+        draw_round_line(b , c , 5 , GREEN , BLUE);
+        draw_round_line(c , a , 5 , BLUE , RED);
+        draw_round_line(d , a , 5 , BLACK ,  RED);
+        draw_round_line(d , b , 5 , BLACK  ,GREEN);
+        draw_round_line(d , c , 5 , BLACK  ,BLUE);
+        
+        Vector3 a_to_b = Vector3Subtract(b , a);
+        Vector3 a_to_d = Vector3Subtract(d , a);
+        Vector3 a_b_d_face_outward_direction = Vector3CrossProduct(a_to_b , a_to_d );
+        Vector3 a_to_origin = Vector3Subtract(state->origin , a);
+        
+        Vector3 b_to_c = Vector3Subtract(c , b);
+        Vector3 b_to_d = Vector3Subtract(d , b);
+        Vector3 b_c_d_face_outward_direction = Vector3CrossProduct(b_to_c , b_to_d);
+        Vector3 b_to_origin = Vector3Subtract(state->origin , b);
+        
+        Vector3 c_to_a = Vector3Subtract(a , c);
+        Vector3 c_to_d = Vector3Subtract(d , c);
+        Vector3 c_a_d_face_outward_direction = Vector3CrossProduct(c_to_a , c_to_d);
+        Vector3 c_to_origin = Vector3Subtract(state->origin , c);
+        
+        draw_arrow_ray_D(a , a_b_d_face_outward_direction  , RED);
+        draw_arrow_ray_D(a , a_to_origin  , RED);
+        
+        draw_arrow_ray_D(b , b_c_d_face_outward_direction  , GREEN);
+        draw_arrow_ray_D(b , b_to_origin  , GREEN);
+        
+        draw_arrow_ray_D(c , c_a_d_face_outward_direction  , BLUE);
+        draw_arrow_ray_D(c , c_to_origin  , BLUE);
+    }
+}
+
+internal bool check_shape(Vector3 origin)
+{
+    bool result = false;
+    float small_number = 0.000001f;
+    
+    GJK_State state = {};
+    state.search_direction = (Vector3){1,0,0};
+    state.origin = origin;
+    
+    Vector3 start_point = get_support_point(state.search_direction);
+    
+    state.search_direction = Vector3Negate(start_point);
+    state.simplex[state.simplex_count++] = start_point;
+    
+    int iterate_count = 0;
     
     for(;;)
     {
-        farest_point = get_support(direction);
-        
-        if(Vector3DotProduct(farest_point , direction) > 0) return false;
-        
-        complex_points[complex_point_count++] = farest_point;
-        
-        if(complex_point_count == 2)
+        if(iterate_count > 20)
         {
-            Vector3 point_a = complex_points[0];
-            Vector3 point_b = complex_points[1];
-            
-            Vector3 edge_direction = Vector3Subtract( point_a , point_b );
-            Vector3 origin_direction = Vector3Subtract(zero , point_b);
-            
-            if(Vector3DotProduct(edge_direction , origin_direction) > 0)
-            {
-                direction = Vector3CrossProduct(edge_direction , origin_direction);
-                direction = Vector3CrossProduct(direction , edge_direction);
-            }
-            else
-            {
-                direction = origin_direction;
-                complex_point_count = 0;
-                complex_points[complex_point_count++] = point_a;
-            }
-            
+            printf("too much %d %lld\n" , iterate_count , game_update_count);
+            CATCH;
+            break;
         }
-        else if(complex_point_count == 3)
+        iterate_count++;
+        
+        Vector3 new_support_point = get_support_point(state.search_direction);
+        
+        if(Vector3DotProduct(state.search_direction , new_support_point) < 0 ) 
         {
-            Vector3 point_a = complex_points[0];
-            Vector3 point_b = complex_points[1];
-            Vector3 point_c = complex_points[2];
-            
-            Vector3 a_to_c_vertical = triple_cross_product(point_a , point_c);
-            Vector3 a_to_origin = Vector3Subtract(zero , point_a);
-            
-            if(Vector3DotProduct(a_to_c_vertical , a_to_origin) > 0)
-            {
-                Vector3 b_to_c_vertical = triple_cross_product(point_b , point_c);
-                Vector3 b_to_origin = Vector3Subtract(zero , point_b);
-                
-                if(Vector3DotProduct(b_to_c_vertical , b_to_origin) > 0)
-                {
-                    Vector3 c_to_a = Vector3Subtract( point_a , point_c );
-                    Vector3 c_to_origin = Vector3Subtract(zero , point_c);
-                    
-                    if(Vector3DotProduct(c_to_a , c_to_origin) > 0)
-                    {
-                        direction = triple_cross_product(point_a , point_c);
-                    }
-                    else
-                    {
-                        direction = c_to_origin;
-                    }
-                    
-                }
-                else
-                {
-                    direction = Vector3Subtract(zero , point_c);
-                }
-            }
-            else
-            {
-                Vector3 b_to_c_vertical = triple_cross_product(point_b,point_c);
-                Vector3 b_to_origin = Vector3Subtract(origin , point_b);
-                
-                if(Vector3DotProduct(b_to_c_vertical , b_to_origin) > 0)
-                {
-                    Vector3 c_to_b = Vector3Subtract(point_b , point_c);
-                    Vector3 c_to_origin = Vector3Subtract(origin , point_c);
-                    
-                    if(Vector3DotProduct(c_to_b , c_to_origin) > 0)
-                    {
-                        direction = triple_cross_product(point_b , point_c);
-                    }
-                    else
-                    {
-                        direction = c_to_origin;
-                    }
-                }
-                else
-                {
-                }
-                
-            }
-        }
-        else if(complex_point_count == 4)
-        {
-            
+            result = false;
+            break;
         }
         
+        state.simplex[state.simplex_count++] = new_support_point;
+        if(state.simplex_count > 4) CATCH;
+        
+        if(iterate_simplex(&state))
+        {
+            result = true;
+            break;
+        }
     }
+    
+#if 1
+    draw_simplex(&state);
+#endif
+    
+    return result;
+}
+
+internal Vector3 closest_point_on_line(Vector3 a , Vector3 b , Vector3 point)
+{
+    Vector3 a_to_point = Vector3Subtract(point , a);
+    Vector3 a_to_b = Vector3Subtract(b , a);
+    
+    Vector3 b_to_point = Vector3Subtract(point , b);
+    Vector3 b_to_a = Vector3Subtract(a , b);
+    
+    if(SAME_DIRECTION(a_to_point , a_to_b))
+    {
+        if(SAME_DIRECTION( b_to_point , b_to_a ))
+        {
+            Vector3 project_point = Vector3Project(a_to_point , a_to_b);
+            return Vector3Add(a , project_point);
+        }
+        else
+        {
+            return b;
+        }
+    }
+    else
+    {
+        return a;
+    }
+}
+
+internal Vector3 closest_point_on_triangle(Vector3 a , Vector3 b , Vector3 c , Vector3 point)
+{
+    float small_number = 0.000001f;
+    
+    Vector3 a_to_b = Vector3Subtract(b , a);
+    Vector3 b_to_c = Vector3Subtract(c , b);
+    Vector3 c_to_a = Vector3Subtract(a , c);
+    Vector3 simplex_normal = Vector3CrossProduct(a_to_b , c_to_a);
+    
+    Vector3 a_to_point = Vector3Subtract(point , a);
+    Vector3 a_to_b_vertical_inward = triple_cross_product(a_to_b , b_to_c);
+    
+    Vector3 b_to_point = Vector3Subtract(point , b);
+    Vector3 b_to_c_vertical_inward = triple_cross_product(b_to_c , c_to_a);
+    
+    Vector3 c_to_point = Vector3Subtract(point , c);
+    Vector3 c_to_a_vertical_inward = triple_cross_product(c_to_a , a_to_b);
+    
+    Vector3 closest_point = {};
+    
+    if(SAME_DIRECTION(a_to_point , a_to_b_vertical_inward))
+    {
+        if(SAME_DIRECTION(b_to_point , b_to_c_vertical_inward))
+        {
+            if(SAME_DIRECTION(c_to_point , c_to_a_vertical_inward))
+            {
+                Vector3 end_point = Vector3Add(simplex_normal , point);
+                float hit_point_time = get_line_intersect_with_plane_time(point , end_point , simplex_normal , a);
+                Vector3 hit_point = Vector3Lerp(point , end_point , hit_point_time);
+                closest_point = hit_point;
+            }
+            else
+            {
+                closest_point = closest_point_on_line(c , a , point);
+            }
+        }
+        else
+        {
+            if(SAME_DIRECTION(c_to_point , c_to_a_vertical_inward))
+            {
+                closest_point = closest_point_on_line(b , c , point);
+            }
+            else
+            {
+                closest_point = c;
+            }
+        }
+    }
+    else
+    {
+        if(SAME_DIRECTION(b_to_point , b_to_c_vertical_inward))
+        {
+            if(SAME_DIRECTION(c_to_point , c_to_a_vertical_inward))
+            {
+                closest_point = closest_point_on_line(a , b , point);
+            }
+            else
+            {
+                closest_point = a;
+            }
+        }
+        else
+        {
+            if(SAME_DIRECTION(c_to_point , c_to_a_vertical_inward))
+            {
+                closest_point = b;
+            }
+            else
+            {
+                //it become a line or point
+                if(Vector3DistanceSqr(a , b) < small_number)
+                {
+                    if(Vector3DistanceSqr(b , c) < small_number)
+                    {
+                        closest_point = c;
+                    }
+                    else
+                    {
+                        closest_point = closest_point_on_line(b , c , point);
+                    }
+                }
+                else
+                {
+                    closest_point = closest_point_on_line(a , b , point);
+                }
+                //draw_simplex_triangle(a, b, c);
+            }
+        }
+    }
+    
+    //draw_arrow_ray_D( a, a_to_b_vertical_inward , RED);
+    //draw_arrow_ray_D( b, b_to_c_vertical_inward , GREEN);
+    //draw_arrow_ray_D( c, c_to_a_vertical_inward , BLUE);
+    
+    //draw_simplex_triangle(a , b, c);
+    //draw_arrow_line_B( closest_point , point , Fade(PINK , 0.5f));
+    
+    return closest_point;
+}
+
+internal bool shape_ray_test(Vector3 ray_direction , float * time_of_impact , Vector3 * impact_point)
+{
+    float small_number = 0.000001f;
+    
+    bool result = false;
+    
+    float ray_time = 0;
+    Vector3 ray_end = {};
+    
+    int ray_iterate_count = 0;
+    
+    for(;;)
+    {
+        ray_iterate_count++;
+        if(ray_iterate_count > 10)
+        {
+            //printf();
+            break;
+        }
+        
+        Vector3 simplex[3] = {};
+        Vector3 search_direction = Vector3Negate(ray_direction);
+        
+        simplex[0] = get_support_point(search_direction);
+        simplex[1] = get_support_point(Vector3Negate(search_direction));
+        simplex[2] = get_support_point(Vector3Add(search_direction , (Vector3){5,-5,2} ));
+        
+        float closest_distance = FLT_MAX;
+        Vector3 closest_point = {};
+        
+        int simplex_iterate_count = 0;
+        
+        for(;;)
+        {
+            Vector3 a = simplex[0];
+            Vector3 b = simplex[1];
+            Vector3 c = simplex[2];
+            
+            simplex_iterate_count++;
+            if(simplex_iterate_count > 50)
+            {
+                printf("iterate too much %d %lld" , simplex_iterate_count , game_update_count);
+                break;
+            }
+            
+            Vector3 new_support_point = get_support_point(Vector3Subtract( ray_end , closest_point));
+            
+            int vertex_to_replace = -1;
+            Vector3 current_closest_point = {};
+            float closest_test_distance = FLT_MAX;
+            
+            for(int simplex_index = 0 ; simplex_index < 3 ; simplex_index++)
+            {
+                Vector3 test_simplex[3] ={};
+                test_simplex[0] = simplex[0];
+                test_simplex[1] = simplex[1];
+                test_simplex[2] = simplex[2];
+                test_simplex[simplex_index] = new_support_point;
+                
+                if(ray_iterate_count == test_ray_count)
+                {
+                    if(simplex_iterate_count == test_simplex_count)
+                    {
+                        Box new_point_box = get_box();
+                        new_point_box.position = new_support_point;
+                        new_point_box.size = (Vector3){UNIT_SIZE * 0.5 , UNIT_SIZE  * 0.5, UNIT_SIZE * 0.5};
+                        draw_box( new_point_box , GOLD );
+                        draw_simplex_triangle(test_simplex[0] , test_simplex[1] , test_simplex[2]);
+                    }
+                }
+                
+                Vector3 test_closest_point = {};
+                test_closest_point = closest_point_on_triangle(test_simplex[0] , test_simplex[1] , test_simplex[2] , ray_end);
+                
+                float current_distance = Vector3DistanceSqr(ray_end , test_closest_point);
+                
+                if(closest_test_distance > current_distance)
+                {
+                    current_closest_point = test_closest_point;
+                    closest_test_distance = current_distance;
+                    vertex_to_replace = simplex_index;
+                }
+            }
+            
+            
+            if(ray_iterate_count == test_ray_count)
+            {
+                if(simplex_iterate_count == test_simplex_count)
+                {
+                    draw_arrow_line_B( ray_end , current_closest_point , RED);
+                }
+            }
+            
+            float current_distance = Vector3DistanceSqr(current_closest_point , ray_end);
+            
+            if(closest_distance > current_distance)
+            {
+                closest_distance = current_distance;
+                closest_point = current_closest_point;
+            }
+            else
+            {
+                closest_point = current_closest_point;
+                
+                //simplex[vertex_to_replace] = new_support_point;
+                
+                a = simplex[0];
+                b = simplex[1];
+                c = simplex[2];
+                
+                Vector3 a_to_b = Vector3Subtract(b , a);
+                Vector3 b_to_c = Vector3Subtract(c , b);
+                Vector3 c_to_a = Vector3Subtract(a , c);
+                Vector3 simplex_normal = Vector3CrossProduct(a_to_b , c_to_a);
+                
+                float hit_point_time = get_line_intersect_with_plane_time((Vector3){} , ray_direction , simplex_normal , a);
+                Vector3 hit_point = Vector3Lerp((Vector3){} , ray_direction , hit_point_time);
+                
+                Vector3 a_to_hit_point = Vector3Subtract(hit_point , a);
+                Vector3 a_to_b_vertical_inward = triple_cross_product(a_to_b , b_to_c);
+                
+                Vector3 b_to_hit_point = Vector3Subtract(hit_point , b);
+                Vector3 b_to_c_vertical_inward = triple_cross_product(b_to_c , c_to_a);
+                
+                Vector3 c_to_hit_point = Vector3Subtract(hit_point , c);
+                Vector3 c_to_a_vertical_inward = triple_cross_product(c_to_a , a_to_b);
+                
+                if(SAME_DIRECTION(a_to_hit_point , a_to_b_vertical_inward))
+                {
+                    if(SAME_DIRECTION(b_to_hit_point , b_to_c_vertical_inward))
+                    {
+                        if(SAME_DIRECTION(c_to_hit_point , c_to_a_vertical_inward))
+                        {
+                            float hit_point_distance = Vector3DistanceSqr(hit_point , ray_end);
+                            if(hit_point_distance < 0.1)
+                            {
+                                
+                                (*impact_point) = hit_point;
+                                (*time_of_impact) = hit_point_time;
+                                //ray_end = hit_point;
+                                result = true;
+                            }
+                            
+                        }
+                    }
+                }
+                
+                draw_simplex_triangle(a , b, c);
+                draw_arrow_line_B( closest_point , ray_end  , Fade(PINK , 0.5f));
+                break;
+            }
+            
+            if(vertex_to_replace == -1) break;
+            
+            simplex[vertex_to_replace] = new_support_point;
+        }
+        
+        if(result)
+        {
+            draw_arrow_line_B((Vector3){} , ray_end , GOLD);
+        }
+        else
+        {
+            draw_arrow_line_B((Vector3){} , ray_end , Fade(ORANGE , 0.3f));
+        }
+        
+        if(result) break;
+        
+        Vector3 surface_normal = Vector3Subtract(ray_end , closest_point);
+        float dot_product_length = Vector3DotProduct(surface_normal , ray_direction);
+        if( dot_product_length >= 0) 
+        {
+            if(fabs(dot_product_length) < small_number)
+            {
+                (*impact_point) = ray_end;
+                (*time_of_impact) = ray_time;
+                result = true;
+            }
+            else
+            {
+                //i don't even need to check inside or not!
+#if 0
+                if(check_shape(ray_end))
+                {
+                    (*impact_point) = ray_end;
+                    (*time_of_impact) = ray_time;
+                    result = true;
+                }
+#endif
+            }
+            
+            //draw_arrow_line_B((Vector3){} , ray_end , YELLOW);
+            if(!result)
+            {
+                //printf("missed iterated:%d %lld\n" , ray_iterate_count , game_update_count);
+            }
+            break;
+        }
+        
+        ray_time = ray_time - (Vector3DotProduct(surface_normal , surface_normal) / Vector3DotProduct(surface_normal , ray_direction));
+        
+        ray_end = Vector3Scale(ray_direction , ray_time);
+        ray_end = Vector3Add( (Vector3){} , ray_end);
+    }
+    
+    return result;
 }
