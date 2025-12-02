@@ -812,11 +812,11 @@ internal void editor_GUI()
             
             if(!clip) continue;
             
-            const char * aniamtion_name = enum_to_string(AnimationTag)[clip_index];
-            if(clip_index >= animation_tag_count) aniamtion_name = " None ";
+            //const char * aniamtion_name = enum_to_string(AnimationTag)[clip_index];
+            //if(clip_index >= animation_tag_count) aniamtion_name = " None ";
             
             wchar_t clip_name[256] = {};
-            _swprintf(clip_name , L"%d 動畫 : %S" , clip->clip_index , aniamtion_name );
+            _swprintf(clip_name , L"%d 動畫" , clip->clip_index );
             
             if(draw_menu_button_W_EX(&side_list_menu , clip_name , YELLOW , editor->selected_clip_index == clip_index ))
             {
@@ -838,10 +838,8 @@ internal void editor_GUI()
     
     if(editor_type == edit_base_pose)
     {
-        
         if(draw_menu_button_W(&top_right_bar , L"添加骨頭"))
         {
-            
             REALLOCATE_BUFFER_IF_TOO_SMALL(Bone , selected_model->all_bones , selected_model->bone_capacity , selected_model->bone_count , allocate_temp_);
             REALLOCATE_BUFFER_IF_TOO_SMALL(Bone , selected_model->all_initial_bone , selected_model->initial_bone_capacity , selected_model->initial_bone_count , allocate_temp_);
             
@@ -869,11 +867,38 @@ internal void editor_GUI()
         }
     }
     
+    if(right_click_menu.on)
+    {
+        DrawingMenu menu = start_draw_menu(right_click_menu.position , true , GMT_descend);
+        
+        if(draw_menu_button_W(&menu , L"删除盒子"))
+        {
+            delete_from_array( &box_in_map_array , right_click_menu.box_index);
+            right_click_menu.on = false;
+        }
+    }
+    
+    if(editor_type != edit_world) right_click_menu.on = false;
+    if(mouse_button_pressed(MOUSE_BUTTON_RIGHT)) right_click_menu.on = false;
+    if(mouse_button_pressed(MOUSE_BUTTON_LEFT)) right_click_menu.on = false;
+    
     if(editor_type == edit_world)
     {
-        if(draw_menu_button_W(&top_right_bar , edit_quad ? L"正在編輯網格" : L"編輯網格"))
+        for(int button_index = 0 ; button_index < MET_count ; button_index++)
         {
-            edit_quad = !edit_quad;
+            wchar_t * button_text = 0;
+            
+            switch(button_index)
+            {
+                case MET_none: button_text = L"无"; break;
+                case MET_quad: button_text = L"网格"; break;
+                case MET_box: button_text = L"盒子"; break;
+            }
+            
+            if(draw_menu_button_W_EX(&top_right_bar , button_text , YELLOW , current_map_edit_type == button_index))
+            {
+                current_map_edit_type = button_index;
+            }
         }
         
         if(draw_menu_button_W(&top_right_bar , L"添加參考坐標"))

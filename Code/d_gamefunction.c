@@ -725,7 +725,7 @@ internal bool check_collision_rect_3D(Rect rect)
 	return get_collision_rect_3D(mouse_ray_3D,rect).hit;
 }
 
-//stolen
+//steal from somewhere
 internal unsigned int string_to_hash_W(wchar_t *s)
 {
     unsigned int hash_value = 0;
@@ -744,7 +744,7 @@ internal unsigned int string_to_hash_W(wchar_t *s)
     return hash_value;
 }
 
-//stolen
+//steal from somewhere
 internal int hash_int(int key)
 {
     key = ~key + (key << 15); // key = (key << 15) - key - 1;
@@ -759,37 +759,30 @@ internal int hash_int(int key)
 #define SlotToData(Slot , HashTable) (HashTable.DataArray + (Slot - HashTable.HashSlotArray))
 #define DataToSlot(Data , HashTable) ( HashTable.HashSlotArray (Data - HashTable.DataArray))
 
-#if 0
-#define Printhash_table(HashTable) _print_hash_table(HashTable.HashSlotArray , HashTable.HashSlotTail)
-
-internal void _print_hash_table(HashTableSlot * hash_slot_array , int count)
-{
-    
-    printf("\n");
-    for (HashTableSlot * current_slot = hash_slot_array; current_slot < hash_slot_array + count; current_slot++)
-    {
-        printf( "%lld " , current_slot - hash_slot_array );
-        
-        if (!current_slot->valid)
-        {
-            printf( "Emty\n" );
-        }
-        else
-        {
-            printf( "(Slot : %d)\n" , current_slot->slot_value);
-        }
-    }
-    
-    printf("\n");
-}
-#endif
-
 internal HashTable allocate_hash_table(int count)
 {
     
     HashTable hash_table = {};
     hash_table.entry_array = allocate_temp(HashTableEntry , count);
     hash_table.slot_array = allocate_temp(HashTableSlot ,count);
+    hash_table.count = count;
+    
+    for (int entry_index = 0; entry_index < count; entry_index++)
+    {
+        hash_table.entry_array[entry_index].head_index = -1;
+        hash_table.entry_array[entry_index].tail_index = -1;
+    }
+    
+    return hash_table;
+    
+}
+
+internal HashTable allocate_hash_table_frame(int count)
+{
+    
+    HashTable hash_table = {};
+    hash_table.entry_array = allocate_frame(HashTableEntry , count);
+    hash_table.slot_array = allocate_frame(HashTableSlot ,count);
     hash_table.count = count;
     
     for (int entry_index = 0; entry_index < count; entry_index++)
@@ -920,7 +913,9 @@ internal int add_to_hash_table(int hash_value , int data_index , HashTable * has
     HashTableSlot * slot_array = hash_table->slot_array;
     HashTableEntry * entry_array = hash_table->entry_array;
     
-    HashTableEntry * entry = entry_array + (hash_value % hash_table->count);
+    int entry_index = (hash_value % hash_table->count);
+    if(entry_index < 0) CATCH;
+    HashTableEntry * entry = entry_array + entry_index;
     
     int emty_slot_index = get_emty_slot_index_from_hash_table( hash_value , hash_table);
     HashTableSlot * emty_slot = slot_array + emty_slot_index;
@@ -1480,12 +1475,14 @@ internal bool is_array_full(Array * array)
 
 internal bool iterate_array(int * data_index , Array * array)
 {
+    if((*data_index) >= array->count) return false;
+    
     for(;;)
     {
         if(array->valid_array[(*data_index)]) return true;
         
         (*data_index)++;
-        if((*data_index) > array->count) return false;
+        if((*data_index) >= array->count) return false;
     }
 }
 
@@ -1751,8 +1748,21 @@ internal void create_a_whole_new_world()
     all_key_frame = allocate_temp(KeyFrame , all_key_frame_count);
     editor = allocate_temp(EditorData ,1);
     
-    quads_in_map = allocate_temp(Quad , 16);
-    quads_in_map_array = allocate_array(16);
+    quad_in_map = allocate_temp(Quad , 16);
+    quad_in_map_array = allocate_array(16);
+    
+    box_in_map = allocate_temp(Box , 16);
+    box_in_map_array = allocate_array(16);
+    
+    collision_shape_cell_buffer.count = 0;
+    collision_shape_cell_buffer.capacity = 512;
+    collision_shape_cell_buffer.data = allocate_temp(ShapeInCell , collision_shape_cell_buffer.capacity);
+    
+    obstacle_shape_cell_buffer.count = 0;
+    obstacle_shape_cell_buffer.capacity = 512;
+    obstacle_shape_cell_buffer.data = allocate_temp(ShapeInCell , obstacle_shape_cell_buffer.capacity);
+    
+    
     
     editor->timeline_scale = 1;
     editor->selected_clip_index = -1;
@@ -1929,7 +1939,7 @@ internal Vector3 * box_to_point(Box box)
     return points;
 }
 
-internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box)
+internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box , int * hit_face , float * hit_time)
 {
     Vector3 * points = box_to_point(box);
     
@@ -1953,14 +1963,16 @@ internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box)
     int face_to_check_count = 0;
     
     //TODO: why some of the vector inverted?
+    //not gonna fix this now, probably just me assuming the axis of cross product wrong
+    if(Vector3DotProduct(top_face_direction , direction) < 0) face_to_check[face_to_check_count++] = face_top;
+    if(Vector3DotProduct(bottom_face_direction , direction) < 0) face_to_check[face_to_check_count++] = face_bottom;
+    if(Vector3DotProduct(right_face_direction , direction) < 0) face_to_check[face_to_check_count++] = face_right;
+    if(Vector3DotProduct(left_face_direction , direction) < 0) face_to_check[face_to_check_count++] = face_left;
+    if(Vector3DotProduct(forward_face_direction , direction) > 0) face_to_check[face_to_check_count++] = face_front;
+    if(Vector3DotProduct(backward_face_direction , direction) > 0) face_to_check[face_to_check_count++] = face_back;
     
-    //not gonna fix this ,probably me assuming the axis of cross product wrong
-    if(Vector3DotProduct(top_face_direction , direction) > 0) face_to_check[face_to_check_count++] = face_top;
-    if(Vector3DotProduct(bottom_face_direction , direction) > 0) face_to_check[face_to_check_count++] = face_bottom;
-    if(Vector3DotProduct(right_face_direction , direction) > 0) face_to_check[face_to_check_count++] = face_right;
-    if(Vector3DotProduct(left_face_direction , direction) > 0) face_to_check[face_to_check_count++] = face_left;
-    if(Vector3DotProduct(forward_face_direction , direction) < 0) face_to_check[face_to_check_count++] = face_front;
-    if(Vector3DotProduct(backward_face_direction , direction) < 0) face_to_check[face_to_check_count++] = face_back;
+    bool result = false;
+    float closest_hit_time = FLT_MAX;
     
     for(int face_index = 0 ; face_index < 3 ; face_index++)
     {
@@ -2000,23 +2012,34 @@ internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box)
                 { 
                     if(Vector3DotProduct(bottom_right_to_intersect , face_edges[1]) < 0) 
                     { 
-                        return true;
+                        if(closest_hit_time > intersect_point_time)
+                        {
+                            closest_hit_time = intersect_point_time;
+                            if(hit_face)
+                            {
+                                (*hit_face) = face_to_check[face_index];
+                            }
+                            if(hit_time)
+                            {
+                                (*hit_time) = closest_hit_time;
+                            }
+                        }
+                        
+                        result = true;
                     }
                 }
             }
         }
-        
     }
     
-    return false;
+    return result;
 }
 
-internal Vector3 project_direction_on_plane(Vector3 normal , Vector3 direction)
+internal int float_to_grid(float x, float size)
 {
-    Vector3 side_axis = Vector3CrossProduct(direction , normal);
-    Vector3 direction_axis = Vector3CrossProduct( side_axis , normal);
-    direction = Vector3Project(direction , direction_axis);
-    return direction;
+    x /= size;
+    x = ceil(x);
+    return x;
 }
 
 internal Vector3 position_to_grid(Vector3 position , float size)
@@ -2030,7 +2053,7 @@ internal Vector3 position_to_grid(Vector3 position , float size)
     return position;
 }
 
-internal Vector3 get_furthest_point_by_direction( Vector3 direction , Vector3 * points , int point_count)
+internal Vector3 get_farest_point_by_direction( Vector3 direction , Vector3 * points , int point_count)
 {
     
     Vector3 furthest_point = {};
@@ -2051,8 +2074,8 @@ internal Vector3 get_furthest_point_by_direction( Vector3 direction , Vector3 * 
 
 internal Vector3 get_support_point(Vector3 direction)
 {
-    Vector3 farest_direction_a = get_furthest_point_by_direction( Vector3Negate(direction) , vertices_a , vertices_a_count);
-    Vector3 farest_direction_b = get_furthest_point_by_direction(direction , vertices_b , vertices_b_count);
+    Vector3 farest_direction_a = get_farest_point_by_direction( Vector3Negate(direction) , convex_shape_a_vertices , convex_shape_a_vertices_count);
+    Vector3 farest_direction_b = get_farest_point_by_direction(direction , convex_shape_b_vertices , convex_shape_b_vertices_count);
     
     return Vector3Subtract(farest_direction_b , farest_direction_a);
 }
@@ -2383,8 +2406,13 @@ internal void draw_simplex(GJK_State * state)
     }
 }
 
-internal bool check_shape(Vector3 origin)
+internal bool check_shape(Vector3 origin , Vector3 * vertices_a , int vertices_a_count , Vector3 * vertices_b , int vertices_b_count)
 {
+    convex_shape_a_vertices = vertices_a;
+    convex_shape_a_vertices_count = vertices_a_count;
+    convex_shape_b_vertices = vertices_b;
+    convex_shape_b_vertices_count = vertices_b_count;
+    
     bool result = false;
     float small_number = 0.000001f;
     
@@ -2428,7 +2456,7 @@ internal bool check_shape(Vector3 origin)
     }
     
 #if 1
-    draw_simplex(&state);
+    //draw_simplex(&state);
 #endif
     
     return result;
@@ -2563,6 +2591,11 @@ internal Vector3 closest_point_on_triangle(Vector3 a , Vector3 b , Vector3 c , V
 //Vector3 ray_direction , float * time_of_impact , Vector3 * impact_point
 internal bool check_shape_impact(ShapeImpactData * data)
 {
+    convex_shape_a_vertices = data->shape_a_vertices;
+    convex_shape_a_vertices_count = data->shape_a_vertices_count;
+    convex_shape_b_vertices = data->shape_b_vertices;
+    convex_shape_b_vertices_count = data->shape_b_vertices_count;
+    
     float small_number = 0.000001f;
     
     bool result = false;
@@ -2572,16 +2605,10 @@ internal bool check_shape_impact(ShapeImpactData * data)
     Vector3 ray_end = {};
     
     int ray_iterate_count = 0;
+    int total_simplex_iterate_count = 0;
     
     for(;;)
     {
-        ray_iterate_count++;
-        if(ray_iterate_count > 10)
-        {
-            //printf();
-            break;
-        }
-        
         Vector3 simplex[3] = {};
         Vector3 search_direction = Vector3Negate(data->ray_direction);
         
@@ -2601,9 +2628,10 @@ internal bool check_shape_impact(ShapeImpactData * data)
             Vector3 c = simplex[2];
             
             simplex_iterate_count++;
-            if(simplex_iterate_count > 50)
+            total_simplex_iterate_count++;
+            if(total_simplex_iterate_count > 50)
             {
-                printf("iterate too much %d %lld" , simplex_iterate_count , game_update_count);
+                printf("ray iterate too many %lld\n" , game_update_count);
                 break;
             }
             
@@ -2621,18 +2649,6 @@ internal bool check_shape_impact(ShapeImpactData * data)
                 test_simplex[2] = simplex[2];
                 test_simplex[simplex_index] = new_support_point;
                 
-                if(ray_iterate_count == test_ray_count)
-                {
-                    if(simplex_iterate_count == test_simplex_count)
-                    {
-                        Box new_point_box = get_box();
-                        new_point_box.position = new_support_point;
-                        new_point_box.size = (Vector3){UNIT_SIZE * 0.5 , UNIT_SIZE  * 0.5, UNIT_SIZE * 0.5};
-                        draw_box( new_point_box , GOLD );
-                        draw_simplex_triangle(test_simplex[0] , test_simplex[1] , test_simplex[2]);
-                    }
-                }
-                
                 Vector3 test_closest_point = {};
                 test_closest_point = closest_point_on_triangle(test_simplex[0] , test_simplex[1] , test_simplex[2] , ray_end);
                 
@@ -2643,15 +2659,6 @@ internal bool check_shape_impact(ShapeImpactData * data)
                     current_closest_point = test_closest_point;
                     closest_test_distance = current_distance;
                     vertex_to_replace = simplex_index;
-                }
-            }
-            
-            
-            if(ray_iterate_count == test_ray_count)
-            {
-                if(simplex_iterate_count == test_simplex_count)
-                {
-                    draw_arrow_line_B( ray_end , current_closest_point , RED);
                 }
             }
             
@@ -2696,13 +2703,13 @@ internal bool check_shape_impact(ShapeImpactData * data)
                         if(SAME_DIRECTION(c_to_hit_point , c_to_a_vertical_inward))
                         {
                             float hit_point_distance = Vector3DistanceSqr(hit_point , ray_end);
-                            if(hit_point_distance < 0.1)
+                            if(hit_point_distance < 0.01)
                             {
                                 if(data->stop_if_too_far)
                                 {
                                     if(hit_point_time > 1)
                                     {
-                                        return false;
+                                        break;
                                     }
                                 }
                                 
@@ -2717,8 +2724,8 @@ internal bool check_shape_impact(ShapeImpactData * data)
                     }
                 }
                 
-                draw_simplex_triangle(a , b, c);
-                draw_arrow_line_B( closest_point , ray_end  , Fade(PINK , 0.5f));
+                //draw_simplex_triangle(a , b, c);
+                //draw_arrow_line_B( closest_point , ray_end  , Fade(PINK , 0.5f));
                 break;
             }
             
@@ -2727,6 +2734,7 @@ internal bool check_shape_impact(ShapeImpactData * data)
             simplex[vertex_to_replace] = new_support_point;
         }
         
+#if 0
         if(result)
         {
             draw_arrow_line_B((Vector3){} , ray_end , GOLD);
@@ -2735,7 +2743,9 @@ internal bool check_shape_impact(ShapeImpactData * data)
         {
             draw_arrow_line_B((Vector3){} , ray_end , Fade(ORANGE , 0.3f));
         }
+#endif
         
+        if(total_simplex_iterate_count > 50) break;
         if(result) break;
         
         Vector3 surface_normal = Vector3Subtract(ray_end , closest_point);
@@ -2744,17 +2754,20 @@ internal bool check_shape_impact(ShapeImpactData * data)
         {
             if(fabs(dot_product_length) < small_number)
             {
-                data->impact_point = ray_end;
-                data->time_of_impact = ray_time;
-                data->impact_normal = surface_normal;
-                result = true;
+                if(Vector3DistanceSqr(ray_end , closest_point) < small_number * small_number)
+                {
+                    data->impact_point = ray_end;
+                    data->time_of_impact = ray_time;
+                    data->impact_normal = surface_normal;
+                    result = true;
+                }
             }
             
-            //draw_arrow_line_B((Vector3){} , ray_end , YELLOW);
             if(!result)
             {
                 //printf("missed iterated:%d %lld\n" , ray_iterate_count , game_update_count);
             }
+            
             break;
         }
         
@@ -2764,11 +2777,13 @@ internal bool check_shape_impact(ShapeImpactData * data)
         {
             if(ray_time >= 1.0)
             {
-                return false;
+                result = false;
+                break;
             }
             else if(ray_time < 0)
             {
-                return false;
+                result = false;
+                break;
             }
         }
         
@@ -2776,5 +2791,152 @@ internal bool check_shape_impact(ShapeImpactData * data)
         ray_end = Vector3Add( (Vector3){} , ray_end);
     }
     
+    //printf("total iterate count : %d\n", total_simplex_iterate_count);
     return result;
+}
+
+internal int shape_cell_hash(int x , int y , int z)
+{
+    int hash_size = 16;
+    return hash_int( hash_size * hash_size * z + hash_size * y + x );
+}
+
+internal bool iterate_cell_by_bound(CellIterator * iterator, Vector3 * vertices , int vertex_count , float cell_size)
+{
+    if(!iterator->initialized)
+    {
+        float right = vertices[0].x;
+        float left = vertices[0].x;
+        float top = vertices[0].y;
+        float bottom = vertices[0].y;
+        float forward = vertices[0].z;
+        float backward = vertices[0].z;
+        
+        for(int vertex_index = 1; vertex_index < vertex_count ; vertex_index++)
+        {
+            Vector3 vertex = vertices[vertex_index];
+            
+            if(right < vertex.x) right = vertex.x;
+            if(left > vertex.x) left = vertex.x;
+            if(top < vertex.y) top = vertex.y;
+            if(bottom > vertex.y) bottom = vertex.y;
+            if(forward < vertex.z) forward = vertex.z;
+            if(backward > vertex.z) backward = vertex.z;
+        }
+        
+        iterator->initialized = true;
+        iterator->cell_x = float_to_grid(left , cell_size);
+        iterator->cell_left = float_to_grid(left , cell_size);
+        iterator->cell_right = float_to_grid(right , cell_size);
+        iterator->cell_y = float_to_grid(bottom , cell_size);
+        iterator->cell_bottom = float_to_grid(bottom , cell_size);
+        iterator->cell_top = float_to_grid(top , cell_size);
+        iterator->cell_z = float_to_grid(backward , cell_size);
+        iterator->cell_backward = float_to_grid(backward , cell_size);
+        iterator->cell_forward = float_to_grid(forward , cell_size);
+    }
+    else
+    {
+        iterator->cell_x++;
+        if(iterator->cell_x > iterator->cell_right)
+        {
+            iterator->cell_x = iterator->cell_left;
+            iterator->cell_y++;
+        }
+        if(iterator->cell_y > iterator->cell_top)
+        {
+            iterator->cell_y = iterator->cell_bottom;
+            iterator->cell_z++;
+        }
+        if(iterator->cell_z > iterator->cell_forward)
+        {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+internal void add_to_cell_shape(int type , int shape_index , Vector3 * vertices , int vertices_count , float cell_size , ShapeCellBuffer * buffer)
+{
+    //i hate nested loop because i can't break at all
+    //i hear there is a new keyword that allow you break multiple loop
+    //but why don't just iterate manually
+    for(CellIterator iterator = {} ; iterate_cell_by_bound(&iterator , vertices , vertices_count , cell_size);)
+    {
+        int cell_x = iterator.cell_x;
+        int cell_y = iterator.cell_y;
+        int cell_z = iterator.cell_z;
+        
+        Box cell_box = get_box();
+        cell_box.size = (Vector3){cell_size , cell_size , cell_size};
+        cell_box.position = Vector3Scale((Vector3){cell_x , cell_y , cell_z },cell_size);
+        cell_box.position.x -= cell_size * 0.5f;
+        cell_box.position.y -= cell_size * 0.5f;
+        cell_box.position.z -= cell_size * 0.5f;
+        
+        if(check_shape((Vector3){} , vertices , vertices_count , box_to_point(cell_box) , box_vertex_count))
+        {
+            REALLOCATE_BUFFER_IF_TOO_SMALL(ShapeInCell , buffer->data , buffer->capacity , buffer->count , allocate_temp_);
+            ShapeInCell * new_shape_cell = buffer->data + buffer->count++;
+            
+            new_shape_cell->type = type;
+            new_shape_cell->shape_index = shape_index;
+            new_shape_cell->x = cell_x;
+            new_shape_cell->y = cell_y;
+            new_shape_cell->z = cell_z;
+        }
+    }
+}
+
+internal void add_to_cell_shape_bound(int type , int shape_index , Vector3 * vertices , int vertices_count , float cell_size , ShapeCellBuffer * buffer)
+{
+    //i hate nested loop because i can't break at all
+    //i hear there is a new keyword that allow you break multiple loop
+    //but why don't just iterate manually
+    for(CellIterator iterator = {} ; iterate_cell_by_bound(&iterator , vertices , vertices_count , cell_size);)
+    {
+        int cell_x = iterator.cell_x;
+        int cell_y = iterator.cell_y;
+        int cell_z = iterator.cell_z;
+        
+        Box cell_box = get_box();
+        cell_box.size = (Vector3){cell_size , cell_size , cell_size};
+        cell_box.position = Vector3Scale((Vector3){cell_x , cell_y , cell_z },cell_size);
+        cell_box.position.x -= cell_size * 0.5f;
+        cell_box.position.y -= cell_size * 0.5f;
+        cell_box.position.z -= cell_size * 0.5f;
+        
+        Vector3 * cell_point = box_to_point(cell_box);
+        
+        bool all_collided = true;
+        bool no_collision = true;
+        
+        for(int vertex_index = 0 ; vertex_index < box_vertex_count ; vertex_index++)
+        {
+            if(!check_shape((Vector3){} , vertices , vertices_count , cell_point + vertex_index , 1))
+            {
+                all_collided = false;
+            }
+            else
+            {
+                no_collision = false;
+            }
+        }
+        
+        if(!all_collided)
+        {
+            if(!no_collision)
+            {
+                REALLOCATE_BUFFER_IF_TOO_SMALL(ShapeInCell , buffer->data , buffer->capacity , buffer->count , allocate_temp_);
+                ShapeInCell * new_shape_cell = buffer->data + buffer->count++;
+                
+                new_shape_cell->type = type;
+                new_shape_cell->shape_index = shape_index;
+                new_shape_cell->x = cell_x;
+                new_shape_cell->y = cell_y;
+                new_shape_cell->z = cell_z;
+            }
+        }
+    }
 }

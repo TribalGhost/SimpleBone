@@ -22,7 +22,7 @@ enum _type_meta
 	_MT_Vector2,
 	_MT_Vector3,
 	_MT_Quaternion,
-	_MT_D_Rectangle,
+	_MT_R_Rectangle,
 	_MT_Image,
 	_MT_Texture,
 	_MT_Texture2D,
@@ -86,7 +86,7 @@ sizeof(Vector4),//Vector4
 sizeof(Vector2),//Vector2 
 sizeof(Vector3),//Vector3 
 sizeof(Quaternion),//Quaternion 
-sizeof(D_Rectangle),//D_Rectangle 
+sizeof(R_Rectangle),//R_Rectangle 
 sizeof(Image),//Image 
 sizeof(Texture),//Texture 
 sizeof(Texture),//Texture2D 
@@ -149,7 +149,7 @@ const char * _type_meta_name[] =
 	"Vector2",
 	"Vector3",
 	"Quaternion",
-	"D_Rectangle",
+	"R_Rectangle",
 	"Image",
 	"Texture",
 	"Texture2D",
@@ -284,7 +284,7 @@ enum introspected_struct
 	IS_Vector2, 
 	IS_Vector3, 
 	IS_Quaternion, 
-	IS_D_Rectangle, 
+	IS_R_Rectangle, 
 	IS_Image, 
 	IS_Texture, 
 	IS_Camera3D, 
@@ -357,13 +357,13 @@ global const MemberMetaData member_meta_Quaternion[4] =
 	{ "w" , false,false,false,0,_MT_float,"float",(int)&((Quaternion *)0)->w ,sizeof(float),}, 
 };
 
-global int member_meta_count_D_Rectangle = 4;
-global const MemberMetaData member_meta_D_Rectangle[4] =
+global int member_meta_count_R_Rectangle = 4;
+global const MemberMetaData member_meta_R_Rectangle[4] =
 {
-	{ "x" , false,false,false,0,_MT_float,"float",(int)&((D_Rectangle *)0)->x ,sizeof(float),}, 
-	{ "y" , false,false,false,0,_MT_float,"float",(int)&((D_Rectangle *)0)->y ,sizeof(float),}, 
-	{ "width" , false,false,false,0,_MT_float,"float",(int)&((D_Rectangle *)0)->width ,sizeof(float),}, 
-	{ "height" , false,false,false,0,_MT_float,"float",(int)&((D_Rectangle *)0)->height ,sizeof(float),}, 
+	{ "x" , false,false,false,0,_MT_float,"float",(int)&((R_Rectangle *)0)->x ,sizeof(float),}, 
+	{ "y" , false,false,false,0,_MT_float,"float",(int)&((R_Rectangle *)0)->y ,sizeof(float),}, 
+	{ "width" , false,false,false,0,_MT_float,"float",(int)&((R_Rectangle *)0)->width ,sizeof(float),}, 
+	{ "height" , false,false,false,0,_MT_float,"float",(int)&((R_Rectangle *)0)->height ,sizeof(float),}, 
 };
 
 global int member_meta_count_Image = 5;
@@ -611,7 +611,7 @@ global const MemberMetaData member_meta_D_GlyphInfo[5] =
 	{ "offsetX" , false,false,false,0,_MT_int,"int",(int)&((D_GlyphInfo *)0)->offsetX ,sizeof(int),}, 
 	{ "offsetY" , false,false,false,0,_MT_int,"int",(int)&((D_GlyphInfo *)0)->offsetY ,sizeof(int),}, 
 	{ "advanceX" , false,false,false,0,_MT_int,"int",(int)&((D_GlyphInfo *)0)->advanceX ,sizeof(int),}, 
-	{ "glyph_rect" , false,false,false,0,_MT_D_Rectangle,"D_Rectangle",(int)&((D_GlyphInfo *)0)->glyph_rect ,sizeof(D_Rectangle),}, 
+	{ "glyph_rect" , false,false,false,0,_MT_R_Rectangle,"R_Rectangle",(int)&((D_GlyphInfo *)0)->glyph_rect ,sizeof(R_Rectangle),}, 
 };
 
 global int member_meta_count_D_GlyphInfoNode = 2;
@@ -697,7 +697,7 @@ StructMetaData * all_struct = malloc(sizeof(StructMetaData) * _MT_type_count);
 	all_struct[_MT_Vector2] = (StructMetaData)GetStructMeta(Vector2);
 	all_struct[_MT_Vector3] = (StructMetaData)GetStructMeta(Vector3);
 	all_struct[_MT_Quaternion] = (StructMetaData)GetStructMeta(Quaternion);
-	all_struct[_MT_D_Rectangle] = (StructMetaData)GetStructMeta(D_Rectangle);
+	all_struct[_MT_R_Rectangle] = (StructMetaData)GetStructMeta(R_Rectangle);
 	all_struct[_MT_Image] = (StructMetaData)GetStructMeta(Image);
 	all_struct[_MT_Texture] = (StructMetaData)GetStructMeta(Texture);
 	all_struct[_MT_Texture2D] = (StructMetaData){};

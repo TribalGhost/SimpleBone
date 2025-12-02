@@ -22,7 +22,7 @@ enum _type_meta
 	_MT_Vector2,
 	_MT_Vector3,
 	_MT_Quaternion,
-	_MT_D_Rectangle,
+	_MT_R_Rectangle,
 	_MT_Image,
 	_MT_Texture,
 	_MT_Texture2D,
@@ -68,6 +68,7 @@ enum _type_meta
 	_MT_D_Light_GPU_Data,
 	_MT_D_Light,
 	_MT_D_Vertex_Data,
+	_MT_ShapeImpactData,
 	_MT_GJK_State,
 	_MT_BoxFace,
 	_MT_BoxVertex,
@@ -78,7 +79,6 @@ enum _type_meta
 	_MT_RotationAxis,
 	_MT_RotationAxisData,
 	_MT_Bone,
-	_MT_AnimationTag,
 	_MT_Clip,
 	_MT_ClipBone,
 	_MT_BoneSelection,
@@ -90,9 +90,17 @@ enum _type_meta
 	_MT_BoneSelectionResult,
 	_MT_D_Model,
 	_MT_EditorType,
+	_MT_RightClickMenu,
+	_MT_MapEditType,
 	_MT_DemoData,
 	_MT_EditorData,
 	_MT_SplitViewport,
+	_MT_ShapeType,
+	_MT_BoundingBoxNode,
+	_MT_ShapeInCell,
+	_MT_ShapeCellBuffer,
+	_MT_CellIterator,
+	_MT_Player,
 	_MT_GLFWwindow,
 	_MT_GameLoadFunction,
 	_MT_GameLoopFunction,
@@ -123,7 +131,7 @@ sizeof(Vector4),//Vector4
 sizeof(Vector2),//Vector2 
 sizeof(Vector3),//Vector3 
 sizeof(Quaternion),//Quaternion 
-sizeof(D_Rectangle),//D_Rectangle 
+sizeof(R_Rectangle),//R_Rectangle 
 sizeof(Image),//Image 
 sizeof(Texture),//Texture 
 sizeof(Texture),//Texture2D 
@@ -169,6 +177,7 @@ sizeof(RenderState),//RenderState
 sizeof(D_Light_GPU_Data),//D_Light_GPU_Data 
 sizeof(D_Light),//D_Light 
 sizeof(D_Vertex_Data),//D_Vertex_Data 
+sizeof(ShapeImpactData),//ShapeImpactData 
 sizeof(GJK_State),//GJK_State 
 sizeof(BoxFace),//BoxFace 
 sizeof(BoxVertex),//BoxVertex 
@@ -179,7 +188,6 @@ sizeof(KeyFrame),//KeyFrame
 sizeof(RotationAxis),//RotationAxis 
 sizeof(RotationAxisData),//RotationAxisData 
 sizeof(Bone),//Bone 
-sizeof(AnimationTag),//AnimationTag 
 sizeof(Clip),//Clip 
 sizeof(ClipBone),//ClipBone 
 sizeof(BoneSelection),//BoneSelection 
@@ -191,9 +199,17 @@ sizeof(BoneSelectionResultData),//BoneSelectionResultData
 sizeof(BoneSelectionResult),//BoneSelectionResult 
 sizeof(D_Model),//D_Model 
 sizeof(EditorType),//EditorType 
+sizeof(RightClickMenu),//RightClickMenu 
+sizeof(MapEditType),//MapEditType 
 sizeof(DemoData),//DemoData 
 sizeof(EditorData),//EditorData 
 sizeof(SplitViewport),//SplitViewport 
+sizeof(ShapeType),//ShapeType 
+sizeof(BoundingBoxNode),//BoundingBoxNode 
+sizeof(ShapeInCell),//ShapeInCell 
+sizeof(ShapeCellBuffer),//ShapeCellBuffer 
+sizeof(CellIterator),//CellIterator 
+sizeof(Player),//Player 
 0,//GLFWwindow 
 0,//GameLoadFunction 
 0,//GameLoopFunction 
@@ -223,7 +239,7 @@ const char * _type_meta_name[] =
 	"Vector2",
 	"Vector3",
 	"Quaternion",
-	"D_Rectangle",
+	"R_Rectangle",
 	"Image",
 	"Texture",
 	"Texture2D",
@@ -269,6 +285,7 @@ const char * _type_meta_name[] =
 	"D_Light_GPU_Data",
 	"D_Light",
 	"D_Vertex_Data",
+	"ShapeImpactData",
 	"GJK_State",
 	"BoxFace",
 	"BoxVertex",
@@ -279,7 +296,6 @@ const char * _type_meta_name[] =
 	"RotationAxis",
 	"RotationAxisData",
 	"Bone",
-	"AnimationTag",
 	"Clip",
 	"ClipBone",
 	"BoneSelection",
@@ -291,9 +307,17 @@ const char * _type_meta_name[] =
 	"BoneSelectionResult",
 	"D_Model",
 	"EditorType",
+	"RightClickMenu",
+	"MapEditType",
 	"DemoData",
 	"EditorData",
 	"SplitViewport",
+	"ShapeType",
+	"BoundingBoxNode",
+	"ShapeInCell",
+	"ShapeCellBuffer",
+	"CellIterator",
+	"Player",
 	"GLFWwindow",
 	"GameLoadFunction",
 	"GameLoopFunction",
@@ -370,13 +394,11 @@ false,
 false,
 false,
 false,
+false,
 true,
 true,
 true,
 false,
-false,
-false,
-true,
 false,
 false,
 true,
@@ -390,7 +412,17 @@ false,
 false,
 false,
 false,
+false,
+false,
 true,
+false,
+true,
+false,
+false,
+false,
+true,
+false,
+false,
 false,
 false,
 false,
@@ -506,26 +538,6 @@ global const char * RotationAxis_String[] =
  "R_count",
 };
 
-global const char * AnimationTag_String[] = 
-{
- "AT_foward",
- "AT_backward",
- "AT_right_forward",
- "AT_right_side",
- "AT_right_backward",
- "AT_left_forward",
- "AT_left_side",
- "AT_left_backward",
- "AT_idle",
- "AT_forward_right_offset",
- "AT_forward_left_offset",
- "AT_backward_right_offset",
- "AT_backward_left_offset",
- "AT_being_slap",
- "AT_slap",
- "animation_tag_count",
-};
-
 global const char * EditorType_String[] = 
 {
  "edit_base_pose",
@@ -533,6 +545,21 @@ global const char * EditorType_String[] =
  "edit_world",
  "demo",
  "edit_type_count",
+};
+
+global const char * MapEditType_String[] = 
+{
+ "MET_none",
+ "MET_quad",
+ "MET_box",
+ "MET_count",
+};
+
+global const char * ShapeType_String[] = 
+{
+ "ST_invalid",
+ "ST_quad",
+ "ST_box",
 };
 
 typedef enum introspected_struct introspected_struct;
@@ -543,7 +570,7 @@ enum introspected_struct
 	IS_Vector2, 
 	IS_Vector3, 
 	IS_Quaternion, 
-	IS_D_Rectangle, 
+	IS_R_Rectangle, 
 	IS_Image, 
 	IS_Texture, 
 	IS_Camera3D, 
@@ -580,6 +607,7 @@ enum introspected_struct
 	IS_D_Light_GPU_Data, 
 	IS_D_Light, 
 	IS_D_Vertex_Data, 
+	IS_ShapeImpactData, 
 	IS_GJK_State, 
 	IS_DrawingMenu, 
 	IS_BoneState, 
@@ -596,9 +624,15 @@ enum introspected_struct
 	IS_BoneSelectionResultData, 
 	IS_BoneSelectionResult, 
 	IS_D_Model, 
+	IS_RightClickMenu, 
 	IS_DemoData, 
 	IS_EditorData, 
 	IS_SplitViewport, 
+	IS_BoundingBoxNode, 
+	IS_ShapeInCell, 
+	IS_ShapeCellBuffer, 
+	IS_CellIterator, 
+	IS_Player, 
 };
 
 global int member_meta_count_Color = 4;
@@ -643,13 +677,13 @@ global const MemberMetaData member_meta_Quaternion[4] =
 	{ "w" , false,false,false,0,_MT_float,"float",(int)&((Quaternion *)0)->w ,sizeof(float),}, 
 };
 
-global int member_meta_count_D_Rectangle = 4;
-global const MemberMetaData member_meta_D_Rectangle[4] =
+global int member_meta_count_R_Rectangle = 4;
+global const MemberMetaData member_meta_R_Rectangle[4] =
 {
-	{ "x" , false,false,false,0,_MT_float,"float",(int)&((D_Rectangle *)0)->x ,sizeof(float),}, 
-	{ "y" , false,false,false,0,_MT_float,"float",(int)&((D_Rectangle *)0)->y ,sizeof(float),}, 
-	{ "width" , false,false,false,0,_MT_float,"float",(int)&((D_Rectangle *)0)->width ,sizeof(float),}, 
-	{ "height" , false,false,false,0,_MT_float,"float",(int)&((D_Rectangle *)0)->height ,sizeof(float),}, 
+	{ "x" , false,false,false,0,_MT_float,"float",(int)&((R_Rectangle *)0)->x ,sizeof(float),}, 
+	{ "y" , false,false,false,0,_MT_float,"float",(int)&((R_Rectangle *)0)->y ,sizeof(float),}, 
+	{ "width" , false,false,false,0,_MT_float,"float",(int)&((R_Rectangle *)0)->width ,sizeof(float),}, 
+	{ "height" , false,false,false,0,_MT_float,"float",(int)&((R_Rectangle *)0)->height ,sizeof(float),}, 
 };
 
 global int member_meta_count_Image = 5;
@@ -897,7 +931,7 @@ global const MemberMetaData member_meta_D_GlyphInfo[5] =
 	{ "offsetX" , false,false,false,0,_MT_int,"int",(int)&((D_GlyphInfo *)0)->offsetX ,sizeof(int),}, 
 	{ "offsetY" , false,false,false,0,_MT_int,"int",(int)&((D_GlyphInfo *)0)->offsetY ,sizeof(int),}, 
 	{ "advanceX" , false,false,false,0,_MT_int,"int",(int)&((D_GlyphInfo *)0)->advanceX ,sizeof(int),}, 
-	{ "glyph_rect" , false,false,false,0,_MT_D_Rectangle,"D_Rectangle",(int)&((D_GlyphInfo *)0)->glyph_rect ,sizeof(D_Rectangle),}, 
+	{ "glyph_rect" , false,false,false,0,_MT_R_Rectangle,"R_Rectangle",(int)&((D_GlyphInfo *)0)->glyph_rect ,sizeof(R_Rectangle),}, 
 };
 
 global int member_meta_count_D_GlyphInfoNode = 2;
@@ -1059,6 +1093,20 @@ global const MemberMetaData member_meta_D_Vertex_Data[14] =
 	{ "corner_radius" , false,true,false,0,_MT_Vector4,"Vector4",(int)&((D_Vertex_Data *)0)->corner_radius ,sizeof(void *),}, 
 	{ "corner_color" , false,true,true,quad_vertex_count,_MT_Vector4,"Vector4",(int)&((D_Vertex_Data *)0)->corner_color ,sizeof(void *),}, 
 	{ "corner_tex_coord" , false,true,true,quad_vertex_count,_MT_Vector2,"Vector2",(int)&((D_Vertex_Data *)0)->corner_tex_coord ,sizeof(void *),}, 
+};
+
+global int member_meta_count_ShapeImpactData = 9;
+global const MemberMetaData member_meta_ShapeImpactData[9] =
+{
+	{ "shape_a_vertices" , false,true,false,0,_MT_Vector3,"Vector3",(int)&((ShapeImpactData *)0)->shape_a_vertices ,sizeof(void *),}, 
+	{ "shape_a_vertices_count" , false,false,false,0,_MT_int,"int",(int)&((ShapeImpactData *)0)->shape_a_vertices_count ,sizeof(int),}, 
+	{ "shape_b_vertices" , false,true,false,0,_MT_Vector3,"Vector3",(int)&((ShapeImpactData *)0)->shape_b_vertices ,sizeof(void *),}, 
+	{ "shape_b_vertices_count" , false,false,false,0,_MT_int,"int",(int)&((ShapeImpactData *)0)->shape_b_vertices_count ,sizeof(int),}, 
+	{ "ray_direction" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((ShapeImpactData *)0)->ray_direction ,sizeof(Vector3),}, 
+	{ "stop_if_too_far" , false,false,false,0,_MT_bool,"bool",(int)&((ShapeImpactData *)0)->stop_if_too_far ,sizeof(bool),}, 
+	{ "time_of_impact" , false,false,false,0,_MT_float,"float",(int)&((ShapeImpactData *)0)->time_of_impact ,sizeof(float),}, 
+	{ "impact_point" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((ShapeImpactData *)0)->impact_point ,sizeof(Vector3),}, 
+	{ "impact_normal" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((ShapeImpactData *)0)->impact_normal ,sizeof(Vector3),}, 
 };
 
 global int member_meta_count_GJK_State = 4;
@@ -1227,6 +1275,14 @@ global const MemberMetaData member_meta_D_Model[16] =
 	{ "bone_children_hash_table" , false,false,false,0,_MT_HashTable,"HashTable",(int)&((D_Model *)0)->bone_children_hash_table ,sizeof(HashTable),}, 
 };
 
+global int member_meta_count_RightClickMenu = 3;
+global const MemberMetaData member_meta_RightClickMenu[3] =
+{
+	{ "on" , false,false,false,0,_MT_bool,"bool",(int)&((RightClickMenu *)0)->on ,sizeof(bool),}, 
+	{ "position" , false,false,false,0,_MT_Vector2,"Vector2",(int)&((RightClickMenu *)0)->position ,sizeof(Vector2),}, 
+	{ "box_index" , false,false,false,0,_MT_int,"int",(int)&((RightClickMenu *)0)->box_index ,sizeof(int),}, 
+};
+
 global int member_meta_count_DemoData = 3;
 global const MemberMetaData member_meta_DemoData[3] =
 {
@@ -1274,12 +1330,63 @@ global const MemberMetaData member_meta_EditorData[31] =
 global int member_meta_count_SplitViewport = 6;
 global const MemberMetaData member_meta_SplitViewport[6] =
 {
-	{ "viewport" , false,false,false,0,_MT_D_Rectangle,"D_Rectangle",(int)&((SplitViewport *)0)->viewport ,sizeof(D_Rectangle),}, 
+	{ "viewport" , false,false,false,0,_MT_R_Rectangle,"R_Rectangle",(int)&((SplitViewport *)0)->viewport ,sizeof(R_Rectangle),}, 
 	{ "camera_zoom" , false,false,false,0,_MT_float,"float",(int)&((SplitViewport *)0)->camera_zoom ,sizeof(float),}, 
 	{ "camera_euler" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((SplitViewport *)0)->camera_euler ,sizeof(Vector3),}, 
 	{ "camera_offset" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((SplitViewport *)0)->camera_offset ,sizeof(Vector3),}, 
 	{ "camera_up" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((SplitViewport *)0)->camera_up ,sizeof(Vector3),}, 
 	{ "ortho" , false,false,false,0,_MT_bool,"bool",(int)&((SplitViewport *)0)->ortho ,sizeof(bool),}, 
+};
+
+global int member_meta_count_BoundingBoxNode = 4;
+global const MemberMetaData member_meta_BoundingBoxNode[4] =
+{
+	{ "right_top_forward" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((BoundingBoxNode *)0)->right_top_forward ,sizeof(Vector3),}, 
+	{ "left_bottom_backward" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((BoundingBoxNode *)0)->left_bottom_backward ,sizeof(Vector3),}, 
+	{ "left_index" , false,false,false,0,_MT_int,"int",(int)&((BoundingBoxNode *)0)->left_index ,sizeof(int),}, 
+	{ "right_index" , false,false,false,0,_MT_int,"int",(int)&((BoundingBoxNode *)0)->right_index ,sizeof(int),}, 
+};
+
+global int member_meta_count_ShapeInCell = 5;
+global const MemberMetaData member_meta_ShapeInCell[5] =
+{
+	{ "type" , false,false,false,0,_MT_ShapeType,"ShapeType",(int)&((ShapeInCell *)0)->type ,sizeof(ShapeType),}, 
+	{ "shape_index" , false,false,false,0,_MT_int,"int",(int)&((ShapeInCell *)0)->shape_index ,sizeof(int),}, 
+	{ "x" , false,false,false,0,_MT_int,"int",(int)&((ShapeInCell *)0)->x ,sizeof(int),}, 
+	{ "y" , false,false,false,0,_MT_int,"int",(int)&((ShapeInCell *)0)->y ,sizeof(int),}, 
+	{ "z" , false,false,false,0,_MT_int,"int",(int)&((ShapeInCell *)0)->z ,sizeof(int),}, 
+};
+
+global int member_meta_count_ShapeCellBuffer = 3;
+global const MemberMetaData member_meta_ShapeCellBuffer[3] =
+{
+	{ "data" , false,true,false,0,_MT_ShapeInCell,"ShapeInCell",(int)&((ShapeCellBuffer *)0)->data ,sizeof(void *),}, 
+	{ "count" , false,false,false,0,_MT_int,"int",(int)&((ShapeCellBuffer *)0)->count ,sizeof(int),}, 
+	{ "capacity" , false,false,false,0,_MT_int,"int",(int)&((ShapeCellBuffer *)0)->capacity ,sizeof(int),}, 
+};
+
+global int member_meta_count_CellIterator = 10;
+global const MemberMetaData member_meta_CellIterator[10] =
+{
+	{ "initialized" , false,false,false,0,_MT_bool,"bool",(int)&((CellIterator *)0)->initialized ,sizeof(bool),}, 
+	{ "cell_x" , false,false,false,0,_MT_int,"int",(int)&((CellIterator *)0)->cell_x ,sizeof(int),}, 
+	{ "cell_y" , false,false,false,0,_MT_int,"int",(int)&((CellIterator *)0)->cell_y ,sizeof(int),}, 
+	{ "cell_z" , false,false,false,0,_MT_int,"int",(int)&((CellIterator *)0)->cell_z ,sizeof(int),}, 
+	{ "cell_left" , false,false,false,0,_MT_int,"int",(int)&((CellIterator *)0)->cell_left ,sizeof(int),}, 
+	{ "cell_bottom" , false,false,false,0,_MT_int,"int",(int)&((CellIterator *)0)->cell_bottom ,sizeof(int),}, 
+	{ "cell_backward" , false,false,false,0,_MT_int,"int",(int)&((CellIterator *)0)->cell_backward ,sizeof(int),}, 
+	{ "cell_right" , false,false,false,0,_MT_int,"int",(int)&((CellIterator *)0)->cell_right ,sizeof(int),}, 
+	{ "cell_top" , false,false,false,0,_MT_int,"int",(int)&((CellIterator *)0)->cell_top ,sizeof(int),}, 
+	{ "cell_forward" , false,false,false,0,_MT_int,"int",(int)&((CellIterator *)0)->cell_forward ,sizeof(int),}, 
+};
+
+global int member_meta_count_Player = 4;
+global const MemberMetaData member_meta_Player[4] =
+{
+	{ "position" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((Player *)0)->position ,sizeof(Vector3),}, 
+	{ "velocity" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((Player *)0)->velocity ,sizeof(Vector3),}, 
+	{ "impact" , false,false,false,0,_MT_ShapeImpactData,"ShapeImpactData",(int)&((Player *)0)->impact ,sizeof(ShapeImpactData),}, 
+	{ "box" , false,false,false,0,_MT_Box,"Box",(int)&((Player *)0)->box ,sizeof(Box),}, 
 };
 
 internal StructMetaData * get_all_type_member_info()
@@ -1306,7 +1413,7 @@ StructMetaData * all_struct = malloc(sizeof(StructMetaData) * _MT_type_count);
 	all_struct[_MT_Vector2] = (StructMetaData)GetStructMeta(Vector2);
 	all_struct[_MT_Vector3] = (StructMetaData)GetStructMeta(Vector3);
 	all_struct[_MT_Quaternion] = (StructMetaData)GetStructMeta(Quaternion);
-	all_struct[_MT_D_Rectangle] = (StructMetaData)GetStructMeta(D_Rectangle);
+	all_struct[_MT_R_Rectangle] = (StructMetaData)GetStructMeta(R_Rectangle);
 	all_struct[_MT_Image] = (StructMetaData)GetStructMeta(Image);
 	all_struct[_MT_Texture] = (StructMetaData)GetStructMeta(Texture);
 	all_struct[_MT_Texture2D] = (StructMetaData){};
@@ -1352,6 +1459,7 @@ StructMetaData * all_struct = malloc(sizeof(StructMetaData) * _MT_type_count);
 	all_struct[_MT_D_Light_GPU_Data] = (StructMetaData)GetStructMeta(D_Light_GPU_Data);
 	all_struct[_MT_D_Light] = (StructMetaData)GetStructMeta(D_Light);
 	all_struct[_MT_D_Vertex_Data] = (StructMetaData)GetStructMeta(D_Vertex_Data);
+	all_struct[_MT_ShapeImpactData] = (StructMetaData)GetStructMeta(ShapeImpactData);
 	all_struct[_MT_GJK_State] = (StructMetaData)GetStructMeta(GJK_State);
 	all_struct[_MT_BoxFace] = (StructMetaData){};
 	all_struct[_MT_BoxVertex] = (StructMetaData){};
@@ -1362,7 +1470,6 @@ StructMetaData * all_struct = malloc(sizeof(StructMetaData) * _MT_type_count);
 	all_struct[_MT_RotationAxis] = (StructMetaData){};
 	all_struct[_MT_RotationAxisData] = (StructMetaData)GetStructMeta(RotationAxisData);
 	all_struct[_MT_Bone] = (StructMetaData)GetStructMeta(Bone);
-	all_struct[_MT_AnimationTag] = (StructMetaData){};
 	all_struct[_MT_Clip] = (StructMetaData)GetStructMeta(Clip);
 	all_struct[_MT_ClipBone] = (StructMetaData)GetStructMeta(ClipBone);
 	all_struct[_MT_BoneSelection] = (StructMetaData)GetStructMeta(BoneSelection);
@@ -1374,9 +1481,17 @@ StructMetaData * all_struct = malloc(sizeof(StructMetaData) * _MT_type_count);
 	all_struct[_MT_BoneSelectionResult] = (StructMetaData)GetStructMeta(BoneSelectionResult);
 	all_struct[_MT_D_Model] = (StructMetaData)GetStructMeta(D_Model);
 	all_struct[_MT_EditorType] = (StructMetaData){};
+	all_struct[_MT_RightClickMenu] = (StructMetaData)GetStructMeta(RightClickMenu);
+	all_struct[_MT_MapEditType] = (StructMetaData){};
 	all_struct[_MT_DemoData] = (StructMetaData)GetStructMeta(DemoData);
 	all_struct[_MT_EditorData] = (StructMetaData)GetStructMeta(EditorData);
 	all_struct[_MT_SplitViewport] = (StructMetaData)GetStructMeta(SplitViewport);
+	all_struct[_MT_ShapeType] = (StructMetaData){};
+	all_struct[_MT_BoundingBoxNode] = (StructMetaData)GetStructMeta(BoundingBoxNode);
+	all_struct[_MT_ShapeInCell] = (StructMetaData)GetStructMeta(ShapeInCell);
+	all_struct[_MT_ShapeCellBuffer] = (StructMetaData)GetStructMeta(ShapeCellBuffer);
+	all_struct[_MT_CellIterator] = (StructMetaData)GetStructMeta(CellIterator);
+	all_struct[_MT_Player] = (StructMetaData)GetStructMeta(Player);
 	all_struct[_MT_GLFWwindow] = (StructMetaData){};
 	all_struct[_MT_GameLoadFunction] = (StructMetaData){};
 	all_struct[_MT_GameLoopFunction] = (StructMetaData){};
@@ -1566,8 +1681,8 @@ internal RayCollision get_collision_rect_3D_B(Rect rect);
 internal bool check_collision_rect_3D(Rect rect);
 internal unsigned int string_to_hash_W(wchar_t *s);
 internal int hash_int(int key);
-internal void _print_hash_table(HashTableSlot * hash_slot_array , int count);
 internal HashTable allocate_hash_table(int count);
+internal HashTable allocate_hash_table_frame(int count);
 internal int get_emty_slot_index_from_hash_table(int hash_value , HashTable * hash_table);
 internal int get_hash_table_head_slot_index(int hash_value ,  HashTable * hash_table);
 internal int get_data_index_from_slot_index(int slot_index , HashTable * hash_table);
@@ -1634,9 +1749,10 @@ internal BoneSelectionResult bone_selection(Vector2 size , Color unactive_color 
 internal void sort_bone_hash_table(int bone_index , HashTable * hash_table_by_bone);
 internal Quad direction_to_quad(Vector3 direction , float width);
 internal Vector3 * box_to_point(Box box);
-internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box);
+internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box , int * hit_face , float * hit_time);
+internal int float_to_grid(float x, float size);
 internal Vector3 position_to_grid(Vector3 position , float size);
-internal Vector3 get_furthest_point_by_direction( Vector3 direction , Vector3 * points , int point_count);
+internal Vector3 get_farest_point_by_direction( Vector3 direction , Vector3 * points , int point_count);
 internal Vector3 get_support_point(Vector3 direction);
 internal bool same_direction_b(Vector3 start , Vector3 end_a , Vector3 end_b);
 internal Vector3 triple_cross_product(Vector3 a , Vector3 b);
@@ -1644,10 +1760,14 @@ internal void search_triangle(GJK_State * state);
 internal bool iterate_simplex( GJK_State * state);
 internal void draw_simplex_triangle(Vector3 a , Vector3 b , Vector3 c);
 internal void draw_simplex(GJK_State * state);
-internal bool check_shape(Vector3 origin);
+internal bool check_shape(Vector3 origin , Vector3 * vertices_a , int vertices_a_count , Vector3 * vertices_b , int vertices_b_count);
 internal Vector3 closest_point_on_line(Vector3 a , Vector3 b , Vector3 point);
 internal Vector3 closest_point_on_triangle(Vector3 a , Vector3 b , Vector3 c , Vector3 point);
-internal bool shape_ray_test(Vector3 ray_direction , float * time_of_impact , Vector3 * impact_point);
+internal bool check_shape_impact(ShapeImpactData * data);
+internal int shape_cell_hash(int x , int y , int z);
+internal bool iterate_cell_by_bound(CellIterator * iterator, Vector3 * vertices , int vertex_count , float cell_size);
+internal void add_to_cell_shape(int type , int shape_index , Vector3 * vertices , int vertices_count , float cell_size , ShapeCellBuffer * buffer);
+internal void add_to_cell_shape_bound(int type , int shape_index , Vector3 * vertices , int vertices_count , float cell_size , ShapeCellBuffer * buffer);
 internal bool check_selected_bone_rotation( Bone * final_bone_array_copy, int single_bone_index , Clip * clip_to_assign);
 internal void bone_selection_and_edit_bone_state( int current_frame_index);
 internal void bone_mouse_menu( Bone * single_editing_bone , Clip * clip , int current_frame_index);
@@ -1664,6 +1784,7 @@ internal void add_multiple_bone_state(Bone * bone_array , Bone * add_bone_array 
 internal Bone * get_multiple_bone(int bone_array_count);
 internal Bone * get_bone_pose_offset_from_clip( int clip_index , int target_frame , int target_frame_start, int target_frame_length);
 internal float get_corner_weight(float vertical , float horizontal);
+internal void single_update();
 internal void viewport_update();
 internal void game_update();
 internal GAME_LOOP(game_loop);

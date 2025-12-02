@@ -96,6 +96,8 @@ global int save_header_count = 0;
 //i think this worth being a macro
 //if this can be replace to something sane i will be the happiest man alive
 //wait i can generate it
+
+//don't generate this yet, make it a function first
 #define REALLOCATE_BUFFER_IF_TOO_SMALL( type , buffer  , capacity , count , allocate_func) \
 if(capacity == count) \
 { \
@@ -131,7 +133,6 @@ buffer = new_buffer;\
 (*(list)) = new_list;\
 }
 
-//TODO : generate these instead of macro
 #define REALLOCATE_ARRAY_IF_TOO_SMALL(type , buffer , array )\
 if(is_array_full(array))\
 {\
@@ -263,11 +264,9 @@ struct HashTableSlot
 typedef struct HashTable HashTable; 
 struct HashTable
 {
-    
     HashTableEntry * entry_array;
 	HashTableSlot * slot_array;
     int count;
-    
 };
 
 typedef enum QuadVertexPosition QuadVertexPosition;
@@ -310,7 +309,7 @@ struct D_GlyphInfo
 	int offsetX;
 	int offsetY;
 	int advanceX;
-	D_Rectangle glyph_rect;
+	R_Rectangle glyph_rect;
 };
 
 #define GLYPH_INFO_LEGTH 2048

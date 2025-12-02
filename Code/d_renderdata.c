@@ -204,7 +204,6 @@ struct D_Vertex_Data
     
 	Vector4 * corner_color[quad_vertex_count];
 	Vector2 * corner_tex_coord[quad_vertex_count];
-    
 };
 
 global D_Vertex_Data vertex_data = {};

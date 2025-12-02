@@ -506,7 +506,6 @@ internal void update_all_GPU_vertex_buffer(ShaderInput * currentShader,int count
 
 internal void D_game_draw()
 {
-	
     //rlEnableFramebuffer(RenderState.AfterGameDrawFrameTexture.id);
     
 	GL_CATCH;
@@ -525,17 +524,13 @@ internal void D_game_draw()
 	}
 	else if(render_state.current_shader_input == S_quad)
     {
-        
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
         glDisable(GL_CULL_FACE);
-        
     }
     else
 	{
-		
         glDisable(GL_DEPTH_TEST);
-        
 	}
     
     //TODO: remove these
@@ -595,7 +590,7 @@ internal void D_game_draw()
     
 	glUniform1i(current_shader_input->uniform_location[SU_texture_0], 0);    
 	glUniform1f(current_shader_input->uniform_location[SU_elapsed_time] , render_state.elapsed_time);    	
-	glUniform2f(current_shader_input->uniform_location[SU_screen_size] , app_data->window_size.x , app_data->window_size.y);
+	glUniform2f(current_shader_input->uniform_location[SU_screen_size] , current_viewport.width , current_viewport.height);
     glUniform3f(current_shader_input->uniform_location[SU_camera_position] , camera_position.x , camera_position.y , camera_position.z);
     glUniform3f(current_shader_input->uniform_location[SU_camera_direction] , camera_direction.x , camera_direction.y , camera_direction.z);
     glUniform1i(current_shader_input->uniform_location[SU_draw_flag] , render_state.draw_flag);
@@ -1038,30 +1033,38 @@ internal void draw_quad_with_texture(Quad quad,int target_texture)
     texture_coord[vertex_top_right] = (Vector2){ 1,0 };
     texture_coord[vertex_bottom_right] = (Vector2){ 0, 0 };
     
+    Vector3 a_to_b = Vector3Subtract(all_vertices[0] , all_vertices[1]);
+    Vector3 a_to_c = Vector3Subtract(all_vertices[0] , all_vertices[2]);
+    Vector3 normal = Vector3Normalize(Vector3CrossProduct(a_to_b , a_to_c));
+    
 	//i'm so confused with the vertics order     
 	vertex_index[0] = vertex_count;
 	vertex_data.position[vertex_count] = all_vertices[0];
 	vertex_data.tex_coord[vertex_count] = texture_coord[0];
 	vertex_data.color[vertex_count] = vertex_color[0];
-	vertex_count++;
+	vertex_data.normal[vertex_count] = normal;
+    vertex_count++;
     
 	vertex_index[1] = vertex_count;
 	vertex_data.position[vertex_count] = all_vertices[1];
 	vertex_data.tex_coord[vertex_count] = texture_coord[2];
 	vertex_data.color[vertex_count] = vertex_color[1];
-	vertex_count++;
+	vertex_data.normal[vertex_count] = normal;
+    vertex_count++;
     
 	vertex_index[2] = vertex_count;
 	vertex_data.position[vertex_count] = all_vertices[2];
 	vertex_data.tex_coord[vertex_count] = texture_coord[1];
 	vertex_data.color[vertex_count] = vertex_color[2];
-	vertex_count++;
+	vertex_data.normal[vertex_count] = normal;
+    vertex_count++;
     
 	vertex_index[3] = vertex_count;
 	vertex_data.position[vertex_count] = all_vertices[3];
 	vertex_data.tex_coord[vertex_count] = texture_coord[3];
 	vertex_data.color[vertex_count] = vertex_color[3];
-	vertex_count++;
+	vertex_data.normal[vertex_count] = normal;
+    vertex_count++;
     
 	vertex_data.indices[indics_count++] = vertex_index[0];
 	vertex_data.indices[indics_count++] = vertex_index[1];
@@ -1327,7 +1330,6 @@ internal void draw_circle_E(Vector3 position,float size, Vector4 target_color)
 
 internal void draw_line_quad(Quad quad , Vector3 line_start , Vector3 line_end , float line_size)
 {
-    
 	bool clean_up_draw_state = false;
     
 	if (render_state.current_shader_input != S_line)
@@ -1483,12 +1485,20 @@ internal void add_point_to_line(Vector3 point, Vector4 point_color , float point
 	}
 	else
 	{
-		
+		//this is wrong?
+#if 0
         float previous_point_size_width  = (previous_point_size*0.5) / app_data->window_size.x;
 		float previous_point_size_height  = (previous_point_size*0.5) / app_data->window_size.y;
 		
 		float point_size_width  = (point_size*0.5) / app_data->window_size.x;
 		float point_size_height  = (point_size*0.5) / app_data->window_size.y;
+#else
+        float previous_point_size_width  = (previous_point_size*0.5) / current_viewport.width;
+		float previous_point_size_height  = (previous_point_size*0.5) / current_viewport.height;
+		
+		float point_size_width  = (point_size*0.5) / current_viewport.width;
+		float point_size_height  = (point_size*0.5) / current_viewport.height;
+#endif
         
 		have_previous_point = false;
         
@@ -1517,7 +1527,6 @@ internal void add_point_to_line(Vector3 point, Vector4 point_color , float point
 		line.vertex_color[vertex_bottom_right] = point_color;
         
 		draw_line_quad( line , previous_point,point ,point_size);
-        
 	}
 }
 
@@ -1572,8 +1581,6 @@ internal unsigned int load_depth_texture(int width, int height)
 	return id;
 }
 
-//so far, solving equations seem to be better than using vector math
-//the equation tell me the length of plane normal doesn't matter
 internal float get_line_intersect_with_plane_time(Vector3 start , Vector3 end , Vector3 plane_normal , Vector3 plane_origin)
 {
 	float result = plane_normal.x * (plane_origin.x - start.x) + plane_normal.y * (plane_origin.y - start.y) + plane_normal.z * (plane_origin.z - start.z);
@@ -1643,12 +1650,12 @@ internal Quad get_billboard_quad(Vector3 point, float width , float height)
 	return billboard_quad;
 }
 
-//pune line differently in 3d space and screen
+//pune line base on 3d space or screen
 global bool pruning_3D_line = true;
 
+//TODO: can this be better?
 internal void draw_round_line(Vector3 start , Vector3 end , float size , Color start_color , Color end_color)
 {
-    
     //man what is this
     if(pruning_3D_line)
     {
@@ -1691,10 +1698,8 @@ internal void draw_round_line(Vector3 start , Vector3 end , float size , Color s
                 //printf("End : %f %f %f \n" , End.x , End.y , End.z);
                 
                 end = intersect_point;
-                
             }
         }
-        
     }
     else
     {
@@ -2197,14 +2202,12 @@ internal void get_box_face( Rect * temp_box_rect , Box box)
         
         temp_box_rect[face_index].rotation = QuaternionMultiply(rotation ,temp_box_rect[face_index].rotation );
     }
-    
 }
 
 //TODO : if we need to draw many box maybe don't use this
 internal void draw_box( Box box , Color box_color)
 {
     Rect temp_box_rect[face_count] = {};
-    
     get_box_face(temp_box_rect , box);
     
     for(int face_index = 0 ; face_index < face_count ; face_index++) 
@@ -2213,6 +2216,9 @@ internal void draw_box( Box box , Color box_color)
     }
 }
 
+//TODO : line get overlap
+//this is also slow
+//how am i gonna port this to a orange pie?
 internal void draw_box_line(Box box , Color line_color , float line_size)
 {
     Rect temp_box_rect[face_count] = {};

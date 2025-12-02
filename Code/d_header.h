@@ -78,8 +78,8 @@ struct Quaternion
 	float w;
 };
 
-typedef struct D_Rectangle D_Rectangle;
-struct D_Rectangle {
+typedef struct R_Rectangle R_Rectangle;
+struct R_Rectangle {
     float x;
     float y;
     float width;

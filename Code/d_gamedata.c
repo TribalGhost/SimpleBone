@@ -12,12 +12,18 @@ global bool shader_compile_failed = false;
 typedef struct ShapeImpactData ShapeImpactData;
 struct ShapeImpactData
 {
+    Vector3 * shape_a_vertices;
+    int shape_a_vertices_count;
+    Vector3 * shape_b_vertices;
+    int shape_b_vertices_count;
+    
     Vector3 ray_direction;
+    bool stop_if_too_far;
+    
     float time_of_impact;
     Vector3 impact_point;
     Vector3 impact_normal;
     
-    bool stop_if_too_far;
 };
 
 typedef struct GJK_State GJK_State;
@@ -28,9 +34,6 @@ struct GJK_State
     Vector3 search_direction;
     Vector3 origin;
 };
-
-global int test_ray_count = 4;
-global int test_simplex_count = 5;
 
 typedef enum BoxFace BoxFace;
 enum BoxFace
@@ -166,7 +169,6 @@ struct Bone
     
     //it can be edit when the current frame is the key frame belong to this bone
     bool free_bone;
-    
 };
 
 global float camera_current_zoom = 1.0;
@@ -175,40 +177,6 @@ global float camera_current_zoom = 1.0;
 #define FRAME_TIME 1.0 / ((double)FRAME_PER_SECOND)
 
 #define GetKeyFrameHash(FrameIndex , BoneIndex) (hash_int(16 * BoneIndex + FrameIndex))
-
-#define MAX_BLEND_CLIP_SET 12
-
-global wchar_t other_clip_index_text[MAX_BLEND_CLIP_SET][64] = {};
-global wchar_t other_clip_weight_text[MAX_BLEND_CLIP_SET][64] = {};
-
-typedef enum AniamtionTag AnimationTag;
-enum AnimationTag
-{
-    
-    AT_foward,
-    AT_backward,
-    
-    AT_right_forward,
-    AT_right_side,
-    AT_right_backward,
-    
-    AT_left_forward,
-    AT_left_side,
-    AT_left_backward,
-    
-    AT_idle,
-    
-    AT_forward_right_offset,
-    AT_forward_left_offset,
-    AT_backward_right_offset,
-    AT_backward_left_offset,
-    
-    AT_being_slap,
-    AT_slap,
-    
-    animation_tag_count,
-    
-};
 
 typedef struct Clip Clip;
 struct Clip
@@ -375,9 +343,6 @@ global Vector3 right_direction = {1,0,0};
 global Vector3 up_direction = {0,1,0};
 global Vector3 forward_direction = {0,0,1};
 
-global Array quads_in_map_array = {};
-global Quad * quads_in_map = 0;
-
 typedef enum EditorType EditorType;
 enum EditorType
 {
@@ -390,7 +355,28 @@ enum EditorType
 };
 
 global int editor_type = edit_base_pose;
-global bool edit_quad = false;
+
+typedef struct RightClickMenu RightClickMenu;
+struct RightClickMenu
+{
+    bool on;
+    Vector2 position;
+    
+    int box_index;
+};
+
+global RightClickMenu right_click_menu = {};
+
+typedef enum MapEditType MapEditType;
+enum MapEditType
+{
+    MET_none,
+    MET_quad,
+    MET_box,
+    MET_count,
+};
+
+global int current_map_edit_type = MET_none;
 
 typedef struct DemoData DemoData;
 struct DemoData
@@ -476,17 +462,17 @@ global Matrix project_matrix = {};
 
 global Matrix world_3D_to_screen_matrix = {};
 
-global D_Rectangle current_viewport = {};
+global R_Rectangle current_viewport = {};
 global bool update_once = false;
 global bool within_viewport = false;
 global Vector2 mouse_position = {};
 
-global int grid_direction_index = 0;
+global int grid_normal_index = 0;
 
 typedef struct SplitViewport SplitViewport;
 struct SplitViewport
 {
-    D_Rectangle viewport;
+    R_Rectangle viewport;
     float camera_zoom;
     Vector3 camera_euler;
     Vector3 camera_offset;
@@ -506,8 +492,94 @@ global long long game_update_count = 0;
 #define GRID_SIZE (1.0)
 #define UNIT_SIZE (GRID_SIZE / ((double)SUBDIVISION))
 
-global Vector3 * vertices_a = 0;
-global int vertices_a_count = 0;
+global Array box_in_map_array = {};
+global Box * box_in_map = 0;
 
-global Vector3 * vertices_b = 0; 
-global int vertices_b_count = 0;
+global Array quad_in_map_array = {};
+global Quad * quad_in_map = 0;
+
+global float collision_cell_size = GRID_SIZE * 1.2f;
+
+global Vector3 * convex_shape_a_vertices = 0;
+global int convex_shape_a_vertices_count = 0;
+
+global Vector3 * convex_shape_b_vertices = 0; 
+global int convex_shape_b_vertices_count = 0;
+
+typedef enum ShapeType ShapeType;
+enum ShapeType
+{
+    ST_invalid,
+    ST_quad,
+    ST_box,
+};
+
+typedef struct BoundingBoxNode BoundingBoxNode;
+struct BoundingBoxNode
+{
+    Vector3 right_top_forward;
+    Vector3 left_bottom_backward;
+    
+    int left_index;
+    int right_index;
+};
+
+global int bounding_box_count = 0;
+global int bounding_box_capacity = 0;
+global BoundingBoxNode * bounding_box_buffer = 0;
+
+//these are too slow
+typedef struct ShapeInCell ShapeInCell;
+struct ShapeInCell
+{
+    ShapeType type;
+    int shape_index;
+    int x;
+    int y;
+    int z;
+};
+
+typedef struct ShapeCellBuffer ShapeCellBuffer;
+struct ShapeCellBuffer
+{
+    ShapeInCell * data;
+    int count;
+    int capacity;
+};
+
+global ShapeCellBuffer collision_shape_cell_buffer = {};
+global HashTable collision_shape_cell_hash_table = {};
+
+global float obstacle_cell_size = GRID_SIZE * 0.7364;
+
+global ShapeCellBuffer obstacle_shape_cell_buffer = {};
+global HashTable obstacle_shape_cell_hash_table = {};
+
+typedef struct CellIterator CellIterator;
+struct CellIterator
+{
+    bool initialized;
+    
+    int cell_x;
+    int cell_y;
+    int cell_z;
+    
+    int cell_left;
+    int cell_bottom;
+    int cell_backward;
+    
+    int cell_right;
+    int cell_top;
+    int cell_forward;
+};
+
+typedef struct Player Player;
+struct Player
+{
+    Vector3 position;
+    Vector3 velocity;
+    ShapeImpactData impact;
+    Box box;
+};
+
+global Player player = {};

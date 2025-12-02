@@ -986,7 +986,7 @@ internal void load_blend_file()
                         for(;;)
                         {
                             
-                            print_all_fields(vertex_group_block->block_memory , vertex_group_structure_index);
+                            //print_all_fields(vertex_group_block->block_memory , vertex_group_structure_index);
                             
                             FieldResult name_result = get_field("name[64]" , vertex_group_block->block_memory , vertex_group_structure_index);
                             

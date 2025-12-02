@@ -159,7 +159,7 @@ internal void get_string_width(int count,wchar_t * codepoint_pointer,D_FontConte
 			break;
 #if true
 		D_GlyphInfo current_glyph_info = D_get_glyph_from_codepoint(current_codepoint, font_info);;
-		D_Rectangle glyph_rect = current_glyph_info.glyph_rect;
+		R_Rectangle glyph_rect = current_glyph_info.glyph_rect;
         
 		if (current_glyph_info.value != current_codepoint)
 			CATCH;        
@@ -252,7 +252,7 @@ internal void draw_text_with_font(D_FontContext* font_info, Rect rect , Color te
         
 #if true
 		D_GlyphInfo* current_glyph_info = &(*current_node_pointer)->info;
-		D_Rectangle glyph_rect = current_glyph_info->glyph_rect;
+		R_Rectangle glyph_rect = current_glyph_info->glyph_rect;
         
 		if (current_glyph_info->value != current_codepoint)
 			CATCH;
@@ -264,7 +264,7 @@ internal void draw_text_with_font(D_FontContext* font_info, Rect rect , Color te
 		//it was right here
 		//is the padding was wrong?
         
-		D_Rectangle scr_coord =
+		R_Rectangle scr_coord =
 		{
 			glyph_rect.x - font_info->glyph_atlas_padding,
 			glyph_rect.y - font_info->glyph_atlas_padding,

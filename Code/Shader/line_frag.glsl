@@ -52,7 +52,5 @@ void main()
 	float alpha = smoothstep( fragLineSize + blur , fragLineSize - blur, distance *5);
     
 	finalColor.a *= alpha;
-    
-	//finalColor.a += 0.5f;
-    
+	//finalColor.a = 1.0;
 }
