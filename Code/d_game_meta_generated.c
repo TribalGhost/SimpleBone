@@ -96,9 +96,9 @@ enum _type_meta
 	_MT_EditorData,
 	_MT_SplitViewport,
 	_MT_ShapeType,
+	_MT_Shape,
 	_MT_BoundingBoxNode,
-	_MT_ShapeInCell,
-	_MT_ShapeCellBuffer,
+	_MT_SplitType,
 	_MT_CellIterator,
 	_MT_Player,
 	_MT_GLFWwindow,
@@ -205,9 +205,9 @@ sizeof(DemoData),//DemoData
 sizeof(EditorData),//EditorData 
 sizeof(SplitViewport),//SplitViewport 
 sizeof(ShapeType),//ShapeType 
+sizeof(Shape),//Shape 
 sizeof(BoundingBoxNode),//BoundingBoxNode 
-sizeof(ShapeInCell),//ShapeInCell 
-sizeof(ShapeCellBuffer),//ShapeCellBuffer 
+sizeof(SplitType),//SplitType 
 sizeof(CellIterator),//CellIterator 
 sizeof(Player),//Player 
 0,//GLFWwindow 
@@ -313,9 +313,9 @@ const char * _type_meta_name[] =
 	"EditorData",
 	"SplitViewport",
 	"ShapeType",
+	"Shape",
 	"BoundingBoxNode",
-	"ShapeInCell",
-	"ShapeCellBuffer",
+	"SplitType",
 	"CellIterator",
 	"Player",
 	"GLFWwindow",
@@ -423,7 +423,7 @@ false,
 true,
 false,
 false,
-false,
+true,
 false,
 false,
 false,
@@ -562,6 +562,14 @@ global const char * ShapeType_String[] =
  "ST_box",
 };
 
+global const char * SplitType_String[] = 
+{
+ "split_yz",
+ "split_xz",
+ "split_xy",
+ "split_count",
+};
+
 typedef enum introspected_struct introspected_struct;
 enum introspected_struct
 {
@@ -628,9 +636,8 @@ enum introspected_struct
 	IS_DemoData, 
 	IS_EditorData, 
 	IS_SplitViewport, 
+	IS_Shape, 
 	IS_BoundingBoxNode, 
-	IS_ShapeInCell, 
-	IS_ShapeCellBuffer, 
 	IS_CellIterator, 
 	IS_Player, 
 };
@@ -1338,31 +1345,21 @@ global const MemberMetaData member_meta_SplitViewport[6] =
 	{ "ortho" , false,false,false,0,_MT_bool,"bool",(int)&((SplitViewport *)0)->ortho ,sizeof(bool),}, 
 };
 
-global int member_meta_count_BoundingBoxNode = 4;
-global const MemberMetaData member_meta_BoundingBoxNode[4] =
+global int member_meta_count_Shape = 2;
+global const MemberMetaData member_meta_Shape[2] =
+{
+	{ "type" , false,false,false,0,_MT_int,"int",(int)&((Shape *)0)->type ,sizeof(int),}, 
+	{ "index" , false,false,false,0,_MT_int,"int",(int)&((Shape *)0)->index ,sizeof(int),}, 
+};
+
+global int member_meta_count_BoundingBoxNode = 5;
+global const MemberMetaData member_meta_BoundingBoxNode[5] =
 {
 	{ "right_top_forward" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((BoundingBoxNode *)0)->right_top_forward ,sizeof(Vector3),}, 
 	{ "left_bottom_backward" , false,false,false,0,_MT_Vector3,"Vector3",(int)&((BoundingBoxNode *)0)->left_bottom_backward ,sizeof(Vector3),}, 
-	{ "left_index" , false,false,false,0,_MT_int,"int",(int)&((BoundingBoxNode *)0)->left_index ,sizeof(int),}, 
-	{ "right_index" , false,false,false,0,_MT_int,"int",(int)&((BoundingBoxNode *)0)->right_index ,sizeof(int),}, 
-};
-
-global int member_meta_count_ShapeInCell = 5;
-global const MemberMetaData member_meta_ShapeInCell[5] =
-{
-	{ "type" , false,false,false,0,_MT_ShapeType,"ShapeType",(int)&((ShapeInCell *)0)->type ,sizeof(ShapeType),}, 
-	{ "shape_index" , false,false,false,0,_MT_int,"int",(int)&((ShapeInCell *)0)->shape_index ,sizeof(int),}, 
-	{ "x" , false,false,false,0,_MT_int,"int",(int)&((ShapeInCell *)0)->x ,sizeof(int),}, 
-	{ "y" , false,false,false,0,_MT_int,"int",(int)&((ShapeInCell *)0)->y ,sizeof(int),}, 
-	{ "z" , false,false,false,0,_MT_int,"int",(int)&((ShapeInCell *)0)->z ,sizeof(int),}, 
-};
-
-global int member_meta_count_ShapeCellBuffer = 3;
-global const MemberMetaData member_meta_ShapeCellBuffer[3] =
-{
-	{ "data" , false,true,false,0,_MT_ShapeInCell,"ShapeInCell",(int)&((ShapeCellBuffer *)0)->data ,sizeof(void *),}, 
-	{ "count" , false,false,false,0,_MT_int,"int",(int)&((ShapeCellBuffer *)0)->count ,sizeof(int),}, 
-	{ "capacity" , false,false,false,0,_MT_int,"int",(int)&((ShapeCellBuffer *)0)->capacity ,sizeof(int),}, 
+	{ "shape" , false,false,false,0,_MT_Shape,"Shape",(int)&((BoundingBoxNode *)0)->shape ,sizeof(Shape),}, 
+	{ "left" , false,true,false,0,_MT_BoundingBoxNode,"BoundingBoxNode",(int)&((BoundingBoxNode *)0)->left ,sizeof(void *),}, 
+	{ "right" , false,true,false,0,_MT_BoundingBoxNode,"BoundingBoxNode",(int)&((BoundingBoxNode *)0)->right ,sizeof(void *),}, 
 };
 
 global int member_meta_count_CellIterator = 10;
@@ -1487,9 +1484,9 @@ StructMetaData * all_struct = malloc(sizeof(StructMetaData) * _MT_type_count);
 	all_struct[_MT_EditorData] = (StructMetaData)GetStructMeta(EditorData);
 	all_struct[_MT_SplitViewport] = (StructMetaData)GetStructMeta(SplitViewport);
 	all_struct[_MT_ShapeType] = (StructMetaData){};
+	all_struct[_MT_Shape] = (StructMetaData)GetStructMeta(Shape);
 	all_struct[_MT_BoundingBoxNode] = (StructMetaData)GetStructMeta(BoundingBoxNode);
-	all_struct[_MT_ShapeInCell] = (StructMetaData)GetStructMeta(ShapeInCell);
-	all_struct[_MT_ShapeCellBuffer] = (StructMetaData)GetStructMeta(ShapeCellBuffer);
+	all_struct[_MT_SplitType] = (StructMetaData){};
 	all_struct[_MT_CellIterator] = (StructMetaData)GetStructMeta(CellIterator);
 	all_struct[_MT_Player] = (StructMetaData)GetStructMeta(Player);
 	all_struct[_MT_GLFWwindow] = (StructMetaData){};
@@ -1766,8 +1763,9 @@ internal Vector3 closest_point_on_triangle(Vector3 a , Vector3 b , Vector3 c , V
 internal bool check_shape_impact(ShapeImpactData * data);
 internal int shape_cell_hash(int x , int y , int z);
 internal bool iterate_cell_by_bound(CellIterator * iterator, Vector3 * vertices , int vertex_count , float cell_size);
-internal void add_to_cell_shape(int type , int shape_index , Vector3 * vertices , int vertices_count , float cell_size , ShapeCellBuffer * buffer);
-internal void add_to_cell_shape_bound(int type , int shape_index , Vector3 * vertices , int vertices_count , float cell_size , ShapeCellBuffer * buffer);
+internal bool bounding_box_collided(BoundingBoxNode box_a , BoundingBoxNode box_b);
+internal void get_bound(Vector3 * vertices , int vertices_count , Vector3 * right_top_forward , Vector3 * left_bottom_backward );
+internal BoundingBoxNode * split_bounding_box(BoundingBoxNode * buffer , int buffer_count , int split_type);
 internal bool check_selected_bone_rotation( Bone * final_bone_array_copy, int single_bone_index , Clip * clip_to_assign);
 internal void bone_selection_and_edit_bone_state( int current_frame_index);
 internal void bone_mouse_menu( Bone * single_editing_bone , Clip * clip , int current_frame_index);

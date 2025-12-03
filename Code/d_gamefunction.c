@@ -1754,16 +1754,6 @@ internal void create_a_whole_new_world()
     box_in_map = allocate_temp(Box , 16);
     box_in_map_array = allocate_array(16);
     
-    collision_shape_cell_buffer.count = 0;
-    collision_shape_cell_buffer.capacity = 512;
-    collision_shape_cell_buffer.data = allocate_temp(ShapeInCell , collision_shape_cell_buffer.capacity);
-    
-    obstacle_shape_cell_buffer.count = 0;
-    obstacle_shape_cell_buffer.capacity = 512;
-    obstacle_shape_cell_buffer.data = allocate_temp(ShapeInCell , obstacle_shape_cell_buffer.capacity);
-    
-    
-    
     editor->timeline_scale = 1;
     editor->selected_clip_index = -1;
     editor->IK_iteration_count = 20;
@@ -2857,86 +2847,165 @@ internal bool iterate_cell_by_bound(CellIterator * iterator, Vector3 * vertices 
     return true;
 }
 
-internal void add_to_cell_shape(int type , int shape_index , Vector3 * vertices , int vertices_count , float cell_size , ShapeCellBuffer * buffer)
+internal bool bounding_box_collided(BoundingBoxNode box_a , BoundingBoxNode box_b)
 {
-    //i hate nested loop because i can't break at all
-    //i hear there is a new keyword that allow you break multiple loop
-    //but why don't just iterate manually
-    for(CellIterator iterator = {} ; iterate_cell_by_bound(&iterator , vertices , vertices_count , cell_size);)
+    float a_right = box_a.right_top_forward.x;
+    float a_top = box_a.right_top_forward.y;
+    float a_forward = box_a.right_top_forward.z;
+    float a_left = box_a.left_bottom_backward.x;
+    float a_bottom = box_a.left_bottom_backward.y;
+    float a_backward = box_a.left_bottom_backward.z;
+    
+    float b_right = box_b.right_top_forward.x;
+    float b_top = box_b.right_top_forward.y;
+    float b_forward = box_b.right_top_forward.z;
+    float b_left = box_b.left_bottom_backward.x;
+    float b_bottom = box_b.left_bottom_backward.y;
+    float b_backward = box_b.left_bottom_backward.z;
+    
+    bool x_collided = false;
+    
+    if(a_right > b_right)
     {
-        int cell_x = iterator.cell_x;
-        int cell_y = iterator.cell_y;
-        int cell_z = iterator.cell_z;
-        
-        Box cell_box = get_box();
-        cell_box.size = (Vector3){cell_size , cell_size , cell_size};
-        cell_box.position = Vector3Scale((Vector3){cell_x , cell_y , cell_z },cell_size);
-        cell_box.position.x -= cell_size * 0.5f;
-        cell_box.position.y -= cell_size * 0.5f;
-        cell_box.position.z -= cell_size * 0.5f;
-        
-        if(check_shape((Vector3){} , vertices , vertices_count , box_to_point(cell_box) , box_vertex_count))
+        if(a_left < b_right)
         {
-            REALLOCATE_BUFFER_IF_TOO_SMALL(ShapeInCell , buffer->data , buffer->capacity , buffer->count , allocate_temp_);
-            ShapeInCell * new_shape_cell = buffer->data + buffer->count++;
-            
-            new_shape_cell->type = type;
-            new_shape_cell->shape_index = shape_index;
-            new_shape_cell->x = cell_x;
-            new_shape_cell->y = cell_y;
-            new_shape_cell->z = cell_z;
+            x_collided = true;
         }
+    }
+    else
+    {
+        if(b_left < a_right)
+        {
+            x_collided = true;
+        }
+    }
+    
+    if(!x_collided) return false;
+    
+    bool y_collided = false;
+    
+    if(a_top > b_top)
+    {
+        if(a_bottom < b_top)
+        {
+            y_collided = true;
+        }
+    }
+    else
+    {
+        if(b_bottom < a_top)
+        {
+            y_collided = true;
+        }
+    }
+    
+    if(!y_collided) return false;
+    
+    if(a_forward > b_forward)
+    {
+        if(a_backward < b_forward)
+        {
+            return true;
+        }
+    }
+    else
+    {
+        if(b_backward < a_forward)
+        {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+internal void get_bound(Vector3 * vertices , int vertices_count , Vector3 * right_top_forward , Vector3 * left_bottom_backward )
+{
+    for(int vertex_index = 0 ; vertex_index < vertices_count ; vertex_index++)
+    {
+        Vector3 vertex = vertices[vertex_index];
+        if(right_top_forward->x < vertex.x) right_top_forward->x = vertex.x;
+        if(right_top_forward->y < vertex.y) right_top_forward->y = vertex.y;
+        if(right_top_forward->z < vertex.z) right_top_forward->z = vertex.z;
+        if(left_bottom_backward->x > vertex.x) left_bottom_backward->x = vertex.x;
+        if(left_bottom_backward->y > vertex.y) left_bottom_backward->y = vertex.y;
+        if(left_bottom_backward->z > vertex.z) left_bottom_backward->z = vertex.z;
     }
 }
 
-internal void add_to_cell_shape_bound(int type , int shape_index , Vector3 * vertices , int vertices_count , float cell_size , ShapeCellBuffer * buffer)
+internal BoundingBoxNode * split_bounding_box(BoundingBoxNode * buffer , int buffer_count , int split_type)
 {
-    //i hate nested loop because i can't break at all
-    //i hear there is a new keyword that allow you break multiple loop
-    //but why don't just iterate manually
-    for(CellIterator iterator = {} ; iterate_cell_by_bound(&iterator , vertices , vertices_count , cell_size);)
+    if(buffer_count == 0) return 0;
+    if(buffer_count == 1) return buffer;
+    
+    BoundingBoxNode * root_node = allocate_frame(BoundingBoxNode , 1);
+    root_node->left = 0;
+    root_node->right = 0;
+    
+    for(int bounding_box_index = 0; bounding_box_index < buffer_count ; bounding_box_index++)
     {
-        int cell_x = iterator.cell_x;
-        int cell_y = iterator.cell_y;
-        int cell_z = iterator.cell_z;
+        BoundingBoxNode * bounding_box = buffer + bounding_box_index;
+        Vector3 right_top_forward = bounding_box->right_top_forward;
+        Vector3 left_bottom_backward = bounding_box->left_bottom_backward;
         
-        Box cell_box = get_box();
-        cell_box.size = (Vector3){cell_size , cell_size , cell_size};
-        cell_box.position = Vector3Scale((Vector3){cell_x , cell_y , cell_z },cell_size);
-        cell_box.position.x -= cell_size * 0.5f;
-        cell_box.position.y -= cell_size * 0.5f;
-        cell_box.position.z -= cell_size * 0.5f;
-        
-        Vector3 * cell_point = box_to_point(cell_box);
-        
-        bool all_collided = true;
-        bool no_collision = true;
-        
-        for(int vertex_index = 0 ; vertex_index < box_vertex_count ; vertex_index++)
-        {
-            if(!check_shape((Vector3){} , vertices , vertices_count , cell_point + vertex_index , 1))
-            {
-                all_collided = false;
-            }
-            else
-            {
-                no_collision = false;
-            }
-        }
-        
-        if(!all_collided)
-        {
-            if(!no_collision)
-            {
-                REALLOCATE_BUFFER_IF_TOO_SMALL(ShapeInCell , buffer->data , buffer->capacity , buffer->count , allocate_temp_);
-                ShapeInCell * new_shape_cell = buffer->data + buffer->count++;
-                
-                new_shape_cell->type = type;
-                new_shape_cell->shape_index = shape_index;
-                new_shape_cell->x = cell_x;
-                new_shape_cell->y = cell_y;
-                new_shape_cell->z = cell_z;
-            }
-        }
+        if(root_node->right_top_forward.x < right_top_forward.x) root_node->right_top_forward.x = right_top_forward.x;
+        if(root_node->right_top_forward.y < right_top_forward.y) root_node->right_top_forward.y = right_top_forward.y;
+        if(root_node->right_top_forward.z < right_top_forward.z) root_node->right_top_forward.z = right_top_forward.z;
+        if(root_node->left_bottom_backward.x > left_bottom_backward.x) root_node->left_bottom_backward.x = left_bottom_backward.x;
+        if(root_node->left_bottom_backward.y > left_bottom_backward.y) root_node->left_bottom_backward.y = left_bottom_backward.y;
+        if(root_node->left_bottom_backward.z > left_bottom_backward.z) root_node->left_bottom_backward.z = left_bottom_backward.z;
     }
+    
+    BoundingBoxNode right_box = (*root_node);
+    BoundingBoxNode left_box = (*root_node);
+    
+    //TODO: how to split better?
+    if(split_type == split_yz)
+    {
+        right_box.right_top_forward.x = Lerp( right_box.right_top_forward.x , right_box.left_bottom_backward.x , 0.5f);
+        left_box.left_bottom_backward.x = right_box.right_top_forward.x;
+    }
+    else if(split_type == split_xz)
+    {
+        right_box.right_top_forward.y = Lerp( right_box.right_top_forward.y , right_box.left_bottom_backward.y , 0.5f);
+        left_box.left_bottom_backward.y = right_box.right_top_forward.y;
+    }
+    else if(split_type == split_xy)
+    {
+        right_box.right_top_forward.z = Lerp( right_box.right_top_forward.z , right_box.left_bottom_backward.z , 0.5f);
+        left_box.left_bottom_backward.z = right_box.right_top_forward.z;
+    }
+    
+    BoundingBoxNode * left_buffer = 0;
+    int left_buffer_count = 0;
+    left_buffer = allocate_frame(BoundingBoxNode , buffer_count);
+    
+    BoundingBoxNode * right_buffer = 0;
+    right_buffer = allocate_frame(BoundingBoxNode , buffer_count);
+    int right_buffer_count = 0;
+    
+    for(int bounding_box_index = 0 ; bounding_box_index < buffer_count ; bounding_box_index++)
+    {
+        BoundingBoxNode node = buffer[bounding_box_index];
+        BoundingBoxNode * new_node = 0;
+        
+        if(bounding_box_collided(node , right_box))
+        {
+            new_node = right_buffer + right_buffer_count++;
+        }
+        else
+        {
+            new_node = left_buffer + left_buffer_count++;
+        }
+        
+        (*new_node) = node;
+    }
+    
+    split_type++;
+    if(split_type >= split_count) split_type = split_yz;
+    
+    root_node->right = split_bounding_box(right_buffer , right_buffer_count , split_type);
+    root_node->left = split_bounding_box(left_buffer , left_buffer_count , split_type);
+    
+    return root_node;
 }

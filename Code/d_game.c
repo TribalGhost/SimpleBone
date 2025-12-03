@@ -2037,23 +2037,11 @@ internal void single_update()
     
     //TODO: this part cost barely anything
     //why don't i try making the data structure more unsane and fast
-    double hash_shape_time = time_stamp();
+    double shape_tree_time = time_stamp();
     
-    bounding_box_count = 0;
-    bounding_box_capacity = 128;
-    bounding_box_buffer = allocate_frame(BoundingBoxNode , bounding_box_capacity);
-    
-    collision_shape_cell_buffer.count = 0;
-    obstacle_shape_cell_buffer.count = 0;
-    
-    //TODO: i don't wanna have quad unless there is way to merge quad
-    array_foreach(quad_index , &quad_in_map_array)
-    {
-        Quad quad = quad_in_map[quad_index];
-        
-        //add_to_cell_shape(ST_quad , quad_index , quad.vertex_position , quad_vertex_count , collision_cell_size , &collision_shape_cell_buffer);
-        //add_to_cell_shape_bound(ST_quad , quad_index , quad.vertex_position , quad_vertex_count , obstacle_cell_size , &obstacle_shape_cell_buffer);
-    }
+    int all_bounding_box_count = 0;
+    int all_bounding_box_capacity= 128;
+    BoundingBoxNode * all_bounding_box = allocate_frame(BoundingBoxNode , all_bounding_box_capacity);
     
     array_foreach( box_index , &box_in_map_array)
     {
@@ -2064,51 +2052,21 @@ internal void single_update()
         Vector3 right_top_forward = {-FLT_MAX , -FLT_MAX , -FLT_MAX};
         Vector3 left_bottom_backward = {FLT_MAX , FLT_MAX , FLT_MAX};
         
-        for(int vertex_index = 0 ; vertex_index < box_vertex_count ; vertex_index++)
-        {
-            Vector3 vertex = box_vertices[vertex_index];
-            if(right_top_forward.x > vertex.x) right_top_forward.x = vertex.x;
-            if(right_top_forward.y > vertex.y) right_top_forward.y = vertex.y;
-            if(right_top_forward.z > vertex.z) right_top_forward.z = vertex.z;
-            if(left_bottom_backward.x < vertex.x) left_bottom_backward.x = vertex.x;
-            if(left_bottom_backward.y < vertex.y) left_bottom_backward.y = vertex.y;
-            if(left_bottom_backward.z < vertex.z) left_bottom_backward.z = vertex.z;
-        }
+        get_bound(box_vertices , box_vertex_count , &right_top_forward , &left_bottom_backward);
         
-        REALLOCATE_BUFFER_IF_TOO_SMALL(BoundingBoxNode , bounding_box_buffer , bounding_box_capacity , bounding_box_count , allocate_frame_);
-        BoundingBoxNode * new_bounding_box = bounding_box_buffer + bounding_box_count++;
+        REALLOCATE_BUFFER_IF_TOO_SMALL(BoundingBoxNode , all_bounding_box , all_bounding_box_capacity , all_bounding_box_count , allocate_frame_);
+        BoundingBoxNode * new_bounding_box = all_bounding_box + all_bounding_box_count++;
         new_bounding_box->right_top_forward = right_top_forward;
         new_bounding_box->left_bottom_backward = left_bottom_backward;
-        new_bounding_box->left_index = -1;
-        new_bounding_box->right_index = -1;
-        
-        add_to_cell_shape(ST_box , box_index , box_vertices , box_vertex_count , collision_cell_size , &collision_shape_cell_buffer);
-        //add_to_cell_shape_bound(ST_box , box_index , box_vertices , box_vertex_count , obstacle_cell_size , &obstacle_shape_cell_buffer);
+        new_bounding_box->shape.type = ST_box;
+        new_bounding_box->shape.index = box_index;
+        new_bounding_box->left = 0;
+        new_bounding_box->right = 0;
     }
     
-    for(int bounding_box_index = 0 ; bounding_box_index < bounding_box_count ; bounding_box_index++)
-    {
-    }
+    bounding_box_root = split_bounding_box(all_bounding_box , all_bounding_box_count , split_yz);
     
-    collision_shape_cell_hash_table = allocate_hash_table_frame(collision_shape_cell_buffer.count * 1.5);
-    
-    for(int shape_cell_index = 0 ; shape_cell_index < collision_shape_cell_buffer.count ; shape_cell_index++)
-    {
-        ShapeInCell shape_cell = collision_shape_cell_buffer.data[shape_cell_index];
-        int hash_value = shape_cell_hash(shape_cell.x , shape_cell.y , shape_cell.z);
-        add_to_hash_table( hash_value , shape_cell_index , &collision_shape_cell_hash_table );
-    }
-    
-    obstacle_shape_cell_hash_table = allocate_hash_table_frame(obstacle_shape_cell_buffer.count * 1.5);
-    
-    for(int shape_cell_index = 0 ; shape_cell_index < obstacle_shape_cell_buffer.count ; shape_cell_index++)
-    {
-        ShapeInCell shape_cell = collision_shape_cell_buffer.data[shape_cell_index];
-        int hash_value = shape_cell_hash(shape_cell.x , shape_cell.y , shape_cell.z );
-        add_to_hash_table( hash_value , shape_cell_index , &obstacle_shape_cell_hash_table );
-    }
-    
-    printf("%f\n" , (time_stamp() - hash_shape_time) / (1000.0));
+    shape_tree_time = (time_stamp() - shape_tree_time) / (1000.0);
     
     local_persist bool time_stop = true;
     if(key_pressed(KEY_SPACE)) time_stop = !time_stop;
@@ -2149,7 +2107,7 @@ internal void single_update()
     
     player.velocity = Vector3Scale(player.velocity , 0.94f);
     
-#if 1
+    double tree_walk_time = time_stamp();
     
     Vector3 all_player_vertices[box_vertex_count * 2] = {};
     for(int vertex_index = 0 ; vertex_index < box_vertex_count ; vertex_index++)
@@ -2162,206 +2120,168 @@ internal void single_update()
         all_player_vertices[vertex_index + box_vertex_count] = Vector3Add(player_box_vertices[vertex_index] , player.velocity);
     }
     
-    local_persist bool checked_shape_initialized = false;
-    local_persist int checked_shape_count = 0;
-    local_persist int checked_shape_capacity = 16;
-    local_persist ShapeInCell * checked_shape_buffer = 0;
+    BoundingBoxNode player_bounding_box = {};
+    player_bounding_box.right_top_forward = (Vector3){-FLT_MAX , -FLT_MAX , -FLT_MAX};
+    player_bounding_box.left_bottom_backward = (Vector3){FLT_MAX , FLT_MAX , FLT_MAX};
+    get_bound(all_player_vertices , box_vertex_count * 2 , &player_bounding_box.right_top_forward , &player_bounding_box.left_bottom_backward );
     
-    if(!checked_shape_initialized)
+    int shape_buffer_capacity = 16;
+    int shape_buffer_count = 0;
+    Shape * shape_buffer = allocate_frame( Shape , shape_buffer_capacity);
+    
+    BoundingBoxNode * node_stack[128] = {};
+    int node_stack_count = 0;
+    node_stack[node_stack_count++] = bounding_box_root;
+    
+    for(;;)
     {
-        checked_shape_buffer = allocate_temp(ShapeInCell , checked_shape_capacity);
-        checked_shape_initialized = true;
+        if(node_stack_count <= 0) break;
+        
+        node_stack_count--;
+        BoundingBoxNode * node = node_stack[node_stack_count];
+        
+        if(node->left) node_stack[node_stack_count++] = node->left;
+        if(node->right) node_stack[node_stack_count++] = node->right;
+        
+        if(node->shape.type != ST_invalid)
+        {
+            if(bounding_box_collided((*node) , player_bounding_box))
+            {
+                REALLOCATE_BUFFER_IF_TOO_SMALL(Shape , shape_buffer , shape_buffer_capacity , shape_buffer_count , allocate_frame_);
+                Shape * new_shape = shape_buffer + shape_buffer_count++;
+                (*new_shape) = node->shape;
+            }
+        }
     }
     
-    bool no_collision = true;
+    tree_walk_time = (time_stamp() - tree_walk_time) / (1000.0);
     
-    //printf( "\n");
     double shape_impact_check_time = time_stamp();
     
-    //TODO: should i make it faster? how i make it faster?
-    //i feel like this is too slow
-    //TODO: weir thing, it always stop at before contact
-    if(collision_shape_cell_buffer.count > 0)
+    int check_count = 0;
+    Vector3 previous_position = player.position;
+    
+    for(;;)
     {
-        int check_count = 0;
-        Vector3 previous_position = player.position;
-        
-        for(;;)
+        check_count++;
+        if(check_count > 5) 
         {
-            bool player_impacted = false;
-            float closest_hit_time = FLT_MAX;
-            Vector3 surface_normal = {};
+            player.velocity = (Vector3){};
+            break;
+        }
+        
+        bool player_impacted = false;
+        float closest_hit_time = FLT_MAX;
+        Vector3 surface_normal = {};
+        
+        for(int shape_index = 0 ; shape_index < shape_buffer_count ; shape_index++)
+        {
+            Shape * shape = shape_buffer + shape_index;
             
-            checked_shape_count = 0;
-            check_count++;
+            Vector3 * shape_vertices = 0;
+            int shape_vertices_count = 0;
             
-            for(CellIterator iterator = {}; iterate_cell_by_bound(&iterator , all_player_vertices , box_vertex_count * 2 , collision_cell_size);)
+            if(shape->type == ST_box)
             {
-                int cell_x = iterator.cell_x;
-                int cell_y = iterator.cell_y;
-                int cell_z = iterator.cell_z;
-                
-                hash_table_iterate( shape_index , shape_cell_hash(cell_x , cell_y , cell_z) , &collision_shape_cell_hash_table)
-                {
-                    ShapeInCell shape_cell = collision_shape_cell_buffer.data[shape_index];
-                    if(cell_x != shape_cell.x) continue;
-                    if(cell_y != shape_cell.y) continue;
-                    if(cell_z != shape_cell.z) continue;
-                    
-                    bool shape_checked = false;
-                    for(int checked_shape_index = 0 ; checked_shape_index < checked_shape_count ; checked_shape_index++)
-                    {
-                        ShapeInCell checked_cell = checked_shape_buffer[checked_shape_index];
-                        if(checked_cell.shape_index == shape_cell.shape_index)
-                        {
-                            if(checked_cell.type == shape_cell.type)
-                            {
-                                shape_checked = true;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if(shape_checked) continue;
-                    
-                    REALLOCATE_BUFFER_IF_TOO_SMALL(ShapeInCell , checked_shape_buffer , checked_shape_capacity , checked_shape_count , allocate_temp_);
-                    ShapeInCell * new_checked_shape = checked_shape_buffer + checked_shape_count++;
-                    new_checked_shape->shape_index = shape_cell.shape_index;
-                    new_checked_shape->type = shape_cell.type;
-                    
-                    Vector3 * shape_vertices = 0;
-                    int shape_vertices_count = 0;
-                    
-                    if(shape_cell.type == ST_box)
-                    {
-                        shape_vertices = box_to_point(box_in_map[shape_cell.shape_index]);
-                        shape_vertices_count = box_vertex_count;
-                    }
-                    else if(shape_cell.type == ST_quad)
-                    {
-                        shape_vertices = quad_in_map[shape_cell.shape_index].vertex_position;
-                        shape_vertices_count = quad_vertex_count;
-                    }
-                    
-                    if(!shape_vertices) CATCH;
-                    
-#if 0
-                    Box quad_cell_box = get_box();
-                    quad_cell_box.position = Vector3Scale((Vector3){shape_cell.x , shape_cell.y , shape_cell.z} , collision_cell_size);
-                    quad_cell_box.position.x -= collision_cell_size * 0.5f;
-                    quad_cell_box.position.y -= collision_cell_size * 0.5f;
-                    quad_cell_box.position.z -= collision_cell_size * 0.5f;
-                    quad_cell_box.size = (Vector3){collision_cell_size , collision_cell_size , collision_cell_size};
-                    draw_box_line(quad_cell_box , Fade(WHITE , 0.5f) , 5);
-                    
-                    draw_round_line_B(quad.vertex_position[0] , quad_cell_box.position , 5 , WHITE);
-#endif
-                    
-                    player.impact = (ShapeImpactData){};
-                    player.impact.shape_b_vertices = shape_vertices;
-                    player.impact.shape_b_vertices_count = shape_vertices_count;
-                    player.impact.shape_a_vertices = box_to_point(player.box);
-                    player.impact.shape_a_vertices_count = box_vertex_count;
-                    player.impact.ray_direction = player.velocity;
-                    player.impact.stop_if_too_far = true;
-                    
-                    if(check_shape_impact(&player.impact))
-                    {
-                        if(player.impact.time_of_impact > 0)
-                        {
-                            player_impacted = true;
-                            if(closest_hit_time > player.impact.time_of_impact)
-                            {
-                                closest_hit_time = player.impact.time_of_impact;
-                                surface_normal = player.impact.impact_normal;
-                            }
-                        }
-                        //draw_quad_D(quad , MAROON);
-                    }
-                    else
-                    {
-                        //draw_quad_D(quad , PURPLE);
-                    }
-                    
-                }
+                shape_vertices = box_to_point(box_in_map[shape->index]);
+                shape_vertices_count = box_vertex_count;
             }
-#endif
-            
-            bool iterate_collided = false;
-            
-            if(player_impacted)
+            else if(shape->type == ST_quad)
             {
-                if(closest_hit_time > 0)
-                {
-                    if(closest_hit_time < 1.0)
-                    {
-                        iterate_collided = true;
-                    }
-                }
+                shape_vertices = quad_in_map[shape->index].vertex_position;
+                shape_vertices_count = quad_vertex_count;
             }
             
-            Vector3 impact_point = Vector3Add(player.position , Vector3Scale(player.velocity , closest_hit_time));
-            Vector3 direction_to_point = Vector3Subtract(impact_point , player.position);
-            if(Vector3DotProduct(direction_to_point , surface_normal) > 0) surface_normal = Vector3Negate(surface_normal);
+            if(!shape_vertices) CATCH;
             
-            //draw_arrow_ray_D( Vector3Add(player.position , Vector3Scale(player.velocity , closest_hit_time)) , surface_normal , RED );
+            player.impact = (ShapeImpactData){};
+            player.impact.shape_b_vertices = shape_vertices;
+            player.impact.shape_b_vertices_count = shape_vertices_count;
+            player.impact.shape_a_vertices = box_to_point(player.box);
+            player.impact.shape_a_vertices_count = box_vertex_count;
+            player.impact.ray_direction = player.velocity;
+            player.impact.stop_if_too_far = true;
             
-            if(iterate_collided)
+            if(check_shape_impact(&player.impact))
             {
-                no_collision = false;
-                
-                Vector3 project_velocity = (Vector3){};
-                Vector3 right_axis = Vector3CrossProduct(player.velocity , surface_normal);
-                if(Vector3LengthSqr(right_axis) < 0.0000001f)
+                if(player.impact.time_of_impact > 0)
                 {
-                    if(Vector3DotProduct(player.velocity , surface_normal) < 0)
+                    player_impacted = true;
+                    if(closest_hit_time > player.impact.time_of_impact)
                     {
-                        project_velocity = (Vector3){}; 
-                    }
-                } 
-                else
-                {
-                    if(Vector3DotProduct(player.velocity , surface_normal) < 0)
-                    {
-                        Vector3 forward_axis = Vector3CrossProduct(surface_normal , right_axis);
-                        project_velocity = Vector3Project(player.velocity , forward_axis);
-                    }
-                    else
-                    {
-                        project_velocity = player.velocity;
+                        closest_hit_time = player.impact.time_of_impact;
+                        surface_normal = player.impact.impact_normal;
                     }
                 }
-                
-                if(project_velocity.x != project_velocity.x) CATCH;
-                
-                //draw_arrow_ray_D( player.position , project_velocity , YELLOW );
-                
-                //printf("%f %f %f\n" , surface_normal.x , surface_normal.y , surface_normal.z);
-                //printf("velocity %f %f %f -> %f %f %f\n" , player.velocity.x , player.velocity.y , player.velocity.z , project_velocity.x , project_velocity.y , project_velocity.z);
-                player.velocity = project_velocity;
-                
-                if(Vector3LengthSqr(player.velocity) < 0.000001f) break;
+                //draw_quad_D(quad , MAROON);
             }
             else
             {
-                //printf("out\n");
-                break;
-            }
-            
-            //player.position = Vector3Add(player.position , player.velocity);
-            
-            if(check_count > 5)
-            {
-                printf("can't escape\n");
-                //player.position = previous_position;
-                player.velocity = (Vector3){};
-                break;
+                //draw_quad_D(quad , PURPLE);
             }
         }
         
-        //printf("\n");
+        bool iterate_collided = false;
+        
+        if(player_impacted)
+        {
+            if(closest_hit_time > 0)
+            {
+                if(closest_hit_time < 1.0)
+                {
+                    iterate_collided = true;
+                }
+            }
+        }
+        
+        Vector3 impact_point = Vector3Add(player.position , Vector3Scale(player.velocity , closest_hit_time));
+        Vector3 direction_to_point = Vector3Subtract(impact_point , player.position);
+        if(Vector3DotProduct(direction_to_point , surface_normal) > 0) surface_normal = Vector3Negate(surface_normal);
+        
+        //draw_arrow_ray_D( Vector3Add(player.position , Vector3Scale(player.velocity , closest_hit_time)) , surface_normal , RED );
+        
+        if(iterate_collided)
+        {
+            Vector3 project_velocity = (Vector3){};
+            Vector3 right_axis = Vector3CrossProduct(player.velocity , surface_normal);
+            if(Vector3LengthSqr(right_axis) < 0.0000001f)
+            {
+                if(Vector3DotProduct(player.velocity , surface_normal) < 0)
+                {
+                    project_velocity = (Vector3){}; 
+                }
+            } 
+            else
+            {
+                if(Vector3DotProduct(player.velocity , surface_normal) < 0)
+                {
+                    Vector3 forward_axis = Vector3CrossProduct(surface_normal , right_axis);
+                    project_velocity = Vector3Project(player.velocity , forward_axis);
+                }
+                else
+                {
+                    project_velocity = player.velocity;
+                }
+            }
+            
+            if(project_velocity.x != project_velocity.x) CATCH;
+            
+            //draw_arrow_ray_D( player.position , project_velocity , YELLOW );
+            
+            //printf("%f %f %f\n" , surface_normal.x , surface_normal.y , surface_normal.z);
+            //printf("velocity %f %f %f -> %f %f %f\n" , player.velocity.x , player.velocity.y , player.velocity.z , project_velocity.x , project_velocity.y , project_velocity.z);
+            player.velocity = project_velocity;
+            
+            if(Vector3LengthSqr(player.velocity) < 0.000001f) break;
+        }
+        else
+        {
+            //printf("out\n");
+            break;
+        }
     }
-    //printf( "%f\n", (time_stamp() - shape_impact_check_time) / 1000);
+    
+    printf( "making tree : %f , walk in tree : %f , check : %f count : %d\n", shape_tree_time , tree_walk_time , (time_stamp() - shape_impact_check_time) / 1000 , shape_buffer_count);
     
     //if(no_collision) ;
     player.position = Vector3Add(player.position , player.velocity);
@@ -2460,6 +2380,33 @@ internal void viewport_update()
         
         D_game_draw();
         render_state.draw_flag = 0;
+        
+        BoundingBoxNode * node_stack[128] = {};
+        int node_stack_count = 0;
+        
+        node_stack[node_stack_count++] = bounding_box_root;
+        
+#if 0
+        //TODO: i can't see the whole tree
+        for(;;)
+        {
+            if(node_stack_count <= 0) break;
+            
+            node_stack_count--;
+            BoundingBoxNode * node = node_stack[node_stack_count];
+            if(node->left) node_stack[node_stack_count++] = node->left;
+            if(node->right) node_stack[node_stack_count++] = node->right;
+            
+            Box node_box = get_box();
+            node_box.position = Vector3Lerp(node->right_top_forward , node->left_bottom_backward , 0.5f);
+            node_box.size = Vector3Subtract(node->right_top_forward , node->left_bottom_backward);
+            if(node_box.size.x < 0) node_box.size.x *= -1;
+            if(node_box.size.y < 0) node_box.size.y *= -1;
+            if(node_box.size.z < 0) node_box.size.z *= -1;
+            
+            draw_box_line(node_box , Fade(WHITE , 0.2f) , 5);
+        }
+#endif
         
 #if 0
         for(int shape_cell_index = 0 ; shape_cell_index < obstacle_shape_cell_buffer.count ; shape_cell_index++)

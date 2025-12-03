@@ -23,7 +23,6 @@ struct ShapeImpactData
     float time_of_impact;
     Vector3 impact_point;
     Vector3 impact_normal;
-    
 };
 
 typedef struct GJK_State GJK_State;
@@ -498,8 +497,6 @@ global Box * box_in_map = 0;
 global Array quad_in_map_array = {};
 global Quad * quad_in_map = 0;
 
-global float collision_cell_size = GRID_SIZE * 1.2f;
-
 global Vector3 * convex_shape_a_vertices = 0;
 global int convex_shape_a_vertices_count = 0;
 
@@ -514,46 +511,35 @@ enum ShapeType
     ST_box,
 };
 
+typedef struct Shape Shape;
+struct Shape
+{
+    int type;
+    int index;
+};
+
 typedef struct BoundingBoxNode BoundingBoxNode;
 struct BoundingBoxNode
 {
     Vector3 right_top_forward;
     Vector3 left_bottom_backward;
     
-    int left_index;
-    int right_index;
+    Shape shape;
+    
+    BoundingBoxNode * left;
+    BoundingBoxNode * right;
 };
 
-global int bounding_box_count = 0;
-global int bounding_box_capacity = 0;
-global BoundingBoxNode * bounding_box_buffer = 0;
-
-//these are too slow
-typedef struct ShapeInCell ShapeInCell;
-struct ShapeInCell
+typedef enum SplitType SplitType;
+enum SplitType
 {
-    ShapeType type;
-    int shape_index;
-    int x;
-    int y;
-    int z;
+    split_yz,
+    split_xz,
+    split_xy,
+    split_count,
 };
 
-typedef struct ShapeCellBuffer ShapeCellBuffer;
-struct ShapeCellBuffer
-{
-    ShapeInCell * data;
-    int count;
-    int capacity;
-};
-
-global ShapeCellBuffer collision_shape_cell_buffer = {};
-global HashTable collision_shape_cell_hash_table = {};
-
-global float obstacle_cell_size = GRID_SIZE * 0.7364;
-
-global ShapeCellBuffer obstacle_shape_cell_buffer = {};
-global HashTable obstacle_shape_cell_hash_table = {};
+global BoundingBoxNode * bounding_box_root = 0;
 
 typedef struct CellIterator CellIterator;
 struct CellIterator
