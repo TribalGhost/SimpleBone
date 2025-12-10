@@ -560,3 +560,62 @@ internal float ease_out_back(float x  , float c1)
     
 	return 1 + c3 * pow(x - 1, 3) + c1 * pow(x - 1, 2);
 }
+
+
+internal bool compare_string_C(char * string_A, char * string_B , int count)
+{
+    
+    for(int char_index = 0 ; char_index < count ; char_index++)
+    {
+        if(string_A[char_index] != string_B[char_index])
+        {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+internal bool compare_string_W( wchar_t * string_A , wchar_t * string_B)
+{
+    
+    int string_B_length = 0;
+    for(int char_index = 0 ; string_B[char_index] != '\0' ; char_index++ ,string_B_length++);
+    
+    int name_length = 0;
+    for(int char_index = 0 ; string_A[char_index] != '\0' ; char_index++ , name_length++);
+    
+    if(name_length != string_B_length) return false;
+    
+    for(int char_index = 0 ; char_index < name_length ; char_index++)
+    {
+        if(string_A[char_index] != string_B[char_index])
+        {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+internal bool compare_string( char * string_A, char * string_B)
+{
+    
+    int string_B_length = 0;
+    for(int char_index = 0 ; string_B[char_index] != '\0' ; char_index++ ,string_B_length++);
+    
+    int name_length = 0;
+    for(int char_index = 0 ; string_A[char_index] != '\0' ; char_index++ , name_length++);
+    
+    if(name_length != string_B_length) return false;
+    
+    for(int char_index = 0 ; char_index < name_length ; char_index++)
+    {
+        if(string_A[char_index] != string_B[char_index])
+        {
+            return false;
+        }
+    }
+    
+    return true;
+}

@@ -586,9 +586,6 @@ struct CellData
     unsigned int search_index;
     float cost;
     Int3 previous_cell;
-    
-    //take this out
-    bool is_path;
 };
 
 global unsigned int search_index = 0;
@@ -603,3 +600,13 @@ global CellData * nav_mesh_cell = 0;
 
 global int search_queue_capacity = 128;
 global Int3 * search_queue = 0;
+
+typedef struct PathResult PathResult;
+struct PathResult
+{
+    bool path_found;
+    
+    Int3 * path;
+    int count;
+    int capacity;
+};

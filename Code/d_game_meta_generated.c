@@ -103,6 +103,7 @@ enum _type_meta
 	_MT_Player,
 	_MT_Int3,
 	_MT_CellData,
+	_MT_PathResult,
 	_MT_GLFWwindow,
 	_MT_GameLoadFunction,
 	_MT_GameLoopFunction,
@@ -214,6 +215,7 @@ sizeof(CellIterator),//CellIterator
 sizeof(Player),//Player 
 sizeof(Int3),//Int3 
 sizeof(CellData),//CellData 
+sizeof(PathResult),//PathResult 
 0,//GLFWwindow 
 0,//GameLoadFunction 
 0,//GameLoopFunction 
@@ -324,6 +326,7 @@ const char * _type_meta_name[] =
 	"Player",
 	"Int3",
 	"CellData",
+	"PathResult",
 	"GLFWwindow",
 	"GameLoadFunction",
 	"GameLoopFunction",
@@ -430,6 +433,7 @@ true,
 false,
 false,
 true,
+false,
 false,
 false,
 false,
@@ -650,6 +654,7 @@ enum introspected_struct
 	IS_Player, 
 	IS_Int3, 
 	IS_CellData, 
+	IS_PathResult, 
 };
 
 global int member_meta_count_Color = 4;
@@ -973,8 +978,8 @@ global const MemberMetaData member_meta_D_FontContext[10] =
 	{ "glyph_atlas_texture" , false,false,false,0,_MT_Texture2D,"Texture2D",(int)&((D_FontContext *)0)->glyph_atlas_texture ,sizeof(Texture2D),}, 
 };
 
-global int member_meta_count_D_App_Data = 32;
-global const MemberMetaData member_meta_D_App_Data[32] =
+global int member_meta_count_D_App_Data = 34;
+global const MemberMetaData member_meta_D_App_Data[34] =
 {
 	{ "run_time_memory" , false,false,false,0,_MT_TemporayMemory,"TemporayMemory",(int)&((D_App_Data *)0)->run_time_memory ,sizeof(TemporayMemory),}, 
 	{ "frame_time_memory" , false,false,false,0,_MT_TemporayMemory,"TemporayMemory",(int)&((D_App_Data *)0)->frame_time_memory ,sizeof(TemporayMemory),}, 
@@ -1008,6 +1013,8 @@ global const MemberMetaData member_meta_D_App_Data[32] =
 	{ "window_text_size" , false,false,false,0,_MT_float,"float",(int)&((D_App_Data *)0)->window_text_size ,sizeof(float),}, 
 	{ "aplication_path" , false,false,true,MAX_FILE_PATH,_MT_char,"char",(int)&((D_App_Data *)0)->aplication_path ,sizeof(char),}, 
 	{ "_HDC" , false,false,false,0,_MT_HDC,"HDC",(int)&((D_App_Data *)0)->_HDC ,sizeof(HDC),}, 
+	{ "is_server" , false,false,false,0,_MT_bool,"bool",(int)&((D_App_Data *)0)->is_server ,sizeof(bool),}, 
+	{ "is_client" , false,false,false,0,_MT_bool,"bool",(int)&((D_App_Data *)0)->is_client ,sizeof(bool),}, 
 };
 
 global int member_meta_count_D_ShaderCode = 2;
@@ -1404,14 +1411,22 @@ global const MemberMetaData member_meta_Int3[3] =
 	{ "z" , false,false,false,0,_MT_int,"int",(int)&((Int3 *)0)->z ,sizeof(int),}, 
 };
 
-global int member_meta_count_CellData = 5;
-global const MemberMetaData member_meta_CellData[5] =
+global int member_meta_count_CellData = 4;
+global const MemberMetaData member_meta_CellData[4] =
 {
 	{ "blocked" , false,false,false,0,_MT_bool,"bool",(int)&((CellData *)0)->blocked ,sizeof(bool),}, 
 	{ "search_index" , false,false,false,0,_MT_unsigned_int,"unsigned_int",(int)&((CellData *)0)->search_index ,sizeof(unsigned int),}, 
 	{ "cost" , false,false,false,0,_MT_float,"float",(int)&((CellData *)0)->cost ,sizeof(float),}, 
 	{ "previous_cell" , false,false,false,0,_MT_Int3,"Int3",(int)&((CellData *)0)->previous_cell ,sizeof(Int3),}, 
-	{ "is_path" , false,false,false,0,_MT_bool,"bool",(int)&((CellData *)0)->is_path ,sizeof(bool),}, 
+};
+
+global int member_meta_count_PathResult = 4;
+global const MemberMetaData member_meta_PathResult[4] =
+{
+	{ "path_found" , false,false,false,0,_MT_bool,"bool",(int)&((PathResult *)0)->path_found ,sizeof(bool),}, 
+	{ "path" , false,true,false,0,_MT_Int3,"Int3",(int)&((PathResult *)0)->path ,sizeof(void *),}, 
+	{ "count" , false,false,false,0,_MT_int,"int",(int)&((PathResult *)0)->count ,sizeof(int),}, 
+	{ "capacity" , false,false,false,0,_MT_int,"int",(int)&((PathResult *)0)->capacity ,sizeof(int),}, 
 };
 
 internal StructMetaData * get_all_type_member_info()
@@ -1519,6 +1534,7 @@ StructMetaData * all_struct = malloc(sizeof(StructMetaData) * _MT_type_count);
 	all_struct[_MT_Player] = (StructMetaData)GetStructMeta(Player);
 	all_struct[_MT_Int3] = (StructMetaData)GetStructMeta(Int3);
 	all_struct[_MT_CellData] = (StructMetaData)GetStructMeta(CellData);
+	all_struct[_MT_PathResult] = (StructMetaData)GetStructMeta(PathResult);
 	all_struct[_MT_GLFWwindow] = (StructMetaData){};
 	all_struct[_MT_GameLoadFunction] = (StructMetaData){};
 	all_struct[_MT_GameLoopFunction] = (StructMetaData){};
@@ -1569,6 +1585,9 @@ internal float ease_in_out_cubic(float x);
 internal float ease_out_quint(float x );
 internal float ease_in_back(float x , float c1);
 internal float ease_out_back(float x  , float c1);
+internal bool compare_string_C(char * string_A, char * string_B , int count);
+internal bool compare_string_W( wchar_t * string_A , wchar_t * string_B);
+internal bool compare_string( char * string_A, char * string_B);
 internal ShaderBuffer* get_GPU_buffer_info(void * data);
 internal void * create_buffer_for_GPU(const char * buffer_name , int primitive_type,int component_count , int max_size);
 internal void * create_GPU_vertex_buffer(const char * buffer_name , int primitive_type,int component_count , int buffer_size );
@@ -1798,7 +1817,7 @@ internal void get_bound(Vector3 * vertices , int vertices_count , Vector3 * righ
 internal BoundingBoxNode * split_bounding_box(BoundingBoxNode * buffer , int buffer_count , int split_type);
 internal int cell_to_index(Int3 cell);
 internal void generate_nav_mesh();
-internal Int3 * path_finding(Vector3 start , Vector3 end);
+internal PathResult path_finding(Vector3 start , Vector3 end);
 internal bool check_selected_bone_rotation( Bone * final_bone_array_copy, int single_bone_index , Clip * clip_to_assign);
 internal void bone_selection_and_edit_bone_state( int current_frame_index);
 internal void bone_mouse_menu( Bone * single_editing_bone , Clip * clip , int current_frame_index);
@@ -1819,9 +1838,6 @@ internal void single_update();
 internal void viewport_update();
 internal void game_update();
 internal GAME_LOOP(game_loop);
-internal bool compare_string_C(char * string_A, char * string_B , int count);
-internal bool compare_string_W( wchar_t * string_A , wchar_t * string_B);
-internal bool compare_string( char * string_A, char * string_B);
 internal unsigned char * get_data_buffer_by_name(char * name);
 internal unsigned char * allocate_to_file_(char * name , int size , int count);
 internal void save_file();

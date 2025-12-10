@@ -3094,7 +3094,6 @@ internal void generate_nav_mesh()
         cell_data.blocked = false;
         cell_data.search_index = 0;
         cell_data.cost = 0;
-        cell_data.is_path = false;
         
         nav_mesh_cell[cell_index] = cell_data;
     }
@@ -3166,8 +3165,12 @@ internal void generate_nav_mesh()
     }
 }
 
-internal Int3 * path_finding(Vector3 start , Vector3 end)
+//this is extremely slow?
+internal PathResult path_finding(Vector3 start , Vector3 end)
 {
+    PathResult result = {};
+    result.path_found = false;
+    
     search_index++;
     
     start = Vector3Subtract(start , nav_mesh_start_box.position);
@@ -3180,19 +3183,19 @@ internal Int3 * path_finding(Vector3 start , Vector3 end)
     end = Vector3Scale(end , 1.0 / nav_mesh_cell_size); 
     Int3 end_cell = {end.x , end.y , end.z};
     
-    if(start_cell.x >= nav_mesh_size.x) return 0;
-    if(start_cell.y >= nav_mesh_size.y) return 0;
-    if(start_cell.y >= nav_mesh_size.z) return 0;
-    if(start_cell.x < 0) return 0;
-    if(start_cell.y < 0) return 0;
-    if(start_cell.y < 0) return 0;
+    if(start_cell.x >= nav_mesh_size.x) return result;
+    if(start_cell.y >= nav_mesh_size.y) return result;
+    if(start_cell.y >= nav_mesh_size.z) return result;
+    if(start_cell.x < 0) return result;
+    if(start_cell.y < 0) return result;
+    if(start_cell.y < 0) return result;
     
-    if(end_cell.x >= nav_mesh_size.x) return 0;
-    if(end_cell.y >= nav_mesh_size.y) return 0;
-    if(end_cell.y >= nav_mesh_size.z) return 0;
-    if(end_cell.x < 0) return 0;
-    if(end_cell.y < 0) return 0;
-    if(end_cell.y < 0) return 0;
+    if(end_cell.x >= nav_mesh_size.x) return result;
+    if(end_cell.y >= nav_mesh_size.y) return result;
+    if(end_cell.y >= nav_mesh_size.z) return result;
+    if(end_cell.x < 0) return result;
+    if(end_cell.y < 0) return result;
+    if(end_cell.y < 0) return result;
     
     if(start_cell.x == end_cell.x)
     {
@@ -3200,7 +3203,7 @@ internal Int3 * path_finding(Vector3 start , Vector3 end)
         {
             if(start_cell.z == end_cell.z)
             {
-                return 0;
+                return result;
             }
         }
     }
@@ -3227,7 +3230,14 @@ internal Int3 * path_finding(Vector3 start , Vector3 end)
         
         for(int x = 0 , y = 0 , z = 0 ;;)
         {
-            Int3 cell = {x + search_cell.x - 1, y + search_cell.y - 1, z + search_cell.z - 1};
+            Int3 cell = {x , y  , z };
+            if(cell.x > 1) cell.x = -1;
+            if(cell.y > 1) cell.y = -1;
+            if(cell.z > 1) cell.z = -1;
+            
+            cell.x += search_cell.x;
+            cell.y += search_cell.y;
+            cell.z += search_cell.z;
             
             bool skip = false;
             if(cell.x >= nav_mesh_size.x) skip = true;
@@ -3363,29 +3373,34 @@ internal Int3 * path_finding(Vector3 start , Vector3 end)
     
     if(path_found)
     {
+        result.path_found = true;
+        result.capacity = 64;
+        result.count = 0;
+        result.path = allocate_frame(Int3 , result.capacity);
+        
         Int3 cell = end_cell;
         
         for(;;)
         {
             CellData * cell_data = nav_mesh_cell + cell_to_index(cell);
-            cell_data->is_path = true;
-            Int3 previous_cell = cell_data->previous_cell;
+            REALLOCATE_BUFFER_IF_TOO_SMALL(Int3 , result.path , result.capacity , result.count , allocate_frame_);
+            Int3 * new_path_cell = result.path + result.count++;
+            (*new_path_cell) = cell;
             
-            if(previous_cell.x == start_cell.x)
+            if(cell.x == start_cell.x)
             {
-                if(previous_cell.y == start_cell.y)
+                if(cell.y == start_cell.y)
                 {
-                    if(previous_cell.z == start_cell.z)
+                    if(cell.z == start_cell.z)
                     {
-                        nav_mesh_cell[cell_to_index(previous_cell)].is_path = true;
                         break;
                     }
                 }
             }
             
-            cell = previous_cell;
+            cell = cell_data->previous_cell;
         }
     }
     
-    return 0;
+    return result;
 }

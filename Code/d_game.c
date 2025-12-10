@@ -2381,15 +2381,31 @@ internal void viewport_update()
         D_game_draw();
         render_state.draw_flag = 0;
         
+#if 0
         double nav_mesh_time = time_stamp();
         generate_nav_mesh();
         nav_mesh_time = (time_stamp() - nav_mesh_time) / (1000.0f);
         printf( "nav mesh time : %f\n" , nav_mesh_time );
+#endif
         
+#if 0
         double path_find_time = time_stamp();
-        path_finding( grid_origin, player.box.position);
+        PathResult result = path_finding( grid_origin, player.box.position);
         path_find_time = (time_stamp() - path_find_time) / (1000.0f);
         printf( "path time : %f\n" , path_find_time );
+        
+        for(int cell_index = 0 ; cell_index < result.count ; cell_index++)
+        {
+            Int3 cell = result.path[cell_index];
+            
+            Box box = nav_mesh_start_box;
+            box.position.x += cell.x * nav_mesh_cell_size;
+            box.position.y += cell.y * nav_mesh_cell_size;
+            box.position.z += cell.z * nav_mesh_cell_size;
+            
+            draw_box_line(box , Fade(YELLOW , 0.2f) , 5);
+        }
+#endif
         
         draw_box_line(nav_mesh_start_box , YELLOW , 5);
         draw_box_line(nav_mesh_whole_box , YELLOW , 10);
@@ -2397,15 +2413,6 @@ internal void viewport_update()
         for(int cell_x = 0 , cell_y = 0 , cell_z = 0;;)
         {
             int cell_index = cell_to_index((Int3){cell_x , cell_y , cell_z});
-            if(nav_mesh_cell[cell_index].is_path)
-            {
-                Box box = nav_mesh_start_box;
-                box.position.x += cell_x * nav_mesh_cell_size;
-                box.position.y += cell_y * nav_mesh_cell_size;
-                box.position.z += cell_z * nav_mesh_cell_size;
-                
-                draw_box_line(box , Fade(YELLOW , 0.2f) , 5);
-            }
             
             cell_x++;
             if(cell_x >= nav_mesh_size.x)
@@ -3322,64 +3329,6 @@ internal GAME_LOOP(game_loop)
     
 }
 
-internal bool compare_string_C(char * string_A, char * string_B , int count)
-{
-    
-    for(int char_index = 0 ; char_index < count ; char_index++)
-    {
-        if(string_A[char_index] != string_B[char_index])
-        {
-            return false;
-        }
-    }
-    
-    return true;
-}
-
-internal bool compare_string_W( wchar_t * string_A , wchar_t * string_B)
-{
-    
-    int string_B_length = 0;
-    for(int char_index = 0 ; string_B[char_index] != '\0' ; char_index++ ,string_B_length++);
-    
-    int name_length = 0;
-    for(int char_index = 0 ; string_A[char_index] != '\0' ; char_index++ , name_length++);
-    
-    if(name_length != string_B_length) return false;
-    
-    for(int char_index = 0 ; char_index < name_length ; char_index++)
-    {
-        if(string_A[char_index] != string_B[char_index])
-        {
-            return false;
-        }
-    }
-    
-    return true;
-}
-
-internal bool compare_string( char * string_A, char * string_B)
-{
-    
-    int string_B_length = 0;
-    for(int char_index = 0 ; string_B[char_index] != '\0' ; char_index++ ,string_B_length++);
-    
-    int name_length = 0;
-    for(int char_index = 0 ; string_A[char_index] != '\0' ; char_index++ , name_length++);
-    
-    if(name_length != string_B_length) return false;
-    
-    for(int char_index = 0 ; char_index < name_length ; char_index++)
-    {
-        if(string_A[char_index] != string_B[char_index])
-        {
-            return false;
-        }
-    }
-    
-    return true;
-}
-
 #define read_buffer(data_to_assign , name , type , index) \
 {\
 local_persist bool initialized = false;\
@@ -3914,11 +3863,11 @@ internal GAME_UNLOAD(game_unload)
     free(app_data->frame_time_memory.start_memory);
     free(app_data->run_time_memory.start_memory);
     
+    WSACleanUp();
 }
 
 internal void game_init()
 {
-	
     game_camera.target = (Vector3){};
 	game_camera.position = (Vector3){ 0,0,-1 };
     game_camera.projection = CAMERA_PERSPECTIVE;
@@ -3943,7 +3892,6 @@ internal void game_init()
     printf("\nGame Load Time: %f\n" , (time_stamp() - game_load_time) / (1000.0 * 1000.0));
     
     generate_nav_mesh();
-    //clear_array(&quad_in_map_array);
     
     search_queue_capacity = 128;
     search_queue = allocate_temp( Int3 , search_queue_capacity);
@@ -3982,6 +3930,12 @@ internal void game_init()
         }
     }
     
+    if(app_data->is_server)
+    {
+        SADATA data = {};
+        
+        WSAStartup( MAKEWORD(2,2) , &data);
+    }
 }
 
 extern GAME_LOAD(game_load)

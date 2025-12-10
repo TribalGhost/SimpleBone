@@ -33,11 +33,28 @@ internal void APIENTRY DebugCallback(GLenum source, GLenum type, GLuint id, GLen
 }
 
 
-int main()
+int main(int parameter_count, char ** parameters)
 {
-	timeBeginPeriod(1);
-    
 	app_data = &_GlobalData;
+    app_data->is_server = false;
+    app_data->is_client = false;
+    
+    for(int parameter_index = 0 ; parameter_index < parameter_count ; parameter_index++)
+    {
+        char * parameter = parameters[parameter_index];
+        
+        if(compare_string( parameter, "-s"))
+        {
+            app_data->is_server = true;
+        }
+        
+        if(compare_string(parameter , "-c"))
+        {
+            app_data->is_client = true;
+        }
+    }
+    
+    timeBeginPeriod(1);
     
 	app_data->window_size = (Vector2){ 1280,720 };
     

@@ -413,6 +413,9 @@ struct D_App_Data
 	char aplication_path[MAX_FILE_PATH];
     
     HDC _HDC;
+    
+    bool is_server;
+    bool is_client;
 };
 
 global D_App_Data* app_data = 0;

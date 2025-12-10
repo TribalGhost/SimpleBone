@@ -636,8 +636,8 @@ global const MemberMetaData member_meta_D_FontContext[10] =
 	{ "glyph_atlas_texture" , false,false,false,0,_MT_Texture2D,"Texture2D",(int)&((D_FontContext *)0)->glyph_atlas_texture ,sizeof(Texture2D),}, 
 };
 
-global int member_meta_count_D_App_Data = 32;
-global const MemberMetaData member_meta_D_App_Data[32] =
+global int member_meta_count_D_App_Data = 34;
+global const MemberMetaData member_meta_D_App_Data[34] =
 {
 	{ "run_time_memory" , false,false,false,0,_MT_TemporayMemory,"TemporayMemory",(int)&((D_App_Data *)0)->run_time_memory ,sizeof(TemporayMemory),}, 
 	{ "frame_time_memory" , false,false,false,0,_MT_TemporayMemory,"TemporayMemory",(int)&((D_App_Data *)0)->frame_time_memory ,sizeof(TemporayMemory),}, 
@@ -671,6 +671,8 @@ global const MemberMetaData member_meta_D_App_Data[32] =
 	{ "window_text_size" , false,false,false,0,_MT_float,"float",(int)&((D_App_Data *)0)->window_text_size ,sizeof(float),}, 
 	{ "aplication_path" , false,false,true,MAX_FILE_PATH,_MT_char,"char",(int)&((D_App_Data *)0)->aplication_path ,sizeof(char),}, 
 	{ "_HDC" , false,false,false,0,_MT_HDC,"HDC",(int)&((D_App_Data *)0)->_HDC ,sizeof(HDC),}, 
+	{ "is_server" , false,false,false,0,_MT_bool,"bool",(int)&((D_App_Data *)0)->is_server ,sizeof(bool),}, 
+	{ "is_client" , false,false,false,0,_MT_bool,"bool",(int)&((D_App_Data *)0)->is_client ,sizeof(bool),}, 
 };
 
 internal StructMetaData * get_all_type_member_info()

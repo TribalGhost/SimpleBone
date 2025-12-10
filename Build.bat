@@ -41,7 +41,7 @@ set DLLBuildStartTime=%time%
 
 ::cl -w /FC /TC /O1 ..\code\Test.c
 
-cl  %build_parameters% ..\code\d_game.c raylib.lib -LD /link /INCREMENTAL:no /PDB:DGame_%timestamp%.pdb /dll raylib.lib user32.lib opengl32.lib winmm.lib gdi32.lib shell32.lib ole32.lib comdlg32.lib /libpath:..\lib /out:DGame.dll /export:game_load
+cl  %build_parameters% ..\code\d_game.c raylib.lib -LD /link /INCREMENTAL:no /PDB:DGame_%timestamp%.pdb /dll raylib.lib user32.lib opengl32.lib winmm.lib gdi32.lib shell32.lib ole32.lib comdlg32.lib ws2_32.lib /libpath:..\lib /out:DGame.dll /export:game_load
 
 set DLLBuildEndTime=%time%
 
@@ -50,6 +50,14 @@ del Lock.tmp
 set MainBuildStartTime=%time%
 
 cl %build_parameters% ..\code\d_main.c /link /INCREMENTAL:no raylib.lib user32.lib opengl32.lib kernel32.lib winmm.lib gdi32.lib shell32.lib ole32.lib comdlg32.lib /libpath:..\lib /out:DAPP.exe /SUBSYSTEM:CONSOLE /ENTRY:mainCRTStartup
+
+mkdir ..\build2\
+mkdir ..\build2\Game\
+mkdir ..\build_temp\
+robocopy ..\build2\Game\ ..\build_temp\ /mir /r:0 /w:0
+robocopy ..\build\ ..\build2\ /mir /r:0 /w:0
+robocopy ..\build_temp\ ..\build2\Game\
+rmdir /s /q ..\build_temp\
 
 set MainBuildEndTime=%time%
 
