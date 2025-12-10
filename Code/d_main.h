@@ -258,7 +258,6 @@ struct HashTableSlot
     
 	int next_index;
 	int previous_index;
-    
 };
 
 typedef struct HashTable HashTable; 
@@ -354,7 +353,6 @@ typedef GAME_UNLOAD((GameUnloadFunction));
 
 struct D_App_Data
 {
-    
     //you shall join the other!
 	TemporayMemory run_time_memory;
     TemporayMemory frame_time_memory;

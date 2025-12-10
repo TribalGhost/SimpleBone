@@ -229,4 +229,3 @@ struct stbrp_context
 #define STB_RECT_PACK_IMPLEMENTATION
 #include "stb_rect_pack.h" //packing texture into texture atlas
 #include "stb_truetype.h" //handling text
-

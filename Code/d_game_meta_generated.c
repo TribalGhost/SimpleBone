@@ -101,6 +101,8 @@ enum _type_meta
 	_MT_SplitType,
 	_MT_CellIterator,
 	_MT_Player,
+	_MT_Int3,
+	_MT_CellData,
 	_MT_GLFWwindow,
 	_MT_GameLoadFunction,
 	_MT_GameLoopFunction,
@@ -210,6 +212,8 @@ sizeof(BoundingBoxNode),//BoundingBoxNode
 sizeof(SplitType),//SplitType 
 sizeof(CellIterator),//CellIterator 
 sizeof(Player),//Player 
+sizeof(Int3),//Int3 
+sizeof(CellData),//CellData 
 0,//GLFWwindow 
 0,//GameLoadFunction 
 0,//GameLoopFunction 
@@ -318,6 +322,8 @@ const char * _type_meta_name[] =
 	"SplitType",
 	"CellIterator",
 	"Player",
+	"Int3",
+	"CellData",
 	"GLFWwindow",
 	"GameLoadFunction",
 	"GameLoopFunction",
@@ -424,6 +430,8 @@ true,
 false,
 false,
 true,
+false,
+false,
 false,
 false,
 false,
@@ -640,6 +648,8 @@ enum introspected_struct
 	IS_BoundingBoxNode, 
 	IS_CellIterator, 
 	IS_Player, 
+	IS_Int3, 
+	IS_CellData, 
 };
 
 global int member_meta_count_Color = 4;
@@ -1386,6 +1396,24 @@ global const MemberMetaData member_meta_Player[4] =
 	{ "box" , false,false,false,0,_MT_Box,"Box",(int)&((Player *)0)->box ,sizeof(Box),}, 
 };
 
+global int member_meta_count_Int3 = 3;
+global const MemberMetaData member_meta_Int3[3] =
+{
+	{ "x" , false,false,false,0,_MT_int,"int",(int)&((Int3 *)0)->x ,sizeof(int),}, 
+	{ "y" , false,false,false,0,_MT_int,"int",(int)&((Int3 *)0)->y ,sizeof(int),}, 
+	{ "z" , false,false,false,0,_MT_int,"int",(int)&((Int3 *)0)->z ,sizeof(int),}, 
+};
+
+global int member_meta_count_CellData = 5;
+global const MemberMetaData member_meta_CellData[5] =
+{
+	{ "blocked" , false,false,false,0,_MT_bool,"bool",(int)&((CellData *)0)->blocked ,sizeof(bool),}, 
+	{ "search_index" , false,false,false,0,_MT_unsigned_int,"unsigned_int",(int)&((CellData *)0)->search_index ,sizeof(unsigned int),}, 
+	{ "cost" , false,false,false,0,_MT_float,"float",(int)&((CellData *)0)->cost ,sizeof(float),}, 
+	{ "previous_cell" , false,false,false,0,_MT_Int3,"Int3",(int)&((CellData *)0)->previous_cell ,sizeof(Int3),}, 
+	{ "is_path" , false,false,false,0,_MT_bool,"bool",(int)&((CellData *)0)->is_path ,sizeof(bool),}, 
+};
+
 internal StructMetaData * get_all_type_member_info()
 {
 StructMetaData * all_struct = malloc(sizeof(StructMetaData) * _MT_type_count);
@@ -1489,6 +1517,8 @@ StructMetaData * all_struct = malloc(sizeof(StructMetaData) * _MT_type_count);
 	all_struct[_MT_SplitType] = (StructMetaData){};
 	all_struct[_MT_CellIterator] = (StructMetaData)GetStructMeta(CellIterator);
 	all_struct[_MT_Player] = (StructMetaData)GetStructMeta(Player);
+	all_struct[_MT_Int3] = (StructMetaData)GetStructMeta(Int3);
+	all_struct[_MT_CellData] = (StructMetaData)GetStructMeta(CellData);
 	all_struct[_MT_GLFWwindow] = (StructMetaData){};
 	all_struct[_MT_GameLoadFunction] = (StructMetaData){};
 	all_struct[_MT_GameLoopFunction] = (StructMetaData){};
@@ -1766,6 +1796,9 @@ internal bool iterate_cell_by_bound(CellIterator * iterator, Vector3 * vertices 
 internal bool bounding_box_collided(BoundingBoxNode box_a , BoundingBoxNode box_b);
 internal void get_bound(Vector3 * vertices , int vertices_count , Vector3 * right_top_forward , Vector3 * left_bottom_backward );
 internal BoundingBoxNode * split_bounding_box(BoundingBoxNode * buffer , int buffer_count , int split_type);
+internal int cell_to_index(Int3 cell);
+internal void generate_nav_mesh();
+internal Int3 * path_finding(Vector3 start , Vector3 end);
 internal bool check_selected_bone_rotation( Bone * final_bone_array_copy, int single_bone_index , Clip * clip_to_assign);
 internal void bone_selection_and_edit_bone_state( int current_frame_index);
 internal void bone_mouse_menu( Bone * single_editing_bone , Clip * clip , int current_frame_index);

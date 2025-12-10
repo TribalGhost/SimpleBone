@@ -1811,13 +1811,11 @@ internal BoneSelectionResult bone_selection(Vector2 size , Color unactive_color 
                 new_data->hit_point = hit_point;
                 new_data->bone_index = bone_index;
                 draw_rect_line_E(bone_screen_rect , active_color , 4);
-                
             }
             else
             {
                 draw_rect_line_E(bone_screen_rect , unactive_color , 4);
             }
-            
         }
     }
     
@@ -2791,6 +2789,7 @@ internal int shape_cell_hash(int x , int y , int z)
     return hash_int( hash_size * hash_size * z + hash_size * y + x );
 }
 
+//remove this
 internal bool iterate_cell_by_bound(CellIterator * iterator, Vector3 * vertices , int vertex_count , float cell_size)
 {
     if(!iterator->initialized)
@@ -2942,6 +2941,13 @@ internal BoundingBoxNode * split_bounding_box(BoundingBoxNode * buffer , int buf
     root_node->left = 0;
     root_node->right = 0;
     
+    if(buffer_count == 2)
+    {
+        root_node->left = buffer;
+        root_node->right = buffer + 1;
+        return root_node;
+    }
+    
     for(int bounding_box_index = 0; bounding_box_index < buffer_count ; bounding_box_index++)
     {
         BoundingBoxNode * bounding_box = buffer + bounding_box_index;
@@ -3008,4 +3014,378 @@ internal BoundingBoxNode * split_bounding_box(BoundingBoxNode * buffer , int buf
     root_node->left = split_bounding_box(left_buffer , left_buffer_count , split_type);
     
     return root_node;
+}
+
+internal int cell_to_index(Int3 cell)
+{
+    if(cell.x < 0) CATCH;
+    if(cell.y < 0) CATCH;
+    if(cell.z < 0) CATCH;
+    if(cell.x > nav_mesh_size.x) CATCH;
+    if(cell.y > nav_mesh_size.y) CATCH;
+    if(cell.z > nav_mesh_size.z) CATCH;
+    
+    return cell.z * nav_mesh_size.x * nav_mesh_size.y + cell.y * nav_mesh_size.x + cell.x;
+}
+
+//TODO: big to-do here
+//make it better? less cell and build faster
+//my best chance is delaunay triangulation
+internal void generate_nav_mesh()
+{
+    Vector3 whole_mesh_max = { -FLT_MAX , -FLT_MAX , -FLT_MAX };
+    Vector3 whole_mesh_min = { FLT_MAX , FLT_MAX , FLT_MAX };
+    
+    array_foreach(box_index , &box_in_map_array)
+    {
+        Box box = box_in_map[box_index];
+        get_bound(box_to_point(box) , box_vertex_count , &whole_mesh_max , &whole_mesh_min );
+    }
+    
+    Vector3 mesh_max = position_to_grid(Vector3Scale(whole_mesh_max , 1.0) , nav_mesh_cell_size);
+    Vector3 mesh_min = position_to_grid(Vector3Scale(whole_mesh_min , 1.0) , nav_mesh_cell_size);
+    
+    mesh_max = Vector3Scale(mesh_max , 1.0 / nav_mesh_cell_size);
+    mesh_min = Vector3Scale(mesh_min , 1.0 / nav_mesh_cell_size);
+    
+    Int3 nav_mesh_start = {};
+    nav_mesh_start.x = mesh_min.x;
+    nav_mesh_start.y = mesh_min.y;
+    nav_mesh_start.z = mesh_min.z;
+    
+    //why plus one?
+    Vector3 mesh_cell_size_float = Vector3Subtract(mesh_max , mesh_min);
+    nav_mesh_size.x = fabs(mesh_cell_size_float.x) + 1;
+    nav_mesh_size.y = fabs(mesh_cell_size_float.y) + 1;
+    nav_mesh_size.z = fabs(mesh_cell_size_float.z) + 1;
+    
+    Vector3 cell_start = Vector3Scale(mesh_min , nav_mesh_cell_size);
+    
+    Vector3 cell_end = Vector3Scale(mesh_max , nav_mesh_cell_size);
+    cell_end.x -= nav_mesh_cell_size * 0.5f;
+    cell_end.y -= nav_mesh_cell_size * 0.5f;
+    cell_end.z -= nav_mesh_cell_size * 0.5f;
+    
+    nav_mesh_start_box = get_box();
+    nav_mesh_start_box.size = (Vector3){nav_mesh_cell_size , nav_mesh_cell_size , nav_mesh_cell_size};
+    nav_mesh_start_box.position = Vector3Scale(mesh_min , nav_mesh_cell_size);
+    nav_mesh_start_box.position.x -= nav_mesh_cell_size * 0.5;
+    nav_mesh_start_box.position.y -= nav_mesh_cell_size * 0.5;
+    nav_mesh_start_box.position.z -= nav_mesh_cell_size * 0.5;
+    
+    nav_mesh_whole_box = get_box();
+    nav_mesh_whole_box.position = Vector3Lerp(cell_start , cell_end , 0.5f);
+    nav_mesh_whole_box.size.x = nav_mesh_size.x * nav_mesh_cell_size;
+    nav_mesh_whole_box.size.y = nav_mesh_size.y * nav_mesh_cell_size;
+    nav_mesh_whole_box.size.z = nav_mesh_size.z * nav_mesh_cell_size;
+    
+    int new_nav_mesh_count = nav_mesh_size.x * nav_mesh_size.y * nav_mesh_size.z;
+    int new_nav_mesh_capacity = 1;
+    for(; new_nav_mesh_count > new_nav_mesh_capacity; new_nav_mesh_capacity*=2);
+    if(new_nav_mesh_capacity > nav_mesh_cell_capacity)
+    {
+        nav_mesh_cell_capacity = new_nav_mesh_capacity;
+        nav_mesh_cell = allocate_temp(CellData , nav_mesh_cell_capacity);
+    }
+    
+    for(int cell_index = 0; cell_index < new_nav_mesh_count ; cell_index++)
+    {
+        CellData cell_data = {};
+        cell_data.blocked = false;
+        cell_data.search_index = 0;
+        cell_data.cost = 0;
+        cell_data.is_path = false;
+        
+        nav_mesh_cell[cell_index] = cell_data;
+    }
+    
+    array_foreach(box_index , &box_in_map_array)
+    {
+        Box box = box_in_map[box_index];
+        Vector3 * box_vertices = box_to_point(box);
+        
+        Vector3 box_max = {-FLT_MAX , -FLT_MAX , -FLT_MAX};
+        Vector3 box_min = {FLT_MAX , FLT_MAX , FLT_MAX};
+        get_bound(box_to_point(box) , box_vertex_count , &box_max , &box_min);
+        
+        box_max = position_to_grid(box_max , nav_mesh_cell_size);
+        box_min = position_to_grid(box_min , nav_mesh_cell_size);
+        
+        box_max = Vector3Scale(box_max , 1.0 / nav_mesh_cell_size);
+        box_min = Vector3Scale(box_min , 1.0 / nav_mesh_cell_size);
+        
+        Int3 box_cell_max = {};
+        box_cell_max.x = box_max.x;
+        box_cell_max.y = box_max.y;
+        box_cell_max.z = box_max.z;
+        
+        Int3 box_cell_min = {};
+        box_cell_min.x = box_min.x;
+        box_cell_min.y = box_min.y;
+        box_cell_min.z = box_min.z;
+        
+        for(int x = box_cell_min.x, y = box_cell_min.y, z = box_cell_min.z;;)
+        {
+            Vector3 cell_position = {x , y ,z};
+            cell_position = Vector3Scale(cell_position , nav_mesh_cell_size);
+            cell_position.x -= nav_mesh_cell_size * 0.5f;
+            cell_position.y -= nav_mesh_cell_size * 0.5f;
+            cell_position.z -= nav_mesh_cell_size * 0.5f;
+            
+            Box cell_box = get_box();
+            cell_box.position = cell_position;
+            cell_box.size = (Vector3){nav_mesh_cell_size , nav_mesh_cell_size , nav_mesh_cell_size};
+            //draw_box_line(cell_box , Fade(WHITE , 0.1) , 5);
+            
+            if(check_shape((Vector3){} , box_to_point(cell_box) , box_vertex_count , box_vertices , box_vertex_count))
+            {
+                Int3 cell = {};
+                cell.x = x - nav_mesh_start.x;
+                cell.y = y - nav_mesh_start.y;
+                cell.z = z - nav_mesh_start.z;
+                
+                nav_mesh_cell[cell_to_index(cell)].blocked = true;
+            }
+            
+            x++;
+            if(x > box_cell_max.x)
+            {
+                x = box_cell_min.x;
+                y++;
+            }
+            if(y > box_cell_max.y)
+            {
+                y = box_cell_min.y;
+                z++;
+            }
+            if(z > box_cell_max.z)
+            {
+                break;
+            }
+        }
+    }
+}
+
+internal Int3 * path_finding(Vector3 start , Vector3 end)
+{
+    search_index++;
+    
+    start = Vector3Subtract(start , nav_mesh_start_box.position);
+    start = position_to_grid(start , nav_mesh_cell_size);
+    start = Vector3Scale(start , 1.0 / nav_mesh_cell_size); 
+    Int3 start_cell = {start.x , start.y , start.z};
+    
+    end = Vector3Subtract(end , nav_mesh_start_box.position);
+    end = position_to_grid(end , nav_mesh_cell_size);
+    end = Vector3Scale(end , 1.0 / nav_mesh_cell_size); 
+    Int3 end_cell = {end.x , end.y , end.z};
+    
+    if(start_cell.x >= nav_mesh_size.x) return 0;
+    if(start_cell.y >= nav_mesh_size.y) return 0;
+    if(start_cell.y >= nav_mesh_size.z) return 0;
+    if(start_cell.x < 0) return 0;
+    if(start_cell.y < 0) return 0;
+    if(start_cell.y < 0) return 0;
+    
+    if(end_cell.x >= nav_mesh_size.x) return 0;
+    if(end_cell.y >= nav_mesh_size.y) return 0;
+    if(end_cell.y >= nav_mesh_size.z) return 0;
+    if(end_cell.x < 0) return 0;
+    if(end_cell.y < 0) return 0;
+    if(end_cell.y < 0) return 0;
+    
+    if(start_cell.x == end_cell.x)
+    {
+        if(start_cell.y == end_cell.y)
+        {
+            if(start_cell.z == end_cell.z)
+            {
+                return 0;
+            }
+        }
+    }
+    
+    int start_cell_index = cell_to_index(start_cell);
+    CellData * start_cell_data = nav_mesh_cell + start_cell_index;
+    start_cell_data->cost = 0;
+    
+    int search_queue_head = 0;
+    int search_queue_tail = 0;
+    search_queue[search_queue_tail++] = start_cell;
+    bool path_found = false;
+    
+    for(;;)
+    {
+        if(path_found) break;
+        if(search_queue_head == search_queue_tail) break;
+        Int3 search_cell = search_queue[search_queue_head++];
+        if(search_queue_head >= search_queue_capacity) search_queue_head = 0;
+        
+        int search_cell_index = cell_to_index(search_cell);
+        CellData * search_cell_data = nav_mesh_cell + search_cell_index;
+        search_cell_data->search_index = search_index;
+        
+        for(int x = 0 , y = 0 , z = 0 ;;)
+        {
+            Int3 cell = {x + search_cell.x - 1, y + search_cell.y - 1, z + search_cell.z - 1};
+            
+            bool skip = false;
+            if(cell.x >= nav_mesh_size.x) skip = true;
+            if(cell.x < 0) skip = true;
+            if(cell.y >= nav_mesh_size.y) skip = true;
+            if(cell.y < 0) skip = true;
+            if(cell.z >= nav_mesh_size.z) skip = true;
+            if(cell.z < 0) skip = true;
+            
+            if(skip)
+            {
+                goto ITERATE_CELL;
+            }
+            
+            int cell_index = cell_to_index(cell);
+            CellData * cell_data = nav_mesh_cell + cell_index;
+            
+            if(cell.x == end_cell.x)
+            {
+                if(cell.y == end_cell.y)
+                {
+                    if(cell.z == end_cell.z)
+                    {
+                        cell_data->previous_cell = search_cell;
+                        path_found = true;
+                        break;
+                    }
+                }
+            }
+            
+            bool add_to_stack = false;
+            
+            float x_cost = x - 1;
+            x_cost *= x_cost;
+            
+            float y_cost = y - 1;
+            y_cost *= y_cost;
+            
+            float z_cost = z - 1;
+            z_cost *= z_cost;
+            
+            float cell_cost = ( x_cost + y_cost + z_cost) + search_cell_data->cost;
+            cell_cost += (end_cell.x - cell.x) * (end_cell.x - cell.x) + (end_cell.y - cell.y) * (end_cell.y - cell.y) + (end_cell.z - cell.z) * (end_cell.z - cell.z);
+            
+            if(cell_data->search_index != search_index)
+            {
+                add_to_stack = true;
+            }
+            else
+            {
+                if(cell_data->cost > cell_cost)
+                {
+                    add_to_stack = true;
+                }
+            }
+            
+            if(add_to_stack)
+            {
+                cell_data->cost = cell_cost;
+                cell_data->previous_cell = search_cell;
+                cell_data->search_index = search_index;
+                
+                int new_cell_index = search_queue_tail++;
+                search_queue[new_cell_index] = cell;
+                
+                for(int queue_index = new_cell_index;;)
+                {
+                    if(queue_index == search_queue_head) break;
+                    int previous_queue_index = queue_index-1;
+                    
+                    CellData * current_cell_data = nav_mesh_cell + cell_to_index(search_queue[queue_index]);
+                    CellData * previous_cell_data = nav_mesh_cell + cell_to_index(search_queue[previous_queue_index]);
+                    
+                    if(current_cell_data->cost < previous_cell_data->cost)
+                    {
+                        Int3 temp_cell = search_queue[previous_queue_index];
+                        search_queue[previous_queue_index] = search_queue[queue_index];
+                        search_queue[queue_index] = temp_cell;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                    
+                    queue_index--;
+                    if(queue_index < 0) queue_index = search_queue_capacity - 1;
+                }
+                
+                if(search_queue_tail >= search_queue_capacity) search_queue_tail = 0;
+                if(search_queue_tail == search_queue_head)
+                {
+                    int old_queue_capacity = search_queue_capacity;
+                    search_queue_capacity *= 2;
+                    if(search_queue_capacity > 10000) CATCH;
+                    Int3 * new_queue = allocate_temp(Int3 , search_queue_capacity);
+                    
+                    int new_queue_index = 0;
+                    for(int queue_index = search_queue_head; queue_index < old_queue_capacity; queue_index++ , new_queue_index++)
+                    {
+                        new_queue[new_queue_index] = search_queue[queue_index];
+                    }
+                    
+                    for(int queue_index = 0; queue_index < search_queue_head ; queue_index++ , new_queue_index++)
+                    {
+                        new_queue[new_queue_index] = search_queue[queue_index];
+                    }
+                    
+                    search_queue = new_queue;
+                    search_queue_head = 0;
+                    search_queue_tail = old_queue_capacity - 1;
+                }
+            }
+            
+            ITERATE_CELL:
+            
+            x++;
+            if(x >= 3)
+            {
+                x = 0;
+                y++;
+            }
+            if(y >= 3)
+            {
+                y = 0;
+                z++;
+            }
+            if(z >= 3)
+            {
+                break;
+            }
+        }
+    }
+    
+    if(path_found)
+    {
+        Int3 cell = end_cell;
+        
+        for(;;)
+        {
+            CellData * cell_data = nav_mesh_cell + cell_to_index(cell);
+            cell_data->is_path = true;
+            Int3 previous_cell = cell_data->previous_cell;
+            
+            if(previous_cell.x == start_cell.x)
+            {
+                if(previous_cell.y == start_cell.y)
+                {
+                    if(previous_cell.z == start_cell.z)
+                    {
+                        nav_mesh_cell[cell_to_index(previous_cell)].is_path = true;
+                        break;
+                    }
+                }
+            }
+            
+            cell = previous_cell;
+        }
+    }
+    
+    return 0;
 }

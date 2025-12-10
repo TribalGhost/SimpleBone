@@ -2073,8 +2073,8 @@ internal void single_update()
     
     player.box = get_box();
     player.box.position = player.position;
-    player.box.size = (Vector3){0.56, 0.6 , 0.4};
-    player.box.rotation = QuaternionFromVector3ToVector3( (Vector3){0,1,0} , Vector3Normalize( (Vector3){0.5,1,2.63}) );
+    player.box.size = (Vector3){0.56, 0.32 , 0.4};
+    //player.box.rotation = QuaternionFromVector3ToVector3( (Vector3){0,1,0} , Vector3Normalize( (Vector3){0.5,1,2.63}) );
     Vector3 * player_box_vertices = box_to_point(player.box);
     
     player.velocity = Vector3Add(player.velocity , (Vector3){0,-UNIT_SIZE * 0.1f,0});
@@ -2281,7 +2281,7 @@ internal void single_update()
         }
     }
     
-    printf( "making tree : %f , walk in tree : %f , check : %f count : %d\n", shape_tree_time , tree_walk_time , (time_stamp() - shape_impact_check_time) / 1000 , shape_buffer_count);
+    //printf( "making tree : %f , walk in tree : %f , check : %f count : %d\n", shape_tree_time , tree_walk_time , (time_stamp() - shape_impact_check_time) / 1000 , shape_buffer_count);
     
     //if(no_collision) ;
     player.position = Vector3Add(player.position , player.velocity);
@@ -2380,6 +2380,49 @@ internal void viewport_update()
         
         D_game_draw();
         render_state.draw_flag = 0;
+        
+        double nav_mesh_time = time_stamp();
+        generate_nav_mesh();
+        nav_mesh_time = (time_stamp() - nav_mesh_time) / (1000.0f);
+        printf( "nav mesh time : %f\n" , nav_mesh_time );
+        
+        double path_find_time = time_stamp();
+        path_finding( grid_origin, player.box.position);
+        path_find_time = (time_stamp() - path_find_time) / (1000.0f);
+        printf( "path time : %f\n" , path_find_time );
+        
+        draw_box_line(nav_mesh_start_box , YELLOW , 5);
+        draw_box_line(nav_mesh_whole_box , YELLOW , 10);
+        
+        for(int cell_x = 0 , cell_y = 0 , cell_z = 0;;)
+        {
+            int cell_index = cell_to_index((Int3){cell_x , cell_y , cell_z});
+            if(nav_mesh_cell[cell_index].is_path)
+            {
+                Box box = nav_mesh_start_box;
+                box.position.x += cell_x * nav_mesh_cell_size;
+                box.position.y += cell_y * nav_mesh_cell_size;
+                box.position.z += cell_z * nav_mesh_cell_size;
+                
+                draw_box_line(box , Fade(YELLOW , 0.2f) , 5);
+            }
+            
+            cell_x++;
+            if(cell_x >= nav_mesh_size.x)
+            {
+                cell_x = 0;
+                cell_y++;
+            }
+            if(cell_y >= nav_mesh_size.y)
+            {
+                cell_y = 0;
+                cell_z++;
+            }
+            if(cell_z >= nav_mesh_size.z)
+            {
+                break;
+            }
+        }
         
         BoundingBoxNode * node_stack[128] = {};
         int node_stack_count = 0;
@@ -2491,7 +2534,6 @@ internal void viewport_update()
     
     if(within_viewport)
     {
-        
         bool edit_bone_state = false;
         
         if(editor_type == edit_base_pose) edit_bone_state = true;
@@ -2514,7 +2556,6 @@ internal void viewport_update()
                 
                 if(selected_reference_frame_index != -1)
                 {
-                    
                     Box right_box = get_box();
                     Box up_box = get_box();
                     Box forward_box = get_box();
@@ -2698,7 +2739,7 @@ internal void game_update()
 	}
     
 	if (editor->target_camera_zoom < 0.01f) editor->target_camera_zoom = 0.01f;
-	if (editor->target_camera_zoom > 20.0f) editor->target_camera_zoom = 20.0f;
+	if (editor->target_camera_zoom > 50.0f) editor->target_camera_zoom = 20.0f;
     
 	app_data->top = tan((game_camera.fovy * 0.5) * DEG2RAD);
 	app_data->right = app_data->top * (app_data->window_size.x / app_data->window_size.y);
@@ -2817,7 +2858,7 @@ internal void game_update()
     
     glDisable(GL_DEPTH_TEST);
     
-    float vertical_split = 0.6;
+    float vertical_split = 1.0;
     float horizontal_split = 0.5;
     
     R_Rectangle primary_viewport = {};
@@ -2877,7 +2918,7 @@ internal void game_update()
     tertiary_spilt->camera_up = Vector3Negate(Vector3Normalize(primary_camera_forward));
     tertiary_spilt->ortho = true;
     
-    //viewport_count = 1;
+    viewport_count = 1;
     
     local_persist Vector2 last_mouse_position = {1,1};
     if(mouse_position.x > 0)
@@ -3901,7 +3942,11 @@ internal void game_init()
     load_file();
     printf("\nGame Load Time: %f\n" , (time_stamp() - game_load_time) / (1000.0 * 1000.0));
     
+    generate_nav_mesh();
     //clear_array(&quad_in_map_array);
+    
+    search_queue_capacity = 128;
+    search_queue = allocate_temp( Int3 , search_queue_capacity);
     
     for(int bone_index = 0 ; bone_index < selected_model->bone_count ; bone_index++)
     {

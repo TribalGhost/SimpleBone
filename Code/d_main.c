@@ -2,7 +2,6 @@
 #include "d_main.h"
 //#include "d_main_meta_generated.cpp" // i can't figure out how to make offset an actual number
 
-
 #include "d_function.c"
 
 //#include "ui_editor_function_and_data.cpp"
@@ -12,14 +11,10 @@ global D_App_Data _GlobalData = {};
 
 internal GAME_LOOP(GameLoopStub) {}
 
-internal void APIENTRY DebugCallback(
-                                     GLenum source, GLenum type, GLuint id, GLenum severity,
-                                     GLsizei length, const GLchar* message, const void* user)
+internal void APIENTRY DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,GLsizei length, const GLchar* message, const void* user)
 {
-    
     if(type != GL_DEBUG_TYPE_PERFORMANCE)
     {
-        
         if (severity == GL_DEBUG_SEVERITY_HIGH || severity == GL_DEBUG_SEVERITY_MEDIUM)
         {
             printf(message);
@@ -27,18 +22,14 @@ internal void APIENTRY DebugCallback(
             
             if (IsDebuggerPresent())
             {
-                
                 printf("OpenGL error - check the callstack in debugger");
                 CATCH;
             }
             
             printf("OpenGL API usage error! Use debugger to examine call stack!");
             CATCH;
-            
         }
-        
     }
-    
 }
 
 
@@ -145,7 +136,7 @@ int main()
 	combine_file_path(DLLName, DLLPath);
 	combine_file_path(CopyDLLName, CopyDLLPath);
     
-	if (FileExists(DLLPath))
+	if(FileExists(DLLPath))
 	{
 		ModuleModTime = GetFileModTime(DLLPath);
 		if (!CopyFileA(DLLPath, CopyDLLPath, false))

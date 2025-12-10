@@ -1,6 +1,5 @@
 internal void animation_timeline_GUI()
 {
-    
 	Rect timeline_rect = get_rect();
 	timeline_rect.position = (Vector3){app_data->window_size.x / 2 , 0};
 	timeline_rect.size = (Vector2){ app_data->window_size.x - 60, 80};
@@ -915,6 +914,11 @@ internal void editor_GUI()
                 if(!delete_from_list(selected_reference_frame_index , &reference_frame_list)) CATCH;
                 selected_reference_frame_index = -1;
             }
+        }
+        
+        if(draw_menu_button_W(&top_right_bar , L"生成导航网格"))
+        {
+            generate_nav_mesh();
         }
         
         if(draw_menu_button_W_EX(&side_list_menu , L"原點" , YELLOW , selected_reference_frame_index == -1))

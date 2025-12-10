@@ -569,3 +569,37 @@ struct Player
 };
 
 global Player player = {};
+
+typedef struct Int3 Int3;
+struct Int3
+{
+    int x;
+    int y;
+    int z;
+};
+
+typedef struct CellData CellData;
+struct CellData
+{
+    bool blocked;
+    
+    unsigned int search_index;
+    float cost;
+    Int3 previous_cell;
+    
+    //take this out
+    bool is_path;
+};
+
+global unsigned int search_index = 0;
+
+global float nav_mesh_cell_size = GRID_SIZE * 0.5f;
+global Box nav_mesh_whole_box = {};
+global Box nav_mesh_start_box = {};
+
+global Int3 nav_mesh_size = {};
+global int nav_mesh_cell_capacity = 0;
+global CellData * nav_mesh_cell = 0;
+
+global int search_queue_capacity = 128;
+global Int3 * search_queue = 0;
