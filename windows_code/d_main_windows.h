@@ -61,16 +61,6 @@ struct StructMetaDataNode
     StructMetaDataNode* next;
 };
 
-//can't remember why you exist
-#define STRUCT_META_HASH_MAX 64 
-global StructMetaDataNode ** _struct_meta_hash = 0;
-
-//StructMetaData GetStructMeta(StructName)
-#define GetStructMeta(Struct) {member_meta_##Struct,member_meta_count_##Struct}
-#define GetMember(Struct ,MemberName) _ME_##Struct##_##MemberName
-#define GetType(Name) _MT_##Name
-#define GetNameByType(Type) _TypeMetaName[Type]
-
 //return an array of string
 #define enum_to_string(Enum) Enum##_String
 
@@ -111,8 +101,8 @@ global int save_header_count = 0;
 
 #define HASH_DEBUG 0
 
-typedef struct TemporayMemory TemporayMemory;
-struct TemporayMemory
+typedef struct GameMemory GameMemory;
+struct GameMemory
 {
 	unsigned char* start_memory;
 	unsigned char* current_memory;
@@ -300,9 +290,9 @@ typedef GAME_UNLOAD((GameUnloadFunction));
 
 struct D_App_Data
 {
-    //you shall join the other!
-	TemporayMemory run_time_memory;
-    TemporayMemory frame_time_memory;
+    GameMemory run_time_memory;
+    GameMemory frame_time_memory;
+    GameMemory arena_memory;
     
 	int loop_count;
     

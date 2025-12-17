@@ -1619,7 +1619,7 @@ internal bool iterate_array(int * data_index , Array * array)
 //this is much better
 #define array_foreach(data_index , array) for (int data_index = 0 ; iterate_array(&data_index , (array)) ; data_index++)
 
-internal void draw_arrow_line(Vector3 start_position , Vector3 end_position , Color start_color , Color end_color)
+internal void draw_arrow_line_EX(Vector3 start_position , Vector3 end_position , Color start_color , Color end_color)
 {
     float arrow_line_width = 10;
     
@@ -1646,18 +1646,18 @@ internal void draw_arrow_line(Vector3 start_position , Vector3 end_position , Co
 
 internal void draw_arrow_line_B(Vector3 start_position , Vector3 end_position , Color line_color)
 {
-    draw_arrow_line( start_position , end_position , line_color , line_color);
+    draw_arrow_line_EX( start_position , end_position , line_color , line_color);
 }
 
-internal void draw_arrow_ray_C(Vector3 start_position , Vector3 direction  ,Color start_color , Color end_color)
+internal void draw_arrow_ray_EX(Vector3 start_position , Vector3 direction  ,Color start_color , Color end_color)
 {
     Vector3 end_position = Vector3Add(start_position , direction );
-    draw_arrow_line(start_position , end_position , start_color , end_color);
+    draw_arrow_line_EX(start_position , end_position , start_color , end_color);
 }
 
-internal void draw_arrow_ray_D(Vector3 start_position , Vector3 direction  , Color line_color)
+internal void draw_arrow_ray(Vector3 start_position , Vector3 direction  , Color line_color)
 {
-    draw_arrow_ray_C(start_position , direction , line_color , line_color);
+    draw_arrow_ray_EX(start_position , direction , line_color , line_color);
 }
 
 //TODO : i'm a bit lost
@@ -1753,7 +1753,6 @@ internal Color get_random_color()
 
 internal void iterate_and_draw_bone_arrow( Bone * bone_array , Bone * bone , int stack_index)
 {
-    
     //if(stack_index > 3) return;
     
     //Vector3 bone_up = Vector3RotateByQuaternion((Vector3){0, 0 ,0.1} ,bone->rotation);
@@ -1763,51 +1762,17 @@ internal void iterate_and_draw_bone_arrow( Bone * bone_array , Bone * bone , int
     //DrawArrowRay(Startposition , BoneRight  ,Fade(BLUE,0.5) );
     
     Vector3 end_position = Vector3Add(bone->position , Vector3RotateByQuaternion(bone->state.end_point_offset , bone->rotation));
-    draw_arrow_line(bone->position , end_position , Fade(YELLOW , 0.4) ,RED);
+    draw_arrow_line_EX(bone->position , end_position , Fade(YELLOW , 0.4) ,RED);
     
     int bone_index = bone->bone_index;
     
     hash_table_iterate(child_bone_index , bone_index, &selected_model->bone_children_hash_table)
     {
-        
         Bone * child_bone = bone_array + child_bone_index;
         iterate_and_draw_bone_arrow(bone_array , child_bone , stack_index + 1);
-        
     }
     
 }
-
-internal int get_data_size(char * type_name)
-{
-    unsigned int type_hash = string_to_hash(type_name);
-    StructMetaDataNode * node = _struct_meta_hash[type_hash%STRUCT_META_HASH_MAX];
-    
-    for (;node; node = node->next)
-    {
-        if (!strcmp(type_name , node->name))
-        {
-            return node->size;
-        }
-    }
-    return 0;
-}
-
-internal int get_type_from_name(char * type_name)
-{
-    unsigned int type_hash = string_to_hash(type_name);
-    StructMetaDataNode * node = _struct_meta_hash[ type_hash%STRUCT_META_HASH_MAX ];
-    
-    for (;node; node = node->next)
-    {
-        if (!strcmp(type_name , node->name))
-        {
-            return node->type_index;
-        }
-    }
-    
-    return -1;
-}
-
 
 internal void create_a_whole_new_world()
 {
@@ -2462,14 +2427,14 @@ internal void draw_simplex(GJK_State * state)
         Vector3 c_a_d_face_outward_direction = Vector3CrossProduct(c_to_a , c_to_d);
         Vector3 c_to_origin = Vector3Subtract(state->origin , c);
         
-        draw_arrow_ray_D(a , a_b_d_face_outward_direction  , RED);
-        draw_arrow_ray_D(a , a_to_origin  , RED);
+        draw_arrow_ray(a , a_b_d_face_outward_direction  , RED);
+        draw_arrow_ray(a , a_to_origin  , RED);
         
-        draw_arrow_ray_D(b , b_c_d_face_outward_direction  , GREEN);
-        draw_arrow_ray_D(b , b_to_origin  , GREEN);
+        draw_arrow_ray(b , b_c_d_face_outward_direction  , GREEN);
+        draw_arrow_ray(b , b_to_origin  , GREEN);
         
-        draw_arrow_ray_D(c , c_a_d_face_outward_direction  , BLUE);
-        draw_arrow_ray_D(c , c_to_origin  , BLUE);
+        draw_arrow_ray(c , c_a_d_face_outward_direction  , BLUE);
+        draw_arrow_ray(c , c_to_origin  , BLUE);
     }
 }
 
@@ -2645,9 +2610,9 @@ internal Vector3 closest_point_on_triangle(Vector3 a , Vector3 b , Vector3 c , V
         }
     }
     
-    //draw_arrow_ray_D( a, a_to_b_vertical_inward , RED);
-    //draw_arrow_ray_D( b, b_to_c_vertical_inward , GREEN);
-    //draw_arrow_ray_D( c, c_to_a_vertical_inward , BLUE);
+    //draw_arrow_ray( a, a_to_b_vertical_inward , RED);
+    //draw_arrow_ray( b, b_to_c_vertical_inward , GREEN);
+    //draw_arrow_ray( c, c_to_a_vertical_inward , BLUE);
     
     //draw_simplex_triangle(a , b, c);
     //draw_arrow_line_B( closest_point , point , Fade(PINK , 0.5f));
@@ -2859,6 +2824,262 @@ internal bool check_shape_impact(ShapeImpactData * data)
     }
     
     //printf("total iterate count : %d\n", total_simplex_iterate_count);
+    return result;
+}
+
+internal ShapeBuffer get_collided_bounding_box(ConvexShape convex_shape)
+{
+    double tree_walk_time = time_stamp();
+    
+    Vector3 all_vertices[box_vertex_count * 2] = {};
+    for(int vertex_index = 0 ; vertex_index < convex_shape.vertices_count ; vertex_index++)
+    {
+        all_vertices[vertex_index] = convex_shape.vertices[vertex_index];
+    }
+    
+    for(int vertex_index = 0 ; vertex_index < convex_shape.vertices_count ; vertex_index++)
+    {
+        all_vertices[vertex_index + box_vertex_count] = Vector3Add(convex_shape.vertices[vertex_index] , convex_shape.velocity);
+    }
+    
+    BoundingBoxNode convex_shape_bounding_box = {};
+    convex_shape_bounding_box.right_top_forward = (Vector3){-FLT_MAX , -FLT_MAX , -FLT_MAX};
+    convex_shape_bounding_box.left_bottom_backward = (Vector3){FLT_MAX , FLT_MAX , FLT_MAX};
+    get_bound(all_vertices , box_vertex_count * 2 , &convex_shape_bounding_box.right_top_forward , &convex_shape_bounding_box.left_bottom_backward );
+    
+    ShapeBuffer shape_buffer = {};
+    allocate_buffer( &shape_buffer , Shape , 16 , AT_frame);
+    
+    if(bounding_box_root)
+    {
+        BoundingBoxNode * node_stack[128] = {};
+        int node_stack_count = 0;
+        node_stack[node_stack_count++] = bounding_box_root;
+        
+        for(;;)
+        {
+            if(node_stack_count <= 0) break;
+            
+            node_stack_count--;
+            BoundingBoxNode * node = node_stack[node_stack_count];
+            
+            if(node->left) node_stack[node_stack_count++] = node->left;
+            if(node->right) node_stack[node_stack_count++] = node->right;
+            
+            if(node->shape.type != ST_invalid)
+            {
+                if(bounding_box_collided((*node) , convex_shape_bounding_box))
+                {
+                    if(buffer_full(shape_buffer))
+                    {
+                        reallocate_buffer(&shape_buffer , AT_frame);
+                    }
+                    Shape * new_shape = shape_buffer.data + shape_buffer.count++;
+                    (*new_shape) = node->shape;
+                }
+            }
+        }
+    }
+    
+    tree_walk_time = (time_stamp() - tree_walk_time) / (1000.0);
+    
+    return shape_buffer;
+}
+
+internal Vector3 update_convex_collision(ConvexShape convex_shape)
+{
+    ShapeBuffer shape_buffer = get_collided_bounding_box(convex_shape);
+    
+    double shape_impact_check_time = time_stamp();
+    
+    int check_count = 0;
+    Vector3 previous_position = convex_shape.position;
+    
+    Vector3 surface_normal = {};
+    bool impacted = false;
+    
+    for(;;)
+    {
+        check_count++;
+        if(check_count > 5) 
+        {
+            convex_shape.velocity = (Vector3){};
+            break;
+        }
+        
+        impacted = false;
+        float closest_hit_time = FLT_MAX;
+        surface_normal = (Vector3){};
+        
+        for(int shape_index = 0 ; shape_index < shape_buffer.count ; shape_index++)
+        {
+            Shape * shape = shape_buffer.data + shape_index;
+            
+            Vector3 * shape_vertices = 0;
+            int shape_vertices_count = 0;
+            
+            if(shape->type == ST_box)
+            {
+                shape_vertices = box_to_point(box_in_map_buffer.data[shape->index]);
+                shape_vertices_count = box_vertex_count;
+            }
+            else if(shape->type == ST_quad)
+            {
+                shape_vertices = quad_in_map_buffer.data[shape->index].vertex_position;
+                shape_vertices_count = quad_vertex_count;
+            }
+            
+            if(!shape_vertices) CATCH;
+            
+            ShapeImpactData impact_data = {};
+            impact_data.shape_b_vertices = shape_vertices;
+            impact_data.shape_b_vertices_count = shape_vertices_count;
+            impact_data.shape_a_vertices = convex_shape.vertices;
+            impact_data.shape_a_vertices_count = convex_shape.vertices_count;
+            impact_data.ray_direction = convex_shape.velocity;
+            impact_data.stop_if_too_far = true;
+            
+            if(check_shape_impact(&impact_data))
+            {
+                if(impact_data.time_of_impact > 0)
+                {
+                    impacted = true;
+                    if(closest_hit_time > impact_data.time_of_impact)
+                    {
+                        closest_hit_time = impact_data.time_of_impact;
+                        surface_normal = impact_data.impact_normal;
+                    }
+                }
+                //draw_quad_D(quad , MAROON);
+            }
+            else
+            {
+                //draw_quad_D(quad , PURPLE);
+            }
+        }
+        
+        bool iterate_collided = false;
+        
+        if(impacted)
+        {
+            if(closest_hit_time > 0)
+            {
+                if(closest_hit_time < 1.0)
+                {
+                    iterate_collided = true;
+                }
+            }
+        }
+        
+        Vector3 impact_point = Vector3Add(convex_shape.position , Vector3Scale(convex_shape.velocity , closest_hit_time));
+        Vector3 direction_to_point = Vector3Subtract(impact_point , convex_shape.position);
+        if(Vector3DotProduct(direction_to_point , surface_normal) > 0) surface_normal = Vector3Negate(surface_normal);
+        
+        //draw_arrow_ray( Vector3Add(convex_shape.position , Vector3Scale(convex_shape.velocity , closest_hit_time)) , surface_normal , RED );
+        
+        if(iterate_collided)
+        {
+            Vector3 project_velocity = (Vector3){};
+            Vector3 right_axis = Vector3CrossProduct(convex_shape.velocity , surface_normal);
+            if(Vector3LengthSqr(right_axis) < 0.0000001f)
+            {
+                if(Vector3DotProduct(convex_shape.velocity , surface_normal) < 0)
+                {
+                    project_velocity = (Vector3){}; 
+                }
+            } 
+            else
+            {
+                if(Vector3DotProduct(convex_shape.velocity , surface_normal) < 0)
+                {
+                    Vector3 forward_axis = Vector3CrossProduct(surface_normal , right_axis);
+                    project_velocity = Vector3Project(convex_shape.velocity , forward_axis);
+                }
+                else
+                {
+                    project_velocity = convex_shape.velocity;
+                }
+            }
+            
+            if(project_velocity.x != project_velocity.x) CATCH;
+            
+            //draw_arrow_ray( convex_shape.position , project_velocity , YELLOW );
+            
+            //printf("%f %f %f\n" , surface_normal.x , surface_normal.y , surface_normal.z);
+            //printf("velocity %f %f %f -> %f %f %f\n" , convex_shape.velocity.x , convex_shape.velocity.y , convex_shape.velocity.z , project_velocity.x , project_velocity.y , project_velocity.z);
+            convex_shape.velocity = project_velocity;
+            
+            if(Vector3LengthSqr(convex_shape.velocity) < 0.000001f) break;
+        }
+        else
+        {
+            //printf("out\n");
+            break;
+        }
+    }
+    
+    //printf( "making tree : %f , walk in tree : %f , check : %f count : %d\n", shape_tree_time , tree_walk_time , (time_stamp() - shape_impact_check_time) / 1000 , shape_buffer_count);
+    return convex_shape.velocity;
+}
+
+internal RayCastResult convex_shape_ray_cast(ConvexShape convex_shape)
+{
+    ShapeBuffer shape_buffer = get_collided_bounding_box(convex_shape);
+    
+    RayCastResult result = {};
+    
+    result.impacted = false;
+    result.surface_normal = (Vector3){};
+    
+    for(int shape_index = 0; shape_index < shape_buffer.count ; shape_index++)
+    {
+        Shape * shape = shape_buffer.data + shape_index;
+        
+        Vector3 * shape_vertices = 0;
+        int shape_vertices_count = 0;
+        
+        if(shape->type == ST_box)
+        {
+            shape_vertices = box_to_point(box_in_map_buffer.data[shape->index]);
+            shape_vertices_count = box_vertex_count;
+        }
+        else if(shape->type == ST_quad)
+        {
+            shape_vertices = quad_in_map_buffer.data[shape->index].vertex_position;
+            shape_vertices_count = quad_vertex_count;
+        }
+        
+        if(!shape_vertices) CATCH;
+        
+        ShapeImpactData impact_data = {};
+        impact_data.shape_b_vertices = shape_vertices;
+        impact_data.shape_b_vertices_count = shape_vertices_count;
+        impact_data.shape_a_vertices = convex_shape.vertices;
+        impact_data.shape_a_vertices_count = convex_shape.vertices_count;
+        impact_data.ray_direction = convex_shape.velocity;
+        impact_data.stop_if_too_far = true;
+        
+        if(check_shape_impact(&impact_data))
+        {
+            if(impact_data.time_of_impact > 0)
+            {
+                result.impacted = true;
+                if(result.closest_hit_time > impact_data.time_of_impact)
+                {
+                    result.closest_hit_time = impact_data.time_of_impact;
+                    result.surface_normal = impact_data.impact_normal;
+                }
+            }
+            
+            //draw_quad_D(quad , MAROON);
+        }
+        else
+        {
+            //draw_quad_D(quad , PURPLE);
+        }
+        
+    }
+    
     return result;
 }
 

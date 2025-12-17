@@ -100,9 +100,9 @@ int main(int parameter_count, char ** parameters)
 	int FontDataSize = 0;
     
 	app_data->default_font.glyph_resolution = 64;
-	app_data->default_font.all_glyph_info = AllocateMemory(D_GlyphInfoNode, GLYPH_INFO_LEGTH);
-	app_data->default_font.glyph_hash_map = AllocateMemory(D_GlyphInfoNode*, GLYPH_INFO_HASHMAP_LENGTH);
-	app_data->default_font.nodes= AllocateMemory(stbrp_node, STBRP_NODE_SIZE);
+	app_data->default_font.all_glyph_info = malloc_and_memset(D_GlyphInfoNode, GLYPH_INFO_LEGTH);
+	app_data->default_font.glyph_hash_map = malloc_and_memset(D_GlyphInfoNode*, GLYPH_INFO_HASHMAP_LENGTH);
+	app_data->default_font.nodes= malloc_and_memset(stbrp_node, STBRP_NODE_SIZE);
     
 	app_data->default_font.glyph_atlas_image.width = 2048;
 	app_data->default_font.glyph_atlas_image.height = 2048;

@@ -887,6 +887,11 @@ internal void editor_GUI()
     
     if(editor_type == edit_world)
     {
+        if(draw_menu_button_W(&top_right_bar , L"重置玩家位置"))
+        {
+            player.position = (Vector3){};
+        }
+        
         for(int button_index = 0 ; button_index < MET_count ; button_index++)
         {
             wchar_t * button_text = 0;

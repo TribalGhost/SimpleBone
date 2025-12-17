@@ -379,7 +379,7 @@ internal unsigned int string_to_hash(const char * s)
     return hash;
 }
 
-#define AllocateMemory(Type,Count) (Type*)memset(malloc(sizeof(Type)*Count),0,sizeof(Type)*Count)
+#define malloc_and_memset(type,count) (type*)memset(malloc(sizeof(type)*count),0,sizeof(type)*count)
 
 #define allocate_temp( type , count) (type*)allocate_temp_(sizeof(type)*(count))
 

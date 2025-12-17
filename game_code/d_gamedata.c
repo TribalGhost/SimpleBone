@@ -39,6 +39,23 @@ struct GJK_State
     Vector3 origin;
 };
 
+typedef struct ConvexShape ConvexShape;
+struct ConvexShape
+{
+    Vector3 * vertices; 
+    int vertices_count; 
+    Vector3 velocity;
+    Vector3 position;
+};
+
+typedef struct RayCastResult RayCastResult;
+struct RayCastResult
+{
+    bool impacted;
+    Vector3 surface_normal;
+    float closest_hit_time;
+};
+
 typedef enum BoxFace BoxFace;
 enum BoxFace
 {
@@ -585,8 +602,9 @@ struct Player
 {
     Vector3 position;
     Vector3 velocity;
-    ShapeImpactData impact;
     Box box;
+    
+    bool grounded;
 };
 
 global Player player = {};
