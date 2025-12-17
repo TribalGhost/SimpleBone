@@ -1,13 +1,18 @@
 #define EPSILON 0.000001f
 
-global StructMetaData * _type_struct_meta_ = 0;
-
 global const char* game_texture_data_name = "Game\\GameTexture.gts";
 
-global char * game_state_save_name = "Game\\GameState";
-global char * game_animation_save_name = "Game\\Animation.txt";
+global char * game_state_save_name = "Game\\game_state_data.da";
+global char * map_save_name = "Game\\map_data.ma";
 
 global bool shader_compile_failed = false;
+
+typedef enum AllocatorType AllocatorType;
+enum AllocatorType
+{
+    AT_temp,
+    AT_frame,
+};
 
 typedef struct ShapeImpactData ShapeImpactData;
 struct ShapeImpactData
@@ -114,6 +119,8 @@ struct KeyFrame
     //int hash_table_slot_index;
 };
 
+BUFFER(KeyFrameBuffer , KeyFrame);
+
 typedef enum RotationAxis RotationAxis;
 enum RotationAxis
 {
@@ -141,7 +148,6 @@ struct RotationAxisData
 typedef struct Bone Bone;
 struct Bone
 {
-    
     bool from_blend_file;
     
     bool IK_enable;
@@ -169,6 +175,8 @@ struct Bone
     //it can be edit when the current frame is the key frame belong to this bone
     bool free_bone;
 };
+
+BUFFER(BoneBuffer , Bone);
 
 global float camera_current_zoom = 1.0;
 
@@ -247,9 +255,10 @@ global bool add_clip_bone_at_next_frame = false;
 global Clip * clip_array[MAX_CLIP] = {};
 
 #define KEY_FRAME_CAPACITY 64
-global KeyFrame * all_key_frame = 0;
-global int all_key_frame_capacity = KEY_FRAME_CAPACITY;
-global int all_key_frame_count = 0;
+//global KeyFrame * all_key_frame = 0;
+global KeyFrameBuffer all_key_frame_buffer = {};
+//global int all_key_frame_capacity = KEY_FRAME_CAPACITY;
+//global int all_key_frame_count = 0;
 
 typedef struct Box Box;
 struct Box
@@ -258,6 +267,8 @@ struct Box
     Vector3 size;
     Quaternion rotation;
 };
+
+BUFFER(BoxBuffer , Box);
 
 typedef struct Face Face;
 struct Face
@@ -282,12 +293,16 @@ struct DeformVertex
     float weight;
 };
 
+BUFFER(DeformVertexBuffer , DeformVertex);
+
 typedef struct BoneSelectionResultData BoneSelectionResultData;
 struct BoneSelectionResultData
 {
     int bone_index;
     Vector3 hit_point;
 };
+
+BUFFER(BoneSelectionResultDataBuffer , BoneSelectionResultData);
 
 typedef struct BoneSelectionResult BoneSelectionResult;
 struct BoneSelectionResult
@@ -299,7 +314,6 @@ struct BoneSelectionResult
 typedef struct D_Model D_Model;
 struct D_Model
 {
-    
     DeformVertexSlice * deform_vertex_slice;
     Vector3 * vertices;
     int vertex_count;
@@ -311,13 +325,11 @@ struct D_Model
     DeformVertex * all_deform_vertex;
     int deform_vertex_count;
     
-    Bone * all_bones;
-	int bone_count;
-    int bone_capacity;
+    //Bone * all_bones;
+    //Bone * all_initial_bone;
     
-    Bone * all_initial_bone;
-    int initial_bone_count;
-    int initial_bone_capacity;
+    BoneBuffer bone_buffer;
+    BoneBuffer initial_bone_buffer;
     
     List root_bone_list;//when should i put you?
     
@@ -333,7 +345,10 @@ global int model_count = 0;
 global int selected_model_index = -1;
 global D_Model * selected_model = 0;
 
-global Vector3 * all_reference_frame = 0;
+BUFFER(Vector3Buffer , Vector3);
+
+//global Vector3 * all_reference_frame = 0;
+global Vector3Buffer reference_frame_buffer = {};
 global List reference_frame_list = {};
 
 global int selected_reference_frame_index = -1;
@@ -492,10 +507,12 @@ global long long game_update_count = 0;
 #define UNIT_SIZE (GRID_SIZE / ((double)SUBDIVISION))
 
 global Array box_in_map_array = {};
-global Box * box_in_map = 0;
+global BoxBuffer box_in_map_buffer = {};
+//global Box * box_in_map = 0;
 
 global Array quad_in_map_array = {};
-global Quad * quad_in_map = 0;
+global QuadBuffer quad_in_map_buffer = {};
+//global Quad * quad_in_map = 0;
 
 global Vector3 * convex_shape_a_vertices = 0;
 global int convex_shape_a_vertices_count = 0;
@@ -518,6 +535,8 @@ struct Shape
     int index;
 };
 
+BUFFER(ShapeBuffer , Shape);
+
 typedef struct BoundingBoxNode BoundingBoxNode;
 struct BoundingBoxNode
 {
@@ -529,6 +548,8 @@ struct BoundingBoxNode
     BoundingBoxNode * left;
     BoundingBoxNode * right;
 };
+
+BUFFER(BoundingBoxNodeBuffer , BoundingBoxNode);
 
 typedef enum SplitType SplitType;
 enum SplitType
@@ -578,6 +599,8 @@ struct Int3
     int z;
 };
 
+BUFFER(Int3Buffer , Int3);
+
 typedef struct CellData CellData;
 struct CellData
 {
@@ -605,8 +628,5 @@ typedef struct PathResult PathResult;
 struct PathResult
 {
     bool path_found;
-    
-    Int3 * path;
-    int count;
-    int capacity;
+    Int3Buffer buffer;
 };

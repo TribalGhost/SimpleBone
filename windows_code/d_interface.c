@@ -107,8 +107,7 @@ internal void animation_timeline_GUI()
             
             hash_table_iterate(key_frame_index , GetKeyFrameHash(frame_index , bone_index), &clip->key_frame_hash_table)
             {
-                
-                KeyFrame * key_frame = all_key_frame + key_frame_index;
+                KeyFrame * key_frame = all_key_frame_buffer.data + key_frame_index;
                 
                 if(key_frame->bone_index != bone_index) continue;
                 if (key_frame->frame_index != frame_index) continue;
@@ -145,7 +144,6 @@ internal void animation_timeline_GUI()
         
 	}
     
-    
 	local_persist int previous_frame_index = -1;
     
 	if (mouse_button_pressed(MOUSE_BUTTON_LEFT))
@@ -154,7 +152,6 @@ internal void animation_timeline_GUI()
 	}
     
     //DragKeyFrame
-    
     if(editor->selected_clip_index != -1)
     {
         
@@ -177,12 +174,12 @@ internal void animation_timeline_GUI()
                 {
                     
                     stop_mouse_input = true;
-                    KeyFrame * key_frame_being_drag = all_key_frame + key_frame_being_drag_index;
+                    KeyFrame * key_frame_being_drag = all_key_frame_buffer.data + key_frame_being_drag_index;
                     
                     bool frame_existed = false;
                     hash_table_iterate(existed_key_frame_index , GetKeyFrameHash(closest_frame_index_to_mouse , key_frame_being_drag->bone_index) , &clip->key_frame_hash_table)
                     {
-                        KeyFrame * key_frame = all_key_frame + existed_key_frame_index;
+                        KeyFrame * key_frame = all_key_frame_buffer.data + existed_key_frame_index;
                         if(key_frame->bone_index != key_frame_being_drag->bone_index) continue;
                         
                         if(key_frame->frame_index == closest_frame_index_to_mouse)
@@ -196,7 +193,7 @@ internal void animation_timeline_GUI()
                     if(!frame_existed)
                     {
                         
-                        if(!delete_from_hash_table( GetKeyFrameHash(key_frame_being_drag->frame_index , key_frame_being_drag->bone_index ) , key_frame_being_drag - all_key_frame , &clip->key_frame_hash_table)) CATCH;
+                        if(!delete_from_hash_table( GetKeyFrameHash(key_frame_being_drag->frame_index , key_frame_being_drag->bone_index ) , key_frame_being_drag - all_key_frame_buffer.data , &clip->key_frame_hash_table)) CATCH;
                         key_frame_being_drag->frame_index = closest_frame_index_to_mouse;
                         add_to_hash_table(GetKeyFrameHash(key_frame_being_drag->frame_index , key_frame_being_drag->bone_index ) , key_frame_being_drag_index , &clip->key_frame_hash_table);
                         //if(!delete_from_hash_table_by_slot_index( key_frame_being_drag->hash_table_slot_index ,GetKeyFrameHash(key_frame_being_drag->frame_index , key_frame_being_drag->bone_index ) , &clip->key_frame_hash_table )) CATCH;
@@ -373,8 +370,7 @@ internal void animation_timeline_GUI()
             
             hash_table_iterate(key_frame_index, GetKeyFrameHash(editor->current_frame_at_timeline , selected_bone_index), &clip->key_frame_hash_table)
             {
-                
-                KeyFrame * key_frame = all_key_frame + key_frame_index;
+                KeyFrame * key_frame = all_key_frame_buffer.data + key_frame_index;
                 
                 if(key_frame->bone_index != selected_bone_index) continue;
                 
@@ -388,9 +384,12 @@ internal void animation_timeline_GUI()
             
             if (!frame_existed)
             {
-                REALLOCATE_BUFFER_IF_TOO_SMALL(KeyFrame , all_key_frame , all_key_frame_capacity , all_key_frame_count , allocate_temp_);
-                int new_key_frame_index = all_key_frame_count++;
-                KeyFrame * new_key_frame = all_key_frame + new_key_frame_index;
+                if(buffer_full(all_key_frame_buffer))
+                {
+                    reallocate_buffer(&all_key_frame_buffer , AT_temp);
+                }
+                int new_key_frame_index = all_key_frame_buffer.count++;
+                KeyFrame * new_key_frame = all_key_frame_buffer.data + new_key_frame_index;
                 add_to_list_tail( new_key_frame_index , &clip->key_frame_active_list);
                 
                 (*new_key_frame) = (KeyFrame){};
@@ -409,11 +408,10 @@ internal void animation_timeline_GUI()
         if (remove_key_frame)
         {
             int frame_index = 0;
-            KeyFrame * key_frame_array = all_key_frame;
             int key_frame_hash = GetKeyFrameHash(editor->current_frame_at_timeline , selected_bone_index);
             hash_table_iterate_ex(Keyframe_index , SlotIndex , -1 , key_frame_hash , &clip->key_frame_hash_table)
             {
-                KeyFrame * key_frame = key_frame_array + Keyframe_index;
+                KeyFrame * key_frame = all_key_frame_buffer.data + Keyframe_index;
                 
                 if(key_frame->bone_index != selected_bone_index) continue;
                 
@@ -445,11 +443,9 @@ internal void animation_timeline_GUI()
             
             Clip * clip = clip_array[bone_selection->clip_index];
             
-            KeyFrame * key_frame_array = all_key_frame;
-            
             hash_table_iterate(key_frame_index , selected_bone_index , &clip->key_frame_hash_table_by_bone)
             {
-                KeyFrame * key_frame = key_frame_array + key_frame_index;
+                KeyFrame * key_frame = all_key_frame_buffer.data + key_frame_index;
                 
                 if(key_frame->bone_index != bone_selection->bone_index) continue;
                 
@@ -497,7 +493,7 @@ internal void editor_GUI()
         
         if(editor_type == edit_base_pose)
         {
-            editing_bone = selected_model->all_bones + bone_selection->bone_index;
+            editing_bone = selected_model->bone_buffer.data + bone_selection->bone_index;
         }
         
         bone_mouse_menu( editing_bone , clip_array[clip_bone->clip_index] , editor->current_frame_at_timeline);
@@ -514,8 +510,7 @@ internal void editor_GUI()
     
     if(editor->selected_bone_count == 1)
     {
-        
-        Bone * selected_bone = selected_model->all_bones + editor->selected_bone_stack->bone_index;
+        Bone * selected_bone = selected_model->bone_buffer.data + editor->selected_bone_stack->bone_index;
         
         local_persist bool inputing_text = false;
         local_persist int input_cursor = 0;
@@ -542,7 +537,7 @@ internal void editor_GUI()
             
             if(parent_bone_index != -1)
             {
-                parent_string = combine_string_W( L"parent bone : " , selected_model->all_bones[parent_bone_index].bone_name.string);
+                parent_string = combine_string_W( L"parent bone : " , selected_model->bone_buffer.data[parent_bone_index].bone_name.string);
             }
             
             if(editor->assigning_parent_bone)
@@ -655,14 +650,16 @@ internal void editor_GUI()
             {
                 draw_menu_int_input(&bone_menu , L"chain length : %d" , &selected_bone->IK_chain_length);
                 
+                Bone * selected_model_bone = selected_model->bone_buffer.data;
+                
                 wchar_t * target_bone_string = L"none";
                 wchar_t target_string[64] = {};
-                if(selected_bone->IK_target_bone_index != -1) target_bone_string = selected_model->all_bones[selected_bone->IK_target_bone_index].bone_name.string;
+                if(selected_bone->IK_target_bone_index != -1) target_bone_string = selected_model_bone[selected_bone->IK_target_bone_index].bone_name.string;
                 _swprintf(target_string , L"IK target : %s" , target_bone_string );
                 
                 wchar_t * pole_bone_string = L"none";
                 wchar_t pole_string[64] = {};
-                if(selected_bone->IK_pole_bone_index != -1) pole_bone_string = selected_model->all_bones[selected_bone->IK_pole_bone_index].bone_name.string;
+                if(selected_bone->IK_pole_bone_index != -1) pole_bone_string = selected_model_bone[selected_bone->IK_pole_bone_index].bone_name.string;
                 _swprintf(pole_string , L"IK pole : %s" , pole_bone_string);
                 
                 if(draw_menu_button_W(&bone_menu , target_string))
@@ -771,10 +768,10 @@ internal void editor_GUI()
             
             clip_array[clip_index] =new_clip;
             new_clip->clip_index = clip_index;
-            new_clip->key_frame_active_list = allocate_list(CLIP_START_CAPACITY);
-            new_clip->dragging_key_frame_list = allocate_list(CLIP_START_CAPACITY);
-            new_clip->key_frame_hash_table = allocate_hash_table( CLIP_START_CAPACITY );
-            new_clip->key_frame_hash_table_by_bone = allocate_hash_table( CLIP_START_CAPACITY );
+            new_clip->key_frame_active_list = allocate_list(CLIP_START_CAPACITY , AT_temp);
+            new_clip->dragging_key_frame_list = allocate_list(CLIP_START_CAPACITY , AT_temp);
+            new_clip->key_frame_hash_table = allocate_hash_table( CLIP_START_CAPACITY , AT_temp );
+            new_clip->key_frame_hash_table_by_bone = allocate_hash_table( CLIP_START_CAPACITY , AT_temp);
         }
         
         if(editor->selected_clip_index != -1)
@@ -839,11 +836,18 @@ internal void editor_GUI()
     {
         if(draw_menu_button_W(&top_right_bar , L"添加骨頭"))
         {
-            REALLOCATE_BUFFER_IF_TOO_SMALL(Bone , selected_model->all_bones , selected_model->bone_capacity , selected_model->bone_count , allocate_temp_);
-            REALLOCATE_BUFFER_IF_TOO_SMALL(Bone , selected_model->all_initial_bone , selected_model->initial_bone_capacity , selected_model->initial_bone_count , allocate_temp_);
+            if(selected_model->bone_buffer.count == selected_model->bone_buffer.capacity)
+            {
+                reallocate_buffer(&selected_model->bone_buffer , AT_temp);
+            }
             
-            int new_bone_index = selected_model->bone_count++;
-            Bone * new_bone = selected_model->all_bones + new_bone_index;
+            if(selected_model->initial_bone_buffer.count == selected_model->initial_bone_buffer.capacity)
+            {
+                reallocate_buffer(&selected_model->initial_bone_buffer , AT_temp);
+            }
+            
+            int new_bone_index = selected_model->bone_buffer.count++;
+            Bone * new_bone = selected_model->bone_buffer.data + new_bone_index;
             
             new_bone->bone_index = new_bone_index;
             new_bone->parent_bone_index = -1;
@@ -860,8 +864,8 @@ internal void editor_GUI()
             
             add_to_list_tail(new_bone_index , &selected_model->root_bone_list);
             
-            int new_initial_bone_index = selected_model->initial_bone_count++;
-            Bone * new_initial_bone = selected_model->all_initial_bone + new_initial_bone_index;
+            int new_initial_bone_index = selected_model->initial_bone_buffer.count++;
+            Bone * new_initial_bone = selected_model->initial_bone_buffer.data + new_initial_bone_index;
             (*new_initial_bone) = (*new_bone);
         }
     }
@@ -902,9 +906,14 @@ internal void editor_GUI()
         
         if(draw_menu_button_W(&top_right_bar , L"添加參考坐標"))
         {
-            REALLOCATE_LIST_IF_TOO_SMALL(Vector3 , all_reference_frame , &reference_frame_list);
+            if(list_full(&reference_frame_list))
+            {
+                reallocate_buffer(&reference_frame_buffer , AT_temp);
+                reallocate_list(&reference_frame_list , AT_temp);
+            }
+            
             selected_reference_frame_index = add_to_list_tail_B(&reference_frame_list);
-            all_reference_frame[selected_reference_frame_index] = (Vector3){};
+            reference_frame_buffer.data[selected_reference_frame_index] = (Vector3){};
         }
         
         if(selected_reference_frame_index != -1)
@@ -928,7 +937,7 @@ internal void editor_GUI()
         
         list_foreach(reference_frame_index , &reference_frame_list)
         {
-            Vector3 reference_frame = all_reference_frame[reference_frame_index];
+            Vector3 reference_frame = reference_frame_buffer.data[reference_frame_index];
             wchar_t temp[256] = {};
             _swprintf(temp , L"%f %f %f" , reference_frame.x ,reference_frame.y , reference_frame.z);
             if(draw_menu_button_W_EX(&side_list_menu , temp , YELLOW , reference_frame_index == selected_reference_frame_index))

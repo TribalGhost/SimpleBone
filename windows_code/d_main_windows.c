@@ -1,11 +1,7 @@
 ﻿#include "d_header.h"
-#include "d_main.h"
-//#include "d_main_meta_generated.cpp" // i can't figure out how to make offset an actual number
+#include "d_main_windows.h"
 
 #include "d_function.c"
-
-//#include "ui_editor_function_and_data.cpp"
-//#include "ui_editor.cpp"
 
 global D_App_Data _GlobalData = {};
 
@@ -72,7 +68,7 @@ int main(int parameter_count, char ** parameters)
     
     GLFWwindow * _MainWindow = glfwCreateWindow(app_data->window_size.x, app_data->window_size.y, "BulletTime",0, 0);
     
-	set_window(_MainWindow, main_window);
+	all_windows[main_window] = _MainWindow;
     
 	glfwMakeContextCurrent(all_windows[main_window]);
 	
@@ -219,14 +215,6 @@ int main(int parameter_count, char ** parameters)
             glfwDestroyWindow(all_windows[main_window]);
 			break;
 		}
-        
-#if 0
-		if (GetWindow(EditorWindow) && glfwWindowShouldClose(GetWindow(EditorWindow)))
-		{
-			glfwDestroyWindow(GetWindow(EditorWindow));
-			set_window(0, EditorWindow);
-		}
-#endif
         
 		if (app_data->exit_window)
 			break;

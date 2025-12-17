@@ -1,4 +1,3 @@
-
 internal long long counter_stamp()
 {
 	LARGE_INTEGER time = {};
@@ -424,38 +423,6 @@ internal unsigned char * allocate_frame_(int size)
 	return start;
 }
 
-internal DataHeader * add_data_header()
-{
-	(*current_data_header) = (DataHeader){};
-    DataHeader * data_header = current_data_header;
-    current_data_header++;
-    
-    return data_header;
-}
-
-#define allocate_save(type,size) (type*)allocate_save_(sizeof(type)*(size))
-
-internal unsigned char* allocate_save_(int size)
-{
-    
-	if (size == 0)
-	{
-		return 0;
-	}
-    
-	unsigned char* start = current_save_memory_location;
-	current_save_memory_location += size;
-	if (current_save_memory_location >= save_memory + MAX_SAVE_SIZE)
-	{
-		CATCH;
-	}
-    
-	memset(start, 0, size);
-    
-	return start;
-    
-}
-
 //this is kinda dumb
 internal void combine_file_path(const char* file_name,char * result_path)
 {
@@ -551,7 +518,6 @@ internal float ease_in_back(float x , float c1)
 	float c3 = c1 + 1;
     
 	return c3 * x * x * x - c1 * x * x;
-    
 }
 
 internal float ease_out_back(float x  , float c1)

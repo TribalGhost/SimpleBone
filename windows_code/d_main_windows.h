@@ -11,6 +11,20 @@ global int CurrentGLError = 0;
 
 #define DeltaTime 1.0f/D_UPDATE_RATE
 
+//so far this is better
+//i have type instead of void pointer 
+//so that i can rely on type checking when refactorying
+//no need to convert void pointer(and debug)
+#define BUFFER(name , type) \
+typedef struct name name; \
+struct name \
+{ \
+type * data; \
+int data_size; \
+int count; \
+int capacity; \
+}
+
 typedef struct MemberMetaData MemberMetaData;
 struct MemberMetaData
 {
@@ -73,15 +87,17 @@ struct FixedStringW
     wchar_t string[FIXED_STRING_SIZE];
 };
 
+BUFFER(FixedStringWBuffer , FixedStringW);
+
 typedef struct DataHeader DataHeader;
 struct DataHeader
 {
-    //i wanna put a data_type in it
-    //no don't do that
     FixedString name;
     int data_offset;
-    
+    //data type, data size and data count can be add to it if i needed it
 };
+
+global unsigned char * scratch_buffer_for_read = 0;
 
 #define MAX_SAVE_SIZE (1024 * 1024 * 16)
 global unsigned char * save_memory = 0;
@@ -93,67 +109,6 @@ global DataHeader * current_data_header = 0;
 global DataHeader reading_data_header = {};
 global int save_header_count = 0;
 
-//i think this worth being a macro
-//if this can be replace to something sane i will be the happiest man alive
-//wait i can generate it
-
-//don't generate this yet, make it a function first
-#define REALLOCATE_BUFFER_IF_TOO_SMALL( type , buffer  , capacity , count , allocate_func) \
-if(capacity == count) \
-{ \
-\
-if(count > capacity) CATCH;\
-capacity *= 2; \
-type * new_buffer = (type *)allocate_func(sizeof(type) * capacity);\
-for(int _buffer_index = 0; _buffer_index < count ; _buffer_index++)\
-{\
-new_buffer[_buffer_index] = buffer[_buffer_index];\
-}\
-buffer = new_buffer; \
-}
-
-//oh no there is one more
-#define REALLOCATE_LIST_IF_TOO_SMALL(type , buffer , list )\
-if(list_full(list))\
-{\
-type * new_buffer = allocate_temp(type , (list)->count * 2);\
-List new_list = allocate_list((list)->count * 2);\
-for(int buffer_index = 0 ; buffer_index < (list)->count ; buffer_index++)\
-{\
-new_buffer[buffer_index] = buffer[buffer_index];\
-}\
-\
-for(int node_index = 0 ; node_index < (list)->count + DUMMY_NODE_COUNT ; node_index++)\
-{\
-new_list.all_node[node_index] = (list)->all_node[node_index];\
-}\
-new_list.unuse_index = (list)->unuse_index;\
-new_list.count = (list)->count * 2;\
-buffer = new_buffer;\
-(*(list)) = new_list;\
-}
-
-#define REALLOCATE_ARRAY_IF_TOO_SMALL(type , buffer , array )\
-if(is_array_full(array))\
-{\
-type * new_buffer = allocate_temp(type , (array)->capacity * 2);\
-Array new_array = allocate_array((array)->capacity * 2);\
-for(int buffer_index = 0 ; buffer_index < (array)->count ; buffer_index++)\
-{\
-new_buffer[buffer_index] = buffer[buffer_index];\
-}\
-\
-for(int index = 0 ; index < (array)->capacity ; index++)\
-{\
-new_array.valid_array[index] = (array)->valid_array[index];\
-}\
-new_array.capacity = (array)->capacity * 2;\
-new_array.count = (array)->count;\
-new_array.lowest_index = (array)->lowest_index;\
-buffer = new_buffer;\
-(*(array)) = new_array;\
-}
-
 #define HASH_DEBUG 0
 
 typedef struct TemporayMemory TemporayMemory;
@@ -164,29 +119,19 @@ struct TemporayMemory
 	int size;
 };
 
+//it was mean to have multiple windows
+//but multiple viewport is easy to write
 typedef enum AppWindow AppWindow;
 enum AppWindow
 {
 	main_window,
-	
 	window_count,
 };
 
-//wow you can do that?!
-//so stupid
-
-//just fucking use enum you dumbass
 global GLFWwindow* all_windows[window_count] = {};
 global bool foucsed_windows[window_count] = {};
 global bool is_window_focused = false;
 global int current_window_index = 0;
-
-global bool DEBUG_window = true;
-
-internal void set_window(GLFWwindow* new_window, int target_window)
-{
-	all_windows[target_window] = new_window;
-}
 
 typedef struct ListNode ListNode;
 struct ListNode
@@ -219,7 +164,7 @@ struct List
 	ListNode * all_node;
     ListNode * node_array;
 	int unuse_index;
-    int count;
+    int capacity;
 };
 
 //this thing suck
@@ -265,7 +210,7 @@ struct HashTable
 {
     HashTableEntry * entry_array;
 	HashTableSlot * slot_array;
-    int count;
+    int capacity;
 };
 
 typedef enum QuadVertexPosition QuadVertexPosition;
@@ -300,6 +245,8 @@ struct Quad
 	Vector3 vertex_position[quad_vertex_count];
 	Vector4 vertex_color[quad_vertex_count];// do i even what you here?
 };
+
+BUFFER(QuadBuffer , Quad);
 
 typedef struct D_GlyphInfo D_GlyphInfo;
 struct D_GlyphInfo

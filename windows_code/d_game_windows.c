@@ -1,19 +1,16 @@
 #include "d_header.h"
-#include "d_main.h"
-
+#include "d_main_windows.h"
 #include "d_renderdata.c"
 #include "d_gamedata.c"
-
 #include "d_game_meta_generated.c"
-
 #include "d_function.c"
-
 #include "d_render.c"
 #include "d_text.c"
-
 #include "d_gamefunction.c"
 #include "d_blender_file.h"
 #include "d_interface.c"
+#define BUILD_WINDOWS_NET
+#include "d_net.c"
 
 internal bool check_selected_bone_rotation( Bone * final_bone_array_copy, int single_bone_index , Clip * clip_to_assign)
 {
@@ -135,13 +132,13 @@ internal bool check_selected_bone_rotation( Bone * final_bone_array_copy, int si
                 
                 if(editor_type == edit_base_pose)
                 {
-                    selected_model->all_bones[single_bone_index].state.local_rotation = QuaternionMultiply(selected_model->all_bones[single_bone_index].state.local_rotation , rotation_offset);
+                    selected_model->bone_buffer.data[single_bone_index].state.local_rotation = QuaternionMultiply(selected_model->bone_buffer.data[single_bone_index].state.local_rotation , rotation_offset);
                 }
                 
                 int key_frame_count = 0;
                 hash_table_iterate(key_frame_index , GetKeyFrameHash(editor->current_frame_at_timeline , single_bone_index) , &clip_to_assign->key_frame_hash_table)
                 {
-                    KeyFrame * key_frame = all_key_frame + key_frame_index;
+                    KeyFrame * key_frame = all_key_frame_buffer.data + key_frame_index;
                     if(key_frame->bone_index != single_bone_index) continue;
                     if(key_frame->frame_index != editor->current_frame_at_timeline) continue;
                     
@@ -221,7 +218,7 @@ internal void bone_selection_and_edit_bone_state( int current_frame_index)
                 break;
             }
             
-            KeyFrame * previous_key_frame = all_key_frame + previous_key_frame_index;
+            KeyFrame * previous_key_frame = all_key_frame_buffer.data + previous_key_frame_index;
             
 			Color key_frame_line_color = Fade(WHITE , 0.2f);
             
@@ -238,8 +235,7 @@ internal void bone_selection_and_edit_bone_state( int current_frame_index)
             //draw_bezier_path
             hash_table_iterate(key_frame_index , selected_bone_index , &selected_clip->key_frame_hash_table_by_bone)
             {
-                
-                KeyFrame * key_frame = all_key_frame + key_frame_index;
+                KeyFrame * key_frame = all_key_frame_buffer.data + key_frame_index;
                 if(key_frame->bone_index != selected_bone_index) continue;
                 
                 Quaternion base_bone_rotation = selected_final_bone->rotation;
@@ -489,7 +485,7 @@ internal void bone_selection_and_edit_bone_state( int current_frame_index)
     {
         ClipBone * clip_bone = clip_bone_stack + clip_bone_stack_index;
         
-        for(int bone_index = 0 ; bone_index < selected_model->bone_count ; bone_index++)
+        for(int bone_index = 0 ; bone_index < selected_model->bone_buffer.count ; bone_index++)
         {
             
             clip_bone->hovered_bone[bone_index] = false;
@@ -553,7 +549,7 @@ internal void bone_selection_and_edit_bone_state( int current_frame_index)
                             {
                                 ClipBone * ClipBoneToUnSelect = clip_bone_stack + StackIndex;
                                 
-                                for(int select_bone_index = 0 ; select_bone_index < selected_model->bone_count ; select_bone_index++)
+                                for(int select_bone_index = 0 ; select_bone_index < selected_model->bone_buffer.count ; select_bone_index++)
                                 {
                                     ClipBoneToUnSelect->selected_bone[select_bone_index] = false;
                                 }
@@ -626,7 +622,7 @@ internal void bone_selection_and_edit_bone_state( int current_frame_index)
                     hash_table_iterate(key_frame_index , GetKeyFrameHash(editor->current_frame_at_timeline , dragging_bone_index) , &current_clip->key_frame_hash_table)
                     {
                         
-                        KeyFrame * key_frame = all_key_frame + key_frame_index;
+                        KeyFrame * key_frame = all_key_frame_buffer.data + key_frame_index;
                         if(key_frame->bone_index != dragging_bone_index) continue;
                         if(key_frame->frame_index != editor->current_frame_at_timeline) continue;
                         
@@ -638,9 +634,7 @@ internal void bone_selection_and_edit_bone_state( int current_frame_index)
                     
                     if(editor_type == edit_base_pose)
                     {
-                        
-                        selected_model->all_bones[dragging_bone_index].state.local_position = Vector3Add(selected_model->all_bones[dragging_bone_index].state.local_position , plane_offset);
-                        
+                        selected_model->bone_buffer.data[dragging_bone_index].state.local_position = Vector3Add(selected_model->bone_buffer.data[dragging_bone_index].state.local_position , plane_offset);
                     }
                 }
                 
@@ -722,7 +716,7 @@ internal void bone_selection_and_edit_bone_state( int current_frame_index)
                 {
                     ClipBone * ClipBoneToUnSelect = clip_bone_stack + StackIndex;
                     
-                    for(int bone_index = 0 ; bone_index < selected_model->bone_count ; bone_index++)
+                    for(int bone_index = 0 ; bone_index < selected_model->bone_buffer.count ; bone_index++)
                     {
                         ClipBoneToUnSelect->selected_bone[bone_index] = false;
                     }
@@ -741,7 +735,7 @@ internal void bone_selection_and_edit_bone_state( int current_frame_index)
         {
             ClipBone * current_clipBone = clip_bone_stack + clip_bone_stack_index;
             
-            for(int bone_index = 0 ; bone_index < selected_model->bone_count ; bone_index++)
+            for(int bone_index = 0 ; bone_index < selected_model->bone_buffer.count ; bone_index++)
             {
                 Bone * current_bone = current_clipBone->final_bone_pose + bone_index;
 				Vector3 bone_screen_point = {};
@@ -807,7 +801,7 @@ internal void bone_selection_and_edit_bone_state( int current_frame_index)
     {
         ClipBone * current_clip_bone = clip_bone_stack + clip_bone_stack_index;
         
-        for(int bone_index = 0 ; bone_index < selected_model->bone_count ; bone_index++)
+        for(int bone_index = 0 ; bone_index < selected_model->bone_buffer.count ; bone_index++)
         {
             
             Bone * bone = current_clip_bone->final_bone_pose + bone_index;
@@ -883,8 +877,7 @@ internal void bone_mouse_menu( Bone * single_editing_bone , Clip * clip , int cu
             
             hash_table_iterate(key_frame_index , GetKeyFrameHash(current_frame_index , single_editing_bone->bone_index) , &clip->key_frame_hash_table)
             {
-                
-                KeyFrame * key_frame = all_key_frame + key_frame_index;
+                KeyFrame * key_frame = all_key_frame_buffer.data + key_frame_index;
                 
                 if(key_frame->bone_index != single_editing_bone->bone_index) continue;
                 if(key_frame->frame_index != current_frame_index) continue;
@@ -1428,7 +1421,7 @@ internal void edit_map(Vector3 origin)
                 
                 if(stretching_box)
                 {
-                    Box box = box_in_map[box_index_to_stretch];
+                    Box box = box_in_map_buffer.data[box_index_to_stretch];
                     
                     Vector3 plane_normal = Vector3Subtract(game_camera.target , game_camera.position);
                     Vector3 line_start = mouse_ray_3D.position;
@@ -1516,7 +1509,7 @@ internal void edit_map(Vector3 origin)
                     if(mouse_button_released(MOUSE_BUTTON_LEFT))
                     {
                         stretching_box = false;
-                        box_in_map[box_index_to_stretch] = box;
+                        box_in_map_buffer.data[box_index_to_stretch] = box;
                     }
                 }
                 
@@ -1574,8 +1567,13 @@ internal void edit_map(Vector3 origin)
                         
                         if(size_count >= 2)
                         {
-                            REALLOCATE_ARRAY_IF_TOO_SMALL(Box , box_in_map, &box_in_map_array);
-                            Box * new_box = box_in_map + add_to_array(&box_in_map_array);
+                            if(array_full(&box_in_map_array))
+                            {
+                                reallocate_buffer(&box_in_map_buffer ,  AT_temp);
+                                reallocate_array(&box_in_map_array , AT_temp);
+                            }
+                            
+                            Box * new_box = box_in_map_buffer.data + add_to_array(&box_in_map_array);
                             (*new_box) = dragging_box;
                         }
                     }
@@ -1595,7 +1593,7 @@ internal void edit_map(Vector3 origin)
                     
                     array_foreach(box_index , &box_in_map_array)
                     {
-                        Box box = box_in_map[box_index];
+                        Box box = box_in_map_buffer.data[box_index];
                         
                         float box_hit_time = 0;
                         int box_face_index = 0;
@@ -1613,7 +1611,7 @@ internal void edit_map(Vector3 origin)
                     
                     if(box_collided)
                     {
-                        Box box = box_in_map[closest_box_index];
+                        Box box = box_in_map_buffer.data[closest_box_index];
                         
                         Vector3 face_offset = {};
                         Vector3 face_direction = {};
@@ -1667,7 +1665,7 @@ internal void edit_map(Vector3 origin)
                 
                 array_foreach(quad_index , &quad_in_map_array)
                 {
-                    RayCollision collision = get_collision_quad_3D(quad_in_map[quad_index]);
+                    RayCollision collision = get_collision_quad_3D(quad_in_map_buffer.data[quad_index]);
                     if(collision.hit)
                     {
                         collided = true;
@@ -1685,8 +1683,12 @@ internal void edit_map(Vector3 origin)
                 {
                     if(mouse_button_pressed(MOUSE_BUTTON_LEFT))
                     {
-                        REALLOCATE_ARRAY_IF_TOO_SMALL(Quad , quad_in_map , &quad_in_map_array);
-                        Quad * new_quad = quad_in_map + add_to_array(&quad_in_map_array);
+                        if(array_full(&quad_in_map_array))
+                        {
+                            reallocate_array(&quad_in_map_array , AT_temp);
+                            reallocate_buffer(&quad_in_map_buffer , AT_temp );
+                        }
+                        Quad * new_quad = quad_in_map_buffer.data + add_to_array(&quad_in_map_array);
                         
                         (*new_quad) = rect_to_quad(rect_in_cell);
                     }
@@ -1838,7 +1840,7 @@ internal void draw_origin_grid(Vector3 origin)
 internal void get_bone_from_existing_key_frame(Bone * bone_array , Clip * clip , int target_frame , int target_start_frame , int target_frame_count)
 {
     
-	for (int bone_index = 0; bone_index < selected_model->bone_count; bone_index++)
+	for (int bone_index = 0; bone_index < selected_model->bone_buffer.count; bone_index++)
 	{
         
         Bone * current_bone = bone_array + bone_index;
@@ -1855,10 +1857,10 @@ internal void get_bone_from_existing_key_frame(Bone * bone_array , Clip * clip ,
         hash_table_iterate(key_frame_index , bone_index , &clip->key_frame_hash_table_by_bone)
         {
             
-			KeyFrame * key_frame = all_key_frame + key_frame_index;
+			KeyFrame * key_frame = all_key_frame_buffer.data + key_frame_index;
             if(key_frame->bone_index != bone_index) continue;
             
-            end_key_frame = all_key_frame + key_frame_index;
+            end_key_frame = all_key_frame_buffer.data + key_frame_index;
             
         }
         
@@ -1868,7 +1870,7 @@ internal void get_bone_from_existing_key_frame(Bone * bone_array , Clip * clip ,
         //TODO : it is iterating frame to find closest frame
         hash_table_iterate(key_frame_index , bone_index , &clip->key_frame_hash_table_by_bone)
         {
-            KeyFrame * key_frame = all_key_frame + key_frame_index;
+            KeyFrame * key_frame = all_key_frame_buffer.data + key_frame_index;
             
             if(key_frame->bone_index != bone_index) continue;
             if(!first_key_frame) first_key_frame = key_frame;
@@ -2004,9 +2006,9 @@ internal Bone * get_multiple_bone(int bone_array_count)
 internal Bone * get_bone_pose_offset_from_clip( int clip_index , int target_frame , int target_frame_start, int target_frame_length)
 {
     
-    Bone * bone_pose_offset = get_multiple_bone(selected_model->bone_count);
+    Bone * bone_pose_offset = get_multiple_bone(selected_model->bone_buffer.count);
     
-    for(int bone_index = 0 ; bone_index < selected_model->bone_count ; bone_index++)
+    for(int bone_index = 0 ; bone_index < selected_model->bone_buffer.count ; bone_index++)
     {
         get_bone_from_existing_key_frame(bone_pose_offset ,  clip_array[clip_index], target_frame , target_frame_start , target_frame_length);
     }
@@ -2039,13 +2041,12 @@ internal void single_update()
     //why don't i try making the data structure more unsane and fast
     double shape_tree_time = time_stamp();
     
-    int all_bounding_box_count = 0;
-    int all_bounding_box_capacity= 128;
-    BoundingBoxNode * all_bounding_box = allocate_frame(BoundingBoxNode , all_bounding_box_capacity);
+    BoundingBoxNodeBuffer bounding_box_buffer = {};
+    allocate_buffer( &bounding_box_buffer , BoundingBoxNode , 128 , AT_frame);;
     
     array_foreach( box_index , &box_in_map_array)
     {
-        Box box = box_in_map[box_index];
+        Box box = box_in_map_buffer.data[box_index];
         
         Vector3 * box_vertices = box_to_point(box);
         
@@ -2054,8 +2055,12 @@ internal void single_update()
         
         get_bound(box_vertices , box_vertex_count , &right_top_forward , &left_bottom_backward);
         
-        REALLOCATE_BUFFER_IF_TOO_SMALL(BoundingBoxNode , all_bounding_box , all_bounding_box_capacity , all_bounding_box_count , allocate_frame_);
-        BoundingBoxNode * new_bounding_box = all_bounding_box + all_bounding_box_count++;
+        if(buffer_full(bounding_box_buffer))
+        {
+            reallocate_buffer(&bounding_box_buffer , AT_frame);
+        }
+        
+        BoundingBoxNode * new_bounding_box = bounding_box_buffer.data + bounding_box_buffer.count++;
         new_bounding_box->right_top_forward = right_top_forward;
         new_bounding_box->left_bottom_backward = left_bottom_backward;
         new_bounding_box->shape.type = ST_box;
@@ -2064,7 +2069,7 @@ internal void single_update()
         new_bounding_box->right = 0;
     }
     
-    bounding_box_root = split_bounding_box(all_bounding_box , all_bounding_box_count , split_yz);
+    bounding_box_root = split_bounding_box(bounding_box_buffer.data , bounding_box_buffer.count , split_yz);
     
     shape_tree_time = (time_stamp() - shape_tree_time) / (1000.0);
     
@@ -2125,31 +2130,36 @@ internal void single_update()
     player_bounding_box.left_bottom_backward = (Vector3){FLT_MAX , FLT_MAX , FLT_MAX};
     get_bound(all_player_vertices , box_vertex_count * 2 , &player_bounding_box.right_top_forward , &player_bounding_box.left_bottom_backward );
     
-    int shape_buffer_capacity = 16;
-    int shape_buffer_count = 0;
-    Shape * shape_buffer = allocate_frame( Shape , shape_buffer_capacity);
+    ShapeBuffer shape_buffer = {};
+    allocate_buffer( &shape_buffer , Shape , 16 , AT_frame);
     
-    BoundingBoxNode * node_stack[128] = {};
-    int node_stack_count = 0;
-    node_stack[node_stack_count++] = bounding_box_root;
-    
-    for(;;)
+    if(bounding_box_root)
     {
-        if(node_stack_count <= 0) break;
+        BoundingBoxNode * node_stack[128] = {};
+        int node_stack_count = 0;
+        node_stack[node_stack_count++] = bounding_box_root;
         
-        node_stack_count--;
-        BoundingBoxNode * node = node_stack[node_stack_count];
-        
-        if(node->left) node_stack[node_stack_count++] = node->left;
-        if(node->right) node_stack[node_stack_count++] = node->right;
-        
-        if(node->shape.type != ST_invalid)
+        for(;;)
         {
-            if(bounding_box_collided((*node) , player_bounding_box))
+            if(node_stack_count <= 0) break;
+            
+            node_stack_count--;
+            BoundingBoxNode * node = node_stack[node_stack_count];
+            
+            if(node->left) node_stack[node_stack_count++] = node->left;
+            if(node->right) node_stack[node_stack_count++] = node->right;
+            
+            if(node->shape.type != ST_invalid)
             {
-                REALLOCATE_BUFFER_IF_TOO_SMALL(Shape , shape_buffer , shape_buffer_capacity , shape_buffer_count , allocate_frame_);
-                Shape * new_shape = shape_buffer + shape_buffer_count++;
-                (*new_shape) = node->shape;
+                if(bounding_box_collided((*node) , player_bounding_box))
+                {
+                    if(buffer_full(shape_buffer))
+                    {
+                        reallocate_buffer(&shape_buffer , AT_frame);
+                    }
+                    Shape * new_shape = shape_buffer.data + shape_buffer.count++;
+                    (*new_shape) = node->shape;
+                }
             }
         }
     }
@@ -2174,21 +2184,21 @@ internal void single_update()
         float closest_hit_time = FLT_MAX;
         Vector3 surface_normal = {};
         
-        for(int shape_index = 0 ; shape_index < shape_buffer_count ; shape_index++)
+        for(int shape_index = 0 ; shape_index < shape_buffer.count ; shape_index++)
         {
-            Shape * shape = shape_buffer + shape_index;
+            Shape * shape = shape_buffer.data + shape_index;
             
             Vector3 * shape_vertices = 0;
             int shape_vertices_count = 0;
             
             if(shape->type == ST_box)
             {
-                shape_vertices = box_to_point(box_in_map[shape->index]);
+                shape_vertices = box_to_point(box_in_map_buffer.data[shape->index]);
                 shape_vertices_count = box_vertex_count;
             }
             else if(shape->type == ST_quad)
             {
-                shape_vertices = quad_in_map[shape->index].vertex_position;
+                shape_vertices = quad_in_map_buffer.data[shape->index].vertex_position;
                 shape_vertices_count = quad_vertex_count;
             }
             
@@ -2306,7 +2316,7 @@ internal void viewport_update()
             
             if(editor_type == edit_animation)
             {
-                for(int bone_index = 0 ; bone_index < selected_model->bone_count ; bone_index++)
+                for(int bone_index = 0 ; bone_index < selected_model->bone_buffer.count ; bone_index++)
                 {
                     Bone * bone = final_bone + bone_index;
                     if(!bone->IK_enable) continue;
@@ -2331,10 +2341,10 @@ internal void viewport_update()
     }
     else if(editor_type == edit_base_pose)
     {
-        Bone * bone_array = allocate_frame(Bone , selected_model->bone_count);
-        for(int bone_index = 0 ; bone_index < selected_model->bone_count ; bone_index++)
+        Bone * bone_array = allocate_frame(Bone , selected_model->bone_buffer.count);
+        for(int bone_index = 0 ; bone_index < selected_model->bone_buffer.count ; bone_index++)
         {
-            bone_array[bone_index] = selected_model->all_bones[bone_index];
+            bone_array[bone_index] = selected_model->bone_buffer.data[bone_index];
         }
         
         update_bone_structure(bone_array);
@@ -2348,7 +2358,7 @@ internal void viewport_update()
     {
         if(selected_reference_frame_index != -1)
         {
-            grid_origin = all_reference_frame[selected_reference_frame_index];
+            grid_origin = reference_frame_buffer.data[selected_reference_frame_index];
         }
     }
     
@@ -2366,15 +2376,13 @@ internal void viewport_update()
         render_state.draw_flag = 1;
         array_foreach(box_index , &box_in_map_array)
         {
-            Box box = box_in_map[box_index];
-            
+            Box box = box_in_map_buffer.data[box_index];
             draw_box(box , PURPLE);
-            
         }
         
         array_foreach(quad_index , &quad_in_map_array)
         {
-            Quad quad = quad_in_map[quad_index];
+            Quad quad = quad_in_map_buffer.data[quad_index];
             draw_quad_D(quad , PURPLE);
         }
         
@@ -2410,6 +2418,8 @@ internal void viewport_update()
         draw_box_line(nav_mesh_start_box , YELLOW , 5);
         draw_box_line(nav_mesh_whole_box , YELLOW , 10);
         
+        //i forgot what this is
+        //i think i use this to draw and debug stuff
         for(int cell_x = 0 , cell_y = 0 , cell_z = 0;;)
         {
             int cell_index = cell_to_index((Int3){cell_x , cell_y , cell_z});
@@ -2488,7 +2498,7 @@ internal void viewport_update()
         
         array_foreach(box_index , &box_in_map_array)
         {
-            Box box = box_in_map[box_index];
+            Box box = box_in_map_buffer.data[box_index];
             
             if(box_collision_ray( mouse_ray_3D.position , mouse_ray_3D.direction, box , 0 , 0))
             {
@@ -2498,7 +2508,7 @@ internal void viewport_update()
         
         array_foreach(quad_index , &quad_in_map_array)
         {
-            Quad quad = quad_in_map[quad_index];
+            Quad quad = quad_in_map_buffer.data[quad_index];
             
             RayCollision collision = get_collision_quad_3D( quad );
             if(collision.hit)
@@ -2521,8 +2531,8 @@ internal void viewport_update()
         {
             D_Model * model = all_models + model_index;
             
-            update_bone_structure(model->all_initial_bone);
-            draw_model(model , bone_pose_to_draw_stack[0] , model->all_initial_bone);
+            update_bone_structure(model->initial_bone_buffer.data);
+            draw_model(model , bone_pose_to_draw_stack[0] , model->initial_bone_buffer.data);
         }
     }
     
@@ -2651,7 +2661,7 @@ internal void viewport_update()
                         
                         Vector3 position_in_cell = position_to_grid(origin_position , UNIT_SIZE);
                         
-                        Vector3 * referece_frame = all_reference_frame + selected_reference_frame_index;
+                        Vector3 * referece_frame = reference_frame_buffer.data + selected_reference_frame_index;
                         
                         (*referece_frame) = position_in_cell;
                         //(*referece_frame) = origin_position;
@@ -2766,11 +2776,11 @@ internal void game_update()
     
     if(editor->IK_iteration_count < 0) editor->IK_iteration_count = 0;
     
-    base_pose_bone = allocate_frame( Bone , selected_model->bone_count);
+    base_pose_bone = allocate_frame( Bone , selected_model->bone_buffer.count);
     
-    for(int bone_index = 0 ; bone_index < selected_model->bone_count ; bone_index++)
+    for(int bone_index = 0 ; bone_index < selected_model->bone_buffer.count ; bone_index++)
     {
-        base_pose_bone[bone_index] = selected_model->all_bones[bone_index];
+        base_pose_bone[bone_index] = selected_model->bone_buffer.data[bone_index];
     }
     
     if(add_clip_bone_at_next_frame)
@@ -2783,14 +2793,14 @@ internal void game_update()
     {
         ClipBone * current_clip_bone = clip_bone_stack + stack_index;
         
-        int allocate_bone_count = selected_model->bone_count;
+        int allocate_bone_count = selected_model->bone_buffer.count;
         //TODO:make it not temp
         current_clip_bone->bone_pose_offset = allocate_frame(Bone , allocate_bone_count);
         current_clip_bone->final_bone_pose = allocate_frame(Bone , allocate_bone_count);
         current_clip_bone->selected_bone = allocate_frame(bool , allocate_bone_count);
         current_clip_bone->hovered_bone = allocate_frame(bool , allocate_bone_count);
         
-        for(int bone_index = 0 ; bone_index < selected_model->bone_count ; bone_index++)
+        for(int bone_index = 0 ; bone_index < selected_model->bone_buffer.count ; bone_index++)
         {
             
             current_clip_bone->bone_pose_offset[bone_index] = (Bone){};
@@ -2808,9 +2818,9 @@ internal void game_update()
         
         if(editor_type == edit_animation)
         {
-            Bone * temp_bone = allocate_frame( Bone , selected_model->bone_count);
+            Bone * temp_bone = allocate_frame( Bone , selected_model->bone_buffer.count);
             
-            for(int bone_index = 0 ; bone_index < selected_model->bone_count ; bone_index++)
+            for(int bone_index = 0 ; bone_index < selected_model->bone_buffer.count ; bone_index++)
             {
                 temp_bone[bone_index] = (Bone){};
                 temp_bone[bone_index].rotation = QuaternionIdentity();
@@ -2818,12 +2828,12 @@ internal void game_update()
             }
             
             get_bone_from_existing_key_frame(temp_bone , clip_array[current_clip_bone->clip_index] , editor->current_frame_at_timeline , editor->start_frame_index , editor->timeline_frame_length);
-            add_multiple_bone_state(current_clip_bone->bone_pose_offset , temp_bone , selected_model->bone_count);
+            add_multiple_bone_state(current_clip_bone->bone_pose_offset , temp_bone , selected_model->bone_buffer.count);
             
         }
         
         Bone * final_bone = current_clip_bone->final_bone_pose;
-        add_multiple_bone_state(final_bone, current_clip_bone->bone_pose_offset , selected_model->bone_count);
+        add_multiple_bone_state(final_bone, current_clip_bone->bone_pose_offset , selected_model->bone_buffer.count);
         
         update_bone_structure(final_bone);
     }
@@ -3314,7 +3324,6 @@ internal GAME_LOOP(game_loop)
         
         app_data->frame_time_memory.current_memory = app_data->frame_time_memory.start_memory;
         glfwSwapBuffers(app_data->current_window);
-        
     }
     
     previous_loop_time = current_time;
@@ -3326,7 +3335,6 @@ internal GAME_LOOP(game_loop)
     
     //this things freeze opengl ?
     //SwapBuffers(AppData->_HDC);
-    
 }
 
 #define read_buffer(data_to_assign , name , type , index) \
@@ -3339,7 +3347,6 @@ if(buffer) (data_to_assign) = buffer[index];\
 
 internal unsigned char * get_data_buffer_by_name(char * name)
 {
-    
     for(int header_index = 0 ; header_index < save_header_count ; header_index++)
     {
         DataHeader * current_header = data_header_array + header_index;
@@ -3352,12 +3359,36 @@ internal unsigned char * get_data_buffer_by_name(char * name)
     }
     
     return 0;
-    
 }
 
 #define read_data(data , name , type) { type * data_pointer = (type *)get_data_buffer_by_name(name) ; if(data_pointer) data = (*data_pointer); }
 
 #define allocate_to_file(name , type , count) (type *)allocate_to_file_(name , sizeof(type) , count )
+
+internal unsigned char * allocate_to_file_(char * name , int size , int count)
+{
+    int allocate_amount = size * count;
+    
+    if(allocate_amount == 0) return 0;
+    
+    (*current_data_header) = (DataHeader){};
+    DataHeader * new_data_header = current_data_header;
+    current_data_header++;
+    
+    strcpy(new_data_header->name.string , name);
+    new_data_header->data_offset = (current_save_memory_location - save_memory);
+    
+	unsigned char* start = current_save_memory_location;
+	current_save_memory_location += allocate_amount;
+	if (current_save_memory_location >= save_memory + MAX_SAVE_SIZE)
+	{
+		CATCH;
+	}
+    
+	memset(start, 0, allocate_amount);
+    
+    return start;
+}
 
 #define write_buffer( data , name , type , index ,  count) \
 { \
@@ -3369,24 +3400,28 @@ buffer[index] = data;\
 
 #define write_data( data , name , type ) (*(type*)allocate_to_file(name  , type , 1)) = data
 
-internal unsigned char * allocate_to_file_(char * name , int size , int count)
+internal void save_data_to_file(char * path)
 {
+    int save_header_size = (current_data_header - data_header_array) * sizeof(DataHeader);
+    int save_size = current_save_memory_location - save_memory;
     
-    DataHeader * new_data_header = add_data_header();
+    FILE * save_file = fopen(path , "wb");
     
-    strcpy(new_data_header->name.string , name);
-    new_data_header->data_offset = (current_save_memory_location - save_memory);
+    fwrite(&save_header_size , sizeof(int) , 1, save_file);
+    fwrite(&save_size , sizeof(int) , 1, save_file);
     
-    return allocate_save_(size * count);
+    fwrite( data_header_array , save_header_size , 1, save_file);
+    fwrite( save_memory , save_size , 1, save_file);
     
+    fclose(save_file);
 }
 
-internal void save_file()
+internal void save_game_state()
 {
     save_memory = malloc(MAX_SAVE_SIZE);
-    current_save_memory_location = save_memory;
-    
     data_header_array = malloc(MAX_HEADER_SIZE);
+    
+    current_save_memory_location = save_memory;
     current_data_header = data_header_array;
     
     write_data(editor_type , "editor_type" , int);
@@ -3423,8 +3458,8 @@ internal void save_file()
     }
     
     write_data( clip_count , "clip_count" , int);
-    write_data( all_key_frame_count , "key_frame_count" , int);
-    write_data( selected_model->bone_count , "base_bone_count" , int );
+    write_data( all_key_frame_buffer.count , "key_frame_count" , int);
+    write_data( selected_model->bone_buffer.count , "base_bone_count" , int );
     
     for(int clip_array_index = 0 , clip_index = 0 , key_frame_index = 0 
         ; clip_array_index < MAX_CLIP ; 
@@ -3444,8 +3479,7 @@ internal void save_file()
         
         list_foreach(array_index , &current_clip->key_frame_active_list)
         {
-            
-            KeyFrame * key_frame = all_key_frame + array_index;
+            KeyFrame * key_frame = all_key_frame_buffer.data + array_index;
             
             write_buffer(key_frame->bone_index , "bone_index" , int ,key_frame_index ,  key_frame_count);
             write_buffer(key_frame->bone_state.local_position , "local_position" ,  Vector3 ,key_frame_index , key_frame_count);
@@ -3462,27 +3496,41 @@ internal void save_file()
         clip_index++;
     }
     
-    for(int bone_index = 0 ; bone_index < selected_model->bone_count ; bone_index++)
+    for(int bone_index = 0 ; bone_index < selected_model->bone_buffer.count ; bone_index++)
     {
-        Bone * current_bone = selected_model->all_bones + bone_index;
+        Bone * current_bone = selected_model->bone_buffer.data + bone_index;
         
         FixedStringW fixed_string_name = {};
         fixed_string_name = current_bone->bone_name;
         
-        write_buffer(fixed_string_name ,  "base_bone_name" , FixedStringW ,bone_index , selected_model->bone_count);
-        write_buffer(current_bone->from_blend_file , "bone_from_blend" , bool , bone_index , selected_model->bone_count);
-        write_buffer(current_bone->IK_enable , "IK_enable" , bool , bone_index , selected_model->bone_count);
-        write_buffer(current_bone->IK_chain_length , "IK_chain_length" , int , bone_index , selected_model->bone_count);
-        write_buffer(current_bone->IK_target_bone_index , "IK_target" , int , bone_index , selected_model->bone_count);
-        write_buffer(current_bone->IK_pole_bone_index , "IK_pole" , int , bone_index , selected_model->bone_count);
-        write_buffer(current_bone->free_position , "base_bone_free_position" , bool , bone_index , selected_model->bone_count);
+        write_buffer(fixed_string_name ,  "base_bone_name" , FixedStringW ,bone_index , selected_model->bone_buffer.count);
+        write_buffer(current_bone->from_blend_file , "bone_from_blend" , bool , bone_index , selected_model->bone_buffer.count);
+        write_buffer(current_bone->IK_enable , "IK_enable" , bool , bone_index , selected_model->bone_buffer.count);
+        write_buffer(current_bone->IK_chain_length , "IK_chain_length" , int , bone_index , selected_model->bone_buffer.count);
+        write_buffer(current_bone->IK_target_bone_index , "IK_target" , int , bone_index , selected_model->bone_buffer.count);
+        write_buffer(current_bone->IK_pole_bone_index , "IK_pole" , int , bone_index , selected_model->bone_buffer.count);
+        write_buffer(current_bone->free_position , "base_bone_free_position" , bool , bone_index , selected_model->bone_buffer.count);
         
-        write_buffer(current_bone->state.local_position ,"base_bone_position" , Vector3 , bone_index ,  selected_model->bone_count);
-        write_buffer(current_bone->state.local_rotation ,  "base_bone_quaternion" , Quaternion ,bone_index , selected_model->bone_count);
-        write_buffer(current_bone->state.end_point_offset ,  "base_bone_end_point_offset" , Vector3 ,bone_index , selected_model->bone_count);
+        write_buffer(current_bone->state.local_position ,"base_bone_position" , Vector3 , bone_index ,  selected_model->bone_buffer.count);
+        write_buffer(current_bone->state.local_rotation ,  "base_bone_quaternion" , Quaternion ,bone_index , selected_model->bone_buffer.count);
+        write_buffer(current_bone->state.end_point_offset ,  "base_bone_end_point_offset" , Vector3 ,bone_index , selected_model->bone_buffer.count);
         
-        write_buffer(current_bone->parent_bone_index , "base_bone_parent" , int , bone_index , selected_model->bone_count);
+        write_buffer(current_bone->parent_bone_index , "base_bone_parent" , int , bone_index , selected_model->bone_buffer.count);
     }
+    
+    save_data_to_file(get_app_file_path(game_state_save_name));
+    
+    free(save_memory);
+    free(data_header_array);
+}
+
+internal void save_map()
+{
+    save_memory = malloc(MAX_SAVE_SIZE);
+    data_header_array = malloc(MAX_HEADER_SIZE);
+    
+    current_save_memory_location = save_memory;
+    current_data_header = data_header_array;
     
     int quad_count = 0;
     
@@ -3496,7 +3544,7 @@ internal void save_file()
     int quad_index = 0;
     array_foreach( array_index , &quad_in_map_array )
     {
-        Quad quad = quad_in_map[array_index];
+        Quad quad = quad_in_map_buffer.data[array_index];
         
         write_buffer(quad.vertex_position[vertex_top_left] , "map_quad_top_left_vertex" , Vector3 , quad_index , quad_count);
         write_buffer(quad.vertex_position[vertex_top_right] , "map_quad_top_right_vertex" , Vector3 , quad_index , quad_count);
@@ -3514,7 +3562,7 @@ internal void save_file()
     int box_index = 0;
     array_foreach(array_index , &box_in_map_array)
     {
-        Box box = box_in_map[array_index];
+        Box box = box_in_map_buffer.data[array_index];
         
         write_buffer(box.position , "map_box_position" , Vector3 , box_index , box_count);
         write_buffer(box.size , "map_box_size" , Vector3 , box_index , box_count);
@@ -3534,25 +3582,15 @@ internal void save_file()
     int reference_frame_index = 0;
     list_foreach(array_index , &reference_frame_list)
     {
-        Vector3 reference_frame = all_reference_frame[array_index];
+        Vector3 reference_frame = reference_frame_buffer.data[array_index];
         write_buffer(reference_frame , "reference frame" , Vector3 , reference_frame_index , reference_frame_count);
         reference_frame_index++;
     }
     
-    int save_header_size = (current_data_header - data_header_array) * sizeof(DataHeader);
-    int save_size = current_save_memory_location - save_memory;
-    
-    FILE * game_save_file = fopen(get_app_file_path("Game\\save.an") , "wb");
-    
-    fwrite(&save_header_size , sizeof(int) , 1, game_save_file);
-    fwrite(&save_size , sizeof(int) , 1, game_save_file);
-    
-    fwrite( data_header_array , save_header_size , 1, game_save_file);
-    fwrite( save_memory , save_size , 1, game_save_file);
-    
-    fclose(game_save_file);
+    save_data_to_file(get_app_file_path(map_save_name));
     
     free(save_memory);
+    free(data_header_array);
 }
 
 internal int reassign_bone_index(int previous_bone_index)
@@ -3564,9 +3602,9 @@ internal int reassign_bone_index(int previous_bone_index)
     
     int parent_index = -1;
     
-    for(int current_bone_index = 0 ; current_bone_index < selected_model->bone_count ; current_bone_index++)
+    for(int current_bone_index = 0 ; current_bone_index < selected_model->bone_buffer.count ; current_bone_index++)
     {
-        Bone * parent_bone = selected_model->all_bones + current_bone_index;
+        Bone * parent_bone = selected_model->bone_buffer.data + current_bone_index;
         if(compare_string_W( previous_bone_name.string , parent_bone->bone_name.string ))
         {
             parent_index = current_bone_index;
@@ -3577,13 +3615,11 @@ internal int reassign_bone_index(int previous_bone_index)
     return parent_index;
 }
 
-//TODO: reassign bone
-internal void load_file()
+internal bool load_data_from_file(char * path)
 {
+    FILE * game_save_file = fopen(path , "rb");
     
-    FILE * game_save_file = fopen(get_app_file_path("Game\\save.an") , "rb");
-    
-    if(!game_save_file) return;
+    if(!game_save_file) return false;
     
     int save_header_size = 0;
     fread(&save_header_size , sizeof(int), 1, game_save_file);
@@ -3593,17 +3629,25 @@ internal void load_file()
     int save_size = 0;
     fread(&save_size , sizeof(int), 1, game_save_file);
     
-    unsigned char * whole_data = malloc(save_header_size + save_size);
+    scratch_buffer_for_read = malloc(save_header_size + save_size);
     
-    fread(whole_data , save_header_size + save_size , 1 , game_save_file);
+    fread(scratch_buffer_for_read , save_header_size + save_size , 1 , game_save_file);
     
     fclose(game_save_file);
     
-    data_header_array = (DataHeader*)whole_data;
+    data_header_array = (DataHeader*)scratch_buffer_for_read;
     current_data_header = data_header_array;
     
-    save_memory = whole_data + save_header_size;
+    save_memory = scratch_buffer_for_read + save_header_size;
     current_save_memory_location = save_memory;
+    
+    return true;
+}
+
+//TODO: reassign bone index
+internal void load_game_state()
+{
+    if(!load_data_from_file(get_app_file_path(game_state_save_name))) return;
     
     read_data(editor_type , "editor_type" , int);
     read_data(editor->current_frame_at_timeline , "current_frame_index" , int);
@@ -3621,15 +3665,16 @@ internal void load_file()
     int previous_key_frame_count = 0;
     read_data(previous_key_frame_count , "key_frame_count" , int);
     
-    all_key_frame_count = previous_key_frame_count;
-    for(;all_key_frame_capacity < all_key_frame_count;all_key_frame_capacity*=2);
-    all_key_frame = allocate_temp(KeyFrame , all_key_frame_capacity);
+    int new_key_frame_capacity = 1;
+    for(; new_key_frame_capacity < previous_key_frame_count; new_key_frame_capacity *= 2);
+    allocate_buffer(&all_key_frame_buffer  , KeyFrame , new_key_frame_capacity , AT_temp);
+    all_key_frame_buffer.count = previous_key_frame_count;
     
-    for(int key_frame_index = 0 ; key_frame_index < all_key_frame_count ; key_frame_index++)
+    for(int key_frame_index = 0 ; key_frame_index < all_key_frame_buffer.count ; key_frame_index++)
     {
         int key_frame_owner_clip_index = -1;
         
-        KeyFrame * key_frame = all_key_frame + key_frame_index;
+        KeyFrame * key_frame = all_key_frame_buffer.data + key_frame_index;
         
         read_buffer(key_frame->bone_index , "bone_index" , int ,key_frame_index);
         read_buffer(key_frame->bone_state.local_position , "local_position" ,  Vector3 ,key_frame_index);
@@ -3646,14 +3691,13 @@ internal void load_file()
     
     for(int clip_index = 0 ; clip_index < clip_count ; clip_index++)
     {
-        
         clip_array[clip_index] = new_clip_array + clip_index;
         
         Clip * new_clip = new_clip_array + clip_index;
-        new_clip->key_frame_active_list = allocate_list(CLIP_START_CAPACITY);
-        new_clip->dragging_key_frame_list = allocate_list(CLIP_START_CAPACITY);
-        new_clip->key_frame_hash_table_by_bone = allocate_hash_table(CLIP_START_CAPACITY);
-        new_clip->key_frame_hash_table = allocate_hash_table(CLIP_START_CAPACITY);
+        new_clip->key_frame_active_list = allocate_list(CLIP_START_CAPACITY , AT_temp);
+        new_clip->dragging_key_frame_list = allocate_list(CLIP_START_CAPACITY, AT_temp);
+        new_clip->key_frame_hash_table_by_bone = allocate_hash_table(CLIP_START_CAPACITY, AT_temp);
+        new_clip->key_frame_hash_table = allocate_hash_table(CLIP_START_CAPACITY, AT_temp);
         
         read_buffer(new_clip->clip_name ,   "clip_name" ,FixedString ,clip_index );
         read_buffer(new_clip->clip_index , "clip_index" ,  int ,clip_index );
@@ -3669,7 +3713,7 @@ internal void load_file()
         
         for(int key_frame_index = key_frame_start ; key_frame_index < key_frame_end ; key_frame_index++)
         {
-            KeyFrame * key_frame = all_key_frame + key_frame_index;
+            KeyFrame * key_frame = all_key_frame_buffer.data + key_frame_index;
             
             add_to_list_tail( key_frame_index , &new_clip->key_frame_active_list);
             
@@ -3679,15 +3723,13 @@ internal void load_file()
             add_to_hash_table(GetKeyFrameHash(key_frame->frame_index , key_frame->bone_index) , key_frame_index , &new_clip->key_frame_hash_table);
         }
         
-        //read_buffer(new_clip->key_frame_array_count ,"clip_key_frame_count" , int , clip_index);
-        //new_clip->key_frame_array = allocate_temp(KeyFrame , new_clip->key_frame_count);
+        //read_buffer(new_clip->key_frame_array_count ,"clip_key_frame_count" , int , clip_index);//new_clip->key_frame_array = allocate_temp(KeyFrame , new_clip->key_frame_count);
         
     }
     
     int previous_bone_count = -1;
     read_data(previous_bone_count , "base_bone_count",int);
     
-#if 1
     for(int previous_bone_index = 0 ; previous_bone_index < previous_bone_count ; previous_bone_index++)
     {
         
@@ -3701,30 +3743,36 @@ internal void load_file()
         
         if(!is_from_blend_file)
         {
-            REALLOCATE_BUFFER_IF_TOO_SMALL(Bone , selected_model->all_bones , selected_model->bone_count , selected_model->bone_capacity , allocate_temp_);
-            REALLOCATE_BUFFER_IF_TOO_SMALL(Bone , selected_model->all_initial_bone , selected_model->initial_bone_count , selected_model->initial_bone_capacity , allocate_temp_);
+            if(buffer_full(selected_model->bone_buffer))
+            {
+                reallocate_buffer(&selected_model->bone_buffer , AT_temp);
+                //REALLOCATE_BUFFER_IF_TOO_SMALL(Bone , selected_model->all_bones , selected_model->bone_count , selected_model->bone_capacity , allocate_temp_);
+            }
             
-            selected_model->initial_bone_count++;
-            int new_bone_index = selected_model->bone_count++;
-            bone_to_assign = selected_model->all_bones + new_bone_index;
+            if(buffer_full(selected_model->initial_bone_buffer))
+            {
+                reallocate_buffer(&selected_model->initial_bone_buffer , AT_temp);
+                //REALLOCATE_BUFFER_IF_TOO_SMALL(Bone , selected_model->all_initial_bone , selected_model->initial_bone_count , selected_model->initial_bone_capacity , allocate_temp_);
+            }
+            
+            selected_model->initial_bone_buffer.count++;
+            int new_bone_index = selected_model->bone_buffer.count++;
+            bone_to_assign = selected_model->bone_buffer.data + new_bone_index;
             bone_to_assign->bone_name = previous_name;
             bone_to_assign->from_blend_file = is_from_blend_file;
             bone_to_assign->bone_index = new_bone_index;
-            
         }
         else
         {
-            
-            for(int current_bone_index = 0 ; current_bone_index < selected_model->bone_count ; current_bone_index++)
+            for(int current_bone_index = 0 ; current_bone_index < selected_model->bone_buffer.count ; current_bone_index++)
             {
-                Bone * current_bone = selected_model->all_bones + current_bone_index;
+                Bone * current_bone = selected_model->bone_buffer.data + current_bone_index;
                 if(compare_string_W(current_bone->bone_name.string , previous_name.string))
                 {
                     bone_to_assign = current_bone;
                     break;
                 }
             }
-            
         }
         
         read_buffer(bone_to_assign->IK_enable , "IK_enable" , bool , previous_bone_index);
@@ -3744,9 +3792,9 @@ internal void load_file()
         }
     }
     
-    for(int bone_index = 0 ; bone_index < selected_model->bone_count ; bone_index++)
+    for(int bone_index = 0 ; bone_index < selected_model->bone_buffer.count ; bone_index++)
     {
-        Bone * current_bone = selected_model->all_bones + bone_index;
+        Bone * current_bone = selected_model->bone_buffer.data + bone_index;
         
         current_bone->IK_target_bone_index = reassign_bone_index(current_bone->IK_target_bone_index);
         current_bone->IK_pole_bone_index = reassign_bone_index(current_bone->IK_pole_bone_index);
@@ -3767,16 +3815,23 @@ internal void load_file()
         }
     }
     
+    free(scratch_buffer_for_read);
+}
+
+internal void load_map()
+{
+    if(!load_data_from_file(get_app_file_path(map_save_name))) return;
+    
     int quad_count = 0;
     int quad_capacity = 1;
     read_data(quad_count , "map_quad_count" , int);
     for( ;quad_capacity < quad_count; quad_capacity *= 2 );
-    quad_in_map_array = allocate_array(quad_capacity);
-    quad_in_map = allocate_temp(Quad , quad_capacity);
+    quad_in_map_array = allocate_array(quad_capacity , AT_temp);
+    allocate_buffer( &quad_in_map_buffer , Quad , quad_capacity , AT_temp);
     
     for(int quad_index = 0 ; quad_index < quad_count ; quad_index++)
     {
-        Quad * quad = quad_in_map + add_to_array(&quad_in_map_array);
+        Quad * quad = quad_in_map_buffer.data + add_to_array(&quad_in_map_array);
         
         read_buffer(quad->vertex_position[vertex_top_left] , "map_quad_top_left_vertex" , Vector3 , quad_index);
         read_buffer(quad->vertex_position[vertex_top_right] , "map_quad_top_right_vertex" , Vector3 , quad_index);
@@ -3784,25 +3839,21 @@ internal void load_file()
         read_buffer(quad->vertex_position[vertex_bottom_right] , "map_quad_bottom_right_vertex" , Vector3 , quad_index);
     }
     
-    
     int box_count = 0;
     int box_capacity = 1;
     read_data(box_count , "map_box_count" , int);
     for(;box_capacity < box_count; box_capacity *= 2);
-    box_in_map_array = allocate_array(box_capacity);
-    box_in_map = allocate_temp(Box , box_capacity);
+    box_in_map_array = allocate_array(box_capacity , AT_temp);
+    allocate_buffer(&box_in_map_buffer , Box , box_capacity , AT_temp);
     
     for(int box_index = 0 ; box_index < box_count ; box_index++)
     {
-        Box * box = box_in_map + add_to_array(&box_in_map_array);
+        Box * box = box_in_map_buffer.data + add_to_array(&box_in_map_array);
         
         read_buffer(box->position , "map_box_position" , Vector3 , box_index);
         read_buffer(box->size , "map_box_size" , Vector3 , box_index);
         read_buffer(box->rotation , "map_box_rotation" , Quaternion , box_index);
     }
-    
-    
-#endif
     
     read_data(selected_reference_frame_index , "selected reference frame" , int);
     
@@ -3814,12 +3865,17 @@ internal void load_file()
         Vector3 refernce_frame = {};
         read_buffer(refernce_frame , "reference frame" , Vector3 , reference_frame_index);
         
-        REALLOCATE_LIST_IF_TOO_SMALL(Vector3 , all_reference_frame , &reference_frame_list);
+        if(list_full(&reference_frame_list))
+        {
+            reallocate_list(&reference_frame_list , AT_temp);
+            reallocate_buffer( &reference_frame_buffer , AT_temp);
+        }
+        
         int new_reference_frame_index= add_to_list_tail_B(&reference_frame_list);
-        all_reference_frame[new_reference_frame_index] = refernce_frame;
+        reference_frame_buffer.data[new_reference_frame_index] = refernce_frame;
     }
     
-    free(whole_data);
+    free(scratch_buffer_for_read);
 }
 
 internal GAME_UNLOAD(game_unload)
@@ -3834,7 +3890,8 @@ internal GAME_UNLOAD(game_unload)
     
     if (!shader_compile_failed)
     {
-        save_file();
+        save_game_state();
+        save_map();
     }
     
     if (render_state.screen_frame_buffer != 0)
@@ -3859,11 +3916,10 @@ internal GAME_UNLOAD(game_unload)
         glDeleteProgram(all_shader_inputs[shader_index].shader);
     }
     
-    free(_type_struct_meta_);
     free(app_data->frame_time_memory.start_memory);
     free(app_data->run_time_memory.start_memory);
     
-    WSACleanUp();
+    end_connection();
 }
 
 internal void game_init()
@@ -3879,7 +3935,8 @@ internal void game_init()
     create_a_whole_new_world();
     
     double blend_file_load_time = time_stamp();
-    load_blend_file();//hope this doesn't screw me
+    //hope this doesn't screw me
+    load_blend_file();
     printf("\nBlend. File Load Time: %f\n" , (time_stamp() - blend_file_load_time) / (1000.0 * 1000.0));
     
     render_state_init();
@@ -3888,7 +3945,8 @@ internal void game_init()
     if (shader_compile_failed) return;
     
     double game_load_time = time_stamp();
-    load_file();
+    load_game_state();
+    load_map();
     printf("\nGame Load Time: %f\n" , (time_stamp() - game_load_time) / (1000.0 * 1000.0));
     
     generate_nav_mesh();
@@ -3896,9 +3954,9 @@ internal void game_init()
     search_queue_capacity = 128;
     search_queue = allocate_temp( Int3 , search_queue_capacity);
     
-    for(int bone_index = 0 ; bone_index < selected_model->bone_count ; bone_index++)
+    for(int bone_index = 0 ; bone_index < selected_model->bone_buffer.count ; bone_index++)
     {
-        selected_model->all_initial_bone[bone_index] = selected_model->all_bones[bone_index];
+        selected_model->initial_bone_buffer.data[bone_index] = selected_model->bone_buffer.data[bone_index];
     }
     
     Image default_white_image = GenImageColor(20, 20, WHITE);
@@ -3908,8 +3966,6 @@ internal void game_init()
     Image missing_texture = GenImageCellular(20, 20, 2);
     render_state.missing_texture = D_load_texture_from_image(missing_texture);
     UnloadImage(missing_texture);
-    
-    //make_a_stick_man();
     
     box_rect[face_top].rotation = QuaternionFromEuler(-90 * DEG2RAD , 0 , 0);
     box_rect[face_bottom].rotation = QuaternionFromEuler( 90 * DEG2RAD , 0 , 0);
@@ -3922,19 +3978,12 @@ internal void game_init()
     {
         if(clip_array[editor->selected_clip_index])
         {
-            if(selected_model->all_bones)
+            if(selected_model->bone_buffer.capacity)
             {
                 ClipBone * new_clip_bone = clip_bone_stack + clip_bone_stack_count++;
                 (*new_clip_bone) = (ClipBone){};
             }
         }
-    }
-    
-    if(app_data->is_server)
-    {
-        SADATA data = {};
-        
-        WSAStartup( MAKEWORD(2,2) , &data);
     }
 }
 
@@ -3954,9 +4003,12 @@ extern GAME_LOAD(game_load)
     app_data->run_time_memory.start_memory = (unsigned char*)malloc(app_data->run_time_memory.size);
     app_data->run_time_memory.current_memory = app_data->run_time_memory.start_memory;
     
-    _type_struct_meta_ = get_all_type_member_info();
-    
-    create_struct_name_string_hash();
     game_init();
     
+    net_state = (NetState){};
+    net_state.server_socket = -1;
+    net_state.is_server = app_data->is_server;
+    net_state.is_client = app_data->is_client;
+    
+    //start_connection();
 }

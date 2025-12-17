@@ -87,6 +87,8 @@ struct BlenderBone
     
 };
 
+BUFFER(BlenderBoneBuffer , BlenderBone);
+
 typedef struct BlenderVertex BlenderVertex;
 struct BlenderVertex
 {
@@ -143,17 +145,16 @@ struct BlenderWeight
 
 global float model_scale = 1.0;
 
-global BlenderBone * bone_buffer = 0;
-global int bone_buffer_count = 0;
-global int bone_buffer_capacity = 0;
+//global BlenderBone * all_bone = 0;
+global BlenderBoneBuffer bone_buffer = {};
 
-global unsigned short * mesh_indices = 0;
-global int mesh_indices_count = 0;
-global int mesh_indices_capacity = 0;
+BUFFER(UINT16Buffer , unsigned short);
 
-global Vector3 * mesh_vertices = 0;
-global int mesh_vertices_count = 0;
-global int mesh_vertices_capacity = 0;
+//global unsigned short * mesh_indices = 0;
+global UINT16Buffer mesh_indices_buffer = {};
+
+//global Vector3 * mesh_vertices = 0;
+global Vector3Buffer mesh_vertices_buffer = {};
 
 global HashTable block_address_hash_table = {};
 
@@ -557,7 +558,6 @@ internal void print_all_fields(unsigned char * block_memory , int structure_inde
 
 internal void blender_iterate_bone(unsigned long long address , int type , int stack_count , int parent_index)
 {
-    
     for(;;)
     {
         
@@ -570,9 +570,12 @@ internal void blender_iterate_bone(unsigned long long address , int type , int s
         int structure_index = type_to_structure[type];
         if(type == void_type_index) structure_index = data_block->SDNA_index;
         
-        REALLOCATE_BUFFER_IF_TOO_SMALL(BlenderBone , bone_buffer , bone_buffer_capacity , bone_buffer_count , allocate_frame_);
-        int bone_index = bone_buffer_count;
-        BlenderBone * new_bone = bone_buffer + bone_buffer_count++;
+        if(bone_buffer.count == bone_buffer.capacity)
+        {
+            reallocate_buffer( &bone_buffer , AT_frame);
+        }
+        int bone_index = bone_buffer.count++;
+        BlenderBone * new_bone = bone_buffer.data + bone_index;
         
         new_bone->parent_index = parent_index;
         
@@ -783,7 +786,7 @@ internal void load_header_and_DNA(FILE * blend_file)
     }
     
     all_block_header = allocate_temp( BlenderFileBlockHeader , all_block_header_count);
-    block_address_hash_table = allocate_hash_table(all_block_header_count * 1.5);
+    block_address_hash_table = allocate_hash_table(all_block_header_count * 1.5 , AT_temp);
     
     int all_block_header_index = 0;
     
@@ -799,9 +802,11 @@ internal void load_header_and_DNA(FILE * blend_file)
 
 internal void add_to_mesh_indices(unsigned short index)
 {
-    
-    REALLOCATE_BUFFER_IF_TOO_SMALL(unsigned short , mesh_indices , mesh_indices_capacity , mesh_indices_count , allocate_frame_);
-    mesh_indices[mesh_indices_count++] = index;
+    if(mesh_indices_buffer.count == mesh_indices_buffer.capacity)
+    {
+        reallocate_buffer(&mesh_indices_buffer , AT_temp);
+    }
+    mesh_indices_buffer.data[mesh_indices_buffer.count++] = index;
 }
 
 internal void load_blend_file()
@@ -809,14 +814,9 @@ internal void load_blend_file()
     
     FILE * blend_file = fopen(get_app_file_path("Asset\\test.blend") , "rb");
     
-    mesh_indices_capacity = 1024;
-    mesh_indices = allocate_frame(unsigned short , mesh_indices_capacity);
-    
-    mesh_vertices_capacity = 1024;
-    mesh_vertices = allocate_frame(Vector3 , mesh_vertices_capacity);
-    
-    bone_buffer_capacity = 64;
-    bone_buffer = allocate_frame(BlenderBone , bone_buffer_capacity);
+    allocate_buffer(&mesh_indices_buffer , unsigned short , 1024 , AT_frame);
+    allocate_buffer(&mesh_vertices_buffer , Vector3 , 1024 , AT_frame);
+    allocate_buffer(&bone_buffer , BlenderBone , 64 , AT_frame);
     
     if(blend_file)
     {
@@ -860,9 +860,9 @@ internal void load_blend_file()
                     
                     D_Model * new_model = all_models + model_count++;
                     
-                    mesh_indices_count =0;
-                    mesh_vertices_count = 0;
-                    bone_buffer_count = 0;
+                    mesh_indices_buffer.count =0;
+                    mesh_vertices_buffer.count = 0;
+                    bone_buffer.count = 0;
                     
                     //print_all_fields(data_block->block_memory , data_block->SDNA_index);
                     
@@ -888,8 +888,11 @@ internal void load_blend_file()
                         
                         BlenderVertex * vertex = all_vertex + vertex_index;
                         
-                        REALLOCATE_BUFFER_IF_TOO_SMALL(Vector3 , mesh_vertices , mesh_vertices_capacity , mesh_vertices_count , allocate_frame_);
-                        mesh_vertices[mesh_vertices_count++] = vertex->position;
+                        if(buffer_full(mesh_vertices_buffer))
+                        {
+                            reallocate_buffer(&mesh_vertices_buffer , AT_frame);
+                        }
+                        mesh_vertices_buffer.data[mesh_vertices_buffer.count++] = vertex->position;
                     }
                     
                     for(int polygon_index = 0 ; polygon_index < polygon_block->SDNA_count ; polygon_index++)
@@ -926,8 +929,8 @@ internal void load_blend_file()
                         }
                     }
                     
-                    int vertex_count = mesh_vertices_count;
-                    int index_count = mesh_indices_count;
+                    int vertex_count = mesh_vertices_buffer.count;
+                    int index_count = mesh_indices_buffer.count;
                     
                     new_model->vertex_count = vertex_count;
                     new_model->index_count = index_count;
@@ -938,18 +941,16 @@ internal void load_blend_file()
                     
                     for(int vertex_index = 0 ; vertex_index < vertex_count ; vertex_index++)
                     {
-                        new_model->vertices[vertex_index] = Vector3Scale(mesh_vertices[vertex_index], model_scale);
+                        new_model->vertices[vertex_index] = Vector3Scale(mesh_vertices_buffer.data[vertex_index], model_scale);
                     }
                     
-                    //memcpy( ,  , sizeof(Vector3) * vertex_count );
-                    memcpy(new_model->indices , mesh_indices , sizeof(unsigned short) * index_count);
+                    memcpy(new_model->indices , mesh_indices_buffer.data , sizeof(unsigned short) * index_count);
                     
                     for(int index = 0 ; index <  index_count ; )
                     {
-                        
-                        Vector3 position_a = mesh_vertices[mesh_indices[index]];
-                        Vector3 position_b = mesh_vertices[mesh_indices[index+1]];
-                        Vector3 position_c = mesh_vertices[mesh_indices[index+2]];
+                        Vector3 position_a = mesh_vertices_buffer.data[mesh_indices_buffer.data[index]];
+                        Vector3 position_b = mesh_vertices_buffer.data[mesh_indices_buffer.data[index+1]];
+                        Vector3 position_c = mesh_vertices_buffer.data[mesh_indices_buffer.data[index+2]];
                         
                         Vector3 a_to_b = Vector3Subtract(position_b , position_a);
                         Vector3 a_to_c = Vector3Subtract(position_c , position_a);
@@ -970,11 +971,9 @@ internal void load_blend_file()
                     //print_all_fields(polygon_block->block_memory , type_to_structure[polygon_field_result.type]);
                     //print_all_fields(loop_block->block_memory , type_to_structure[loop_field_result.type]);
                     
-                    FixedStringW * vertex_group_name_buffer = 0;
-                    int vertex_group_name_buffer_count = 0;
-                    int vertex_group_name_buffer_capacity = 1024;
-                    
-                    vertex_group_name_buffer = allocate_frame(FixedStringW , vertex_group_name_buffer_capacity);
+                    //FixedStringW * vertex_group_name = 0;
+                    FixedStringWBuffer vertex_group_name_buffer = {};
+                    allocate_buffer( &vertex_group_name_buffer , FixedStringW , 1024 , AT_frame);
                     
                     FieldResult vertex_group_field_result = get_field("vertex_group_names->*first" , data_block->block_memory , data_block->SDNA_index);
                     
@@ -990,8 +989,11 @@ internal void load_blend_file()
                             
                             FieldResult name_result = get_field("name[64]" , vertex_group_block->block_memory , vertex_group_structure_index);
                             
-                            REALLOCATE_BUFFER_IF_TOO_SMALL(FixedStringW , vertex_group_name_buffer , vertex_group_name_buffer_capacity , vertex_group_name_buffer_count , allocate_frame_);
-                            FixedStringW * new_group_name = vertex_group_name_buffer + vertex_group_name_buffer_count++;
+                            if(buffer_full(vertex_group_name_buffer))
+                            {
+                                reallocate_buffer(&vertex_group_name_buffer , AT_frame);
+                            }
+                            FixedStringW * new_group_name = vertex_group_name_buffer.data + vertex_group_name_buffer.count++;
                             FixedString * name = ((FixedString*)name_result.data);
                             
                             char_to_wide_char(new_group_name->string , name->string , FIXED_STRING_SIZE);
@@ -1008,11 +1010,9 @@ internal void load_blend_file()
                     
                     DeformVertexSlice * all_deform_vertex_slice = allocate_temp(DeformVertexSlice , vertex_count);
                     
-                    DeformVertex * deform_vertex_buffer = 0;
-                    int deform_vertex_buffer_count = 0;
-                    int deform_vertex_buffer_capacity = 1024;
-                    
-                    deform_vertex_buffer = allocate_frame(DeformVertex , deform_vertex_buffer_capacity);
+                    //DeformVertex * deform_vertex_data = 0;
+                    DeformVertexBuffer deform_vertex_buffer = {};
+                    allocate_buffer(&deform_vertex_buffer , DeformVertex , 1024 , AT_frame);
                     
                     FieldResult deform_vertex_field_result = get_field("*dvert" , data_block->block_memory , data_block->SDNA_index);
                     
@@ -1042,8 +1042,11 @@ internal void load_blend_file()
                             
                             if(weight.weight < 0.001f) continue;
                             
-                            REALLOCATE_BUFFER_IF_TOO_SMALL(DeformVertex , deform_vertex_buffer , deform_vertex_buffer_capacity , deform_vertex_buffer_count , allocate_frame_);
-                            DeformVertex * new_vertex = deform_vertex_buffer + deform_vertex_buffer_count++;
+                            if(buffer_full(deform_vertex_buffer))
+                            {
+                                reallocate_buffer(&deform_vertex_buffer , AT_frame);
+                            }
+                            DeformVertex * new_vertex = deform_vertex_buffer.data + deform_vertex_buffer.count++;
                             
                             new_vertex->bone_index = weight.group_index;
                             new_vertex->weight = weight.weight;
@@ -1065,7 +1068,7 @@ internal void load_blend_file()
                     
                     for(int deform_vertex_index = 0 ; deform_vertex_index < deform_vertex_count ; deform_vertex_index++)
                     {
-                        new_model->all_deform_vertex[deform_vertex_index] = deform_vertex_buffer[deform_vertex_index];
+                        new_model->all_deform_vertex[deform_vertex_index] = deform_vertex_buffer.data[deform_vertex_index];
                     }
                     
                     for(;modifier_address;)
@@ -1095,25 +1098,22 @@ internal void load_blend_file()
                             
                             blender_iterate_bone(bone_result.address , bone_result.type ,0  , -1);
                             
-                            int bone_count = bone_buffer_count;
-                            new_model->bone_count = bone_count;
-                            new_model->initial_bone_count = bone_count;
-                            
                             int bone_capacity = 1;
+                            int bone_count = bone_buffer.count;
                             for( ; bone_capacity < bone_count ; bone_capacity *= 2);
-                            new_model->bone_capacity = bone_capacity;
-                            new_model->initial_bone_capacity = bone_capacity;
                             
-                            new_model->all_bones = allocate_temp(Bone , bone_capacity);
-                            new_model->all_initial_bone = allocate_temp(Bone , bone_capacity);
-                            new_model->root_bone_list = allocate_list(bone_capacity);
-                            new_model->bone_children_hash_table = allocate_hash_table(bone_capacity);
+                            allocate_buffer(&new_model->bone_buffer , Bone , bone_capacity , AT_temp);
+                            allocate_buffer(&new_model->initial_bone_buffer , Bone , bone_capacity , AT_temp);
+                            new_model->root_bone_list = allocate_list(bone_capacity , AT_temp);
+                            new_model->bone_children_hash_table = allocate_hash_table(bone_capacity , AT_temp);
+                            
+                            new_model->bone_buffer.count = bone_count;
+                            new_model->initial_bone_buffer.count = bone_count;
                             
                             for(int bone_index = 0 ; bone_index < bone_count ; bone_index++)
                             {
-                                
-                                Bone * model_bone = new_model->all_bones + bone_index;
-                                BlenderBone * blender_bone = bone_buffer + bone_index;
+                                Bone * model_bone = new_model->bone_buffer.data + bone_index;
+                                BlenderBone * blender_bone = bone_buffer.data + bone_index;
                                 
                                 Vector3 head = {};
                                 head.x = blender_bone->head.x;
@@ -1161,7 +1161,7 @@ internal void load_blend_file()
                             //honestly this just much better, i don't what i did wrong but i have try mixing the offset from base bone and the bone matrix.
                             list_foreach(root_bone_index , &new_model->root_bone_list)
                             {
-                                Bone * root_bone = new_model->all_bones + root_bone_index;
+                                Bone * root_bone = new_model->bone_buffer.data + root_bone_index;
                                 
                                 int parent_bone_index_stack[256] = {};
                                 Vector3 parent_bone_position_stack[256] = {};
@@ -1178,7 +1178,7 @@ internal void load_blend_file()
                                     int parent_bone_index = parent_bone_index_stack[bone_stack_count];
                                     Vector3 parent_position = parent_bone_position_stack[bone_stack_count];
                                     
-                                    Bone * parent_bone = new_model->all_bones + parent_bone_index;
+                                    Bone * parent_bone = new_model->bone_buffer.data + parent_bone_index;
                                     
                                     parent_bone->state.local_position = Vector3Subtract(parent_bone->state.local_position , parent_position);
                                     parent_position = Vector3Add(parent_bone->state.local_position , parent_position);
@@ -1196,16 +1196,15 @@ internal void load_blend_file()
                                 
                             }
                             
-                            int * bone_map = allocate_frame(int , new_model->bone_count);
+                            int * bone_map = allocate_frame(int , new_model->bone_buffer.count);
                             
                             for(int bone_index = 0 ; bone_index < bone_count ; bone_index++)
                             {
-                                
-                                BlenderBone * blender_bone = bone_buffer + bone_index;
+                                BlenderBone * blender_bone = bone_buffer.data + bone_index;
                                 
                                 for(int group_bone_index = 0 ; group_bone_index < bone_count ; group_bone_index++)
                                 {
-                                    FixedStringW group_bone_name = vertex_group_name_buffer[group_bone_index];
+                                    FixedStringW group_bone_name = vertex_group_name_buffer.data[group_bone_index];
                                     
                                     if(compare_string_W( group_bone_name.string , blender_bone->name.string))
                                     {

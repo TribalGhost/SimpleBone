@@ -181,7 +181,7 @@ internal void render_state_init()
     vertex_data.corner_tex_coord[vertex_bottom_left] = (Vector2*)create_GPU_vertex_buffer("vertexTexCoord_bottomLeft",GL_FLOAT , 2 , VERTEX_BUFFER_MAX);
     vertex_data.corner_tex_coord[vertex_top_left] = (Vector2*)create_GPU_vertex_buffer("vertexTexCoord_bottomRight",GL_FLOAT , 2 , VERTEX_BUFFER_MAX);
     
-    render_state.texture_list_to_delete = allocate_list(16);
+    render_state.texture_list_to_delete = allocate_list(16 , AT_temp);
 }
 
 internal unsigned int D_load_texture(void * data , int width, int height, int format, int mipmapCount)
@@ -231,37 +231,37 @@ internal void shader_init()
 	GL_CATCH;
     
 	//TODO : too long
-	all_shader_inputs[S_point_light].shader_source_file_name[GS_vert] = "..\\Code\\Shader\\point_light_vert.glsl";
-	all_shader_inputs[S_point_light].shader_source_file_name[GS_geo] = "..\\Code\\Shader\\point_light_geo.glsl";
-	all_shader_inputs[S_point_light].shader_source_file_name[GS_frag] = "..\\Code\\Shader\\point_light_frag.glsl";
+	all_shader_inputs[S_point_light].shader_source_file_name[GS_vert] = "..\\windows_code\\Shader\\point_light_vert.glsl";
+	all_shader_inputs[S_point_light].shader_source_file_name[GS_geo] = "..\\windows_code\\Shader\\point_light_geo.glsl";
+	all_shader_inputs[S_point_light].shader_source_file_name[GS_frag] = "..\\windows_code\\Shader\\point_light_frag.glsl";
     
-	all_shader_inputs[S_rect].shader_source_file_name[GS_vert] = "..\\Code\\Shader\\rect_vert.glsl";
-	all_shader_inputs[S_rect].shader_source_file_name[GS_geo] = "..\\Code\\Shader\\rect_geo.glsl";
-	all_shader_inputs[S_rect].shader_source_file_name[GS_frag] = "..\\Code\\Shader\\rect_frag.glsl";
+	all_shader_inputs[S_rect].shader_source_file_name[GS_vert] = "..\\windows_code\\Shader\\rect_vert.glsl";
+	all_shader_inputs[S_rect].shader_source_file_name[GS_geo] = "..\\windows_code\\Shader\\rect_geo.glsl";
+	all_shader_inputs[S_rect].shader_source_file_name[GS_frag] = "..\\windows_code\\Shader\\rect_frag.glsl";
     
-	all_shader_inputs[S_quad].shader_source_file_name[GS_vert] = "..\\Code\\Shader\\quad_vert.glsl";
-	all_shader_inputs[S_quad].shader_source_file_name[GS_frag] = "..\\Code\\Shader\\quad_frag.glsl";
+	all_shader_inputs[S_quad].shader_source_file_name[GS_vert] = "..\\windows_code\\Shader\\quad_vert.glsl";
+	all_shader_inputs[S_quad].shader_source_file_name[GS_frag] = "..\\windows_code\\Shader\\quad_frag.glsl";
 	
-	all_shader_inputs[S_quad_MS].shader_source_file_name[GS_vert] = "..\\Code\\Shader\\quad_vert.glsl";
-	all_shader_inputs[S_quad_MS].shader_source_file_name[GS_frag] = "..\\Code\\Shader\\quad_MS_frag.glsl";
+	all_shader_inputs[S_quad_MS].shader_source_file_name[GS_vert] = "..\\windows_code\\Shader\\quad_vert.glsl";
+	all_shader_inputs[S_quad_MS].shader_source_file_name[GS_frag] = "..\\windows_code\\Shader\\quad_MS_frag.glsl";
     
-	all_shader_inputs[S_text].shader_source_file_name[GS_vert] = "..\\Code\\Shader\\text_vert.glsl";
-	all_shader_inputs[S_text].shader_source_file_name[GS_frag] = "..\\Code\\Shader\\text_frag.glsl";
+	all_shader_inputs[S_text].shader_source_file_name[GS_vert] = "..\\windows_code\\Shader\\text_vert.glsl";
+	all_shader_inputs[S_text].shader_source_file_name[GS_frag] = "..\\windows_code\\Shader\\text_frag.glsl";
     
-	all_shader_inputs[S_line].shader_source_file_name[GS_vert] = "..\\Code\\Shader\\line_vert.glsl";
-	all_shader_inputs[S_line].shader_source_file_name[GS_frag] = "..\\Code\\Shader\\line_frag.glsl";
+	all_shader_inputs[S_line].shader_source_file_name[GS_vert] = "..\\windows_code\\Shader\\line_vert.glsl";
+	all_shader_inputs[S_line].shader_source_file_name[GS_frag] = "..\\windows_code\\Shader\\line_frag.glsl";
     
-	all_shader_inputs[S_bloom].shader_source_file_name[GS_frag] = "..\\Code\\Shader\\bloom_frag.glsl";    
-	all_shader_inputs[S_bloom].shader_source_file_name[GS_vert] = "..\\Code\\Shader\\bloom_vert.glsl";
+	all_shader_inputs[S_bloom].shader_source_file_name[GS_frag] = "..\\windows_code\\Shader\\bloom_frag.glsl";    
+	all_shader_inputs[S_bloom].shader_source_file_name[GS_vert] = "..\\windows_code\\Shader\\bloom_vert.glsl";
     
-	all_shader_inputs[S_blur_H].shader_source_file_name[GS_frag] = "..\\Code\\Shader\\blur_horizontal_frag.glsl";
-	all_shader_inputs[S_blur_H].shader_source_file_name[GS_vert] = "..\\Code\\Shader\\blur_vert.glsl";
+	all_shader_inputs[S_blur_H].shader_source_file_name[GS_frag] = "..\\windows_code\\Shader\\blur_horizontal_frag.glsl";
+	all_shader_inputs[S_blur_H].shader_source_file_name[GS_vert] = "..\\windows_code\\Shader\\blur_vert.glsl";
     
-	all_shader_inputs[S_blur_V].shader_source_file_name[GS_frag] = "..\\Code\\Shader\\blur_vertical_frag.glsl";    
-	all_shader_inputs[S_blur_V].shader_source_file_name[GS_vert] = "..\\Code\\Shader\\blur_vert.glsl";
+	all_shader_inputs[S_blur_V].shader_source_file_name[GS_frag] = "..\\windows_code\\Shader\\blur_vertical_frag.glsl";    
+	all_shader_inputs[S_blur_V].shader_source_file_name[GS_vert] = "..\\windows_code\\Shader\\blur_vert.glsl";
     
-	all_shader_inputs[S_spring].shader_source_file_name[GS_vert] = "..\\Code\\Shader\\quad_vert.glsl";
-	all_shader_inputs[S_spring].shader_source_file_name[GS_frag] = "..\\Code\\Shader\\spring_frag.glsl";
+	all_shader_inputs[S_spring].shader_source_file_name[GS_vert] = "..\\windows_code\\Shader\\quad_vert.glsl";
+	all_shader_inputs[S_spring].shader_source_file_name[GS_frag] = "..\\windows_code\\Shader\\spring_frag.glsl";
     
 	int shader_type_to_GL_shader_enum[GS_count] = {};
 	shader_type_to_GL_shader_enum[GS_vert] = GL_VERTEX_SHADER;

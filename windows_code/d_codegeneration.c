@@ -1562,12 +1562,8 @@ static FunctionData * find_function_and_move_local_function(Token * current_toke
 	return function_data_head;
 }
 
-static void generate_meta_data(TokenHeaderList* token_list,TypeData * type_data_header)
+static void generate_enum_meta_data(TokenHeaderList* token_list)
 {
-	IntrospectionData* introspection_header = (IntrospectionData*)malloc(sizeof(IntrospectionData));
-	IntrospectionData* current_intropection_data = introspection_header;
-	*current_intropection_data = (IntrospectionData){};
-    
 	for (TokenHeaderList* current_token_list = token_list; current_token_list->next_header; current_token_list = current_token_list->next_header)
 	{
         
@@ -1587,7 +1583,14 @@ static void generate_meta_data(TokenHeaderList* token_list,TypeData * type_data_
 			}
 		}
 	}
-	
+}
+
+static void generate_meta_data(TokenHeaderList* token_list,TypeData * type_data_header)
+{
+	IntrospectionData* introspection_header = (IntrospectionData*)malloc(sizeof(IntrospectionData));
+	IntrospectionData* current_intropection_data = introspection_header;
+	*current_intropection_data = (IntrospectionData){};
+    
 	int token_total_count = 0;
 	for (TokenHeaderList* current_token_list = token_list; current_token_list->next_header; current_token_list = current_token_list->next_header)
 	{
@@ -1695,7 +1698,6 @@ static void generate_meta_data(TokenHeaderList* token_list,TypeData * type_data_
 
 extern int main()
 {
-    
 	//weir stuff
 	//if i read in text it read /r/n to /n which make the whole file smaller
 	//so i need to use rb?
@@ -1719,31 +1721,21 @@ extern int main()
 	} output_files[] =
 	{
 		{ 
-			"../Code/d_main_meta_generated.c", 
+			"../windows_code/d_game_meta_generated.c",
 			{
-				"../Code/d_header.h",
-				"../Code/d_main.h",
-				0
-			},
-			0
-		},
-        
-		{ 
-			"../Code/d_game_meta_generated.c",
-			{
-				"../Code/d_header.h",
-				"../Code/d_main.h",
-				"../Code/d_renderdata.c",
-				"../Code/d_gamedata.c",
+				"../windows_code/d_header.h",
+				"../windows_code/d_main_windows.h",
+				"../windows_code/d_renderdata.c",
+				"../game_code/d_gamedata.c",
                 0
 			},
 			{
-				{ "../Code/d_function.c"  , 0  } ,
-				{ "../Code/d_render.c" , 0  },
-				{ "../Code/d_text.c" , 0  },
-				{ "../Code/d_gamefunction.c" , 0  },
-				//{ "../Code/d_blender_file.h" , 0} ,
-                { "../Code/d_game.c" , 0} ,
+				{ "../windows_code/d_function.c"  , 0  } ,
+				{ "../windows_code/d_render.c" , 0  },
+				{ "../windows_code/d_text.c" , 0  },
+				{ "../game_code/d_gamefunction.c" , 0  },
+				//{ "../windows_code/d_blender_file.h" , 0} ,
+                { "../windows_code/d_game_windows.c" , 0} ,
 				
 				{ 0 , 0},
 			}
@@ -1783,9 +1775,12 @@ extern int main()
         
 		current_tokenHeader = token_header_list;
 		
-		TypeData * type_data_header = generate_type_data(current_tokenHeader);
+        generate_enum_meta_data(current_tokenHeader);
         
-		generate_meta_data(current_tokenHeader, type_data_header);
+        
+		//TypeData * type_data_header = generate_type_data(current_tokenHeader);
+        
+		//generate_meta_data(current_tokenHeader, type_data_header);
         
 		current_tokenHeader = current_tokenHeader->next_header;
         

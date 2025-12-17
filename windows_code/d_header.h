@@ -3,11 +3,9 @@
 
 //move it back! i don't meta data now
 
-//i can't precompile it for no fucking reason
+//can't precompile it
 #define WIN32_LEAN_AND_MEAN
-#include "Windows.h" //just Windows and its big window
-#include "winsock2.h"
-#include "ws2tcpip.h"
+#include "Windows.h"
 #include "float.h"
 #include "timeapi.h"
 #include "direct.h"

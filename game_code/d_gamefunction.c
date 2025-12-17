@@ -725,6 +725,155 @@ internal bool check_collision_rect_3D(Rect rect)
 	return get_collision_rect_3D(mouse_ray_3D,rect).hit;
 }
 
+//i think this worth being a macro
+//if this can be replace to something sane i will be the happiest man alive
+//wait i can generate it
+
+//don't generate this yet, make it a function first
+#if 0
+#define REALLOCATE_BUFFER_IF_TOO_SMALL( type , buffer  , capacity , count , allocate_func) \
+if(capacity == count) \
+{ \
+\
+if(count > capacity) CATCH;\
+capacity *= 2; \
+type * new_buffer = (type *)allocate_func(sizeof(type) * capacity);\
+for(int _buffer_index = 0; _buffer_index < count ; _buffer_index++)\
+{\
+new_buffer[_buffer_index] = buffer[_buffer_index];\
+}\
+buffer = new_buffer; \
+}
+
+
+//oh no there is one more
+#define REALLOCATE_LIST_IF_TOO_SMALL(type , buffer , list )\
+if(list_full(list))\
+{\
+type * new_buffer = allocate_temp(type , (list)->count * 2);\
+List new_list = allocate_list((list)->count * 2 , AT_temp);\
+for(int buffer_index = 0 ; buffer_index < (list)->count ; buffer_index++)\
+{\
+new_buffer[buffer_index] = buffer[buffer_index];\
+}\
+\
+for(int node_index = 0 ; node_index < (list)->count + DUMMY_NODE_COUNT ; node_index++)\
+{\
+new_list.all_node[node_index] = (list)->all_node[node_index];\
+}\
+new_list.unuse_index = (list)->unuse_index;\
+new_list.count = (list)->count * 2;\
+buffer = new_buffer;\
+(*(list)) = new_list;\
+}
+
+
+#define REALLOCATE_ARRAY_IF_TOO_SMALL(type , buffer , array )\
+if(is_array_full(array))\
+{\
+type * new_buffer = allocate_temp(type , (array)->capacity * 2);\
+Array new_array = allocate_array((array)->capacity * 2);\
+for(int buffer_index = 0 ; buffer_index < (array)->count ; buffer_index++)\
+{\
+new_buffer[buffer_index] = buffer[buffer_index];\
+}\
+\
+for(int index = 0 ; index < (array)->capacity ; index++)\
+{\
+new_array.valid_array[index] = (array)->valid_array[index];\
+}\
+new_array.capacity = (array)->capacity * 2;\
+new_array.count = (array)->count;\
+new_array.lowest_index = (array)->lowest_index;\
+buffer = new_buffer;\
+(*(array)) = new_array;\
+}
+
+#endif
+
+internal unsigned char * allocate_memory(int size , int allocate_type)
+{
+    unsigned char * memory = 0;
+    
+    switch(allocate_type)
+    {
+        case AT_temp:
+        {
+            memory = allocate_temp_(size);
+        }
+        break;
+        
+        case AT_frame:
+        {
+            memory = allocate_frame_(size);
+        }
+        break;
+        
+        default: CATCH; break;
+    }
+    
+    return memory;
+}
+
+#define buffer_full(buffer) ((buffer).count == (buffer).capacity)
+
+#define allocate_buffer( buffer_pointer , data_type , new_capacity , allocate_type) \
+allocate_buffer_( &((buffer_pointer)->data) , &((buffer_pointer)->data_size) , &((buffer_pointer)->count) , &((buffer_pointer)->capacity) , sizeof(data_type) , new_capacity , allocate_type)
+
+internal void allocate_buffer_( void ** buffer_data, int * buffer_data_size , int * buffer_count , int * buffer_capacity ,  int  data_size , int capacity , int allocate_type)
+{
+    (*buffer_data_size) = data_size;
+    (*buffer_count) = 0;
+    (*buffer_capacity) = capacity;
+    (*buffer_data) = allocate_memory(data_size * capacity , allocate_type);
+}
+
+#define reallocate_buffer(buffer_pointer , allocate_type) reallocate_buffer_( &((buffer_pointer)->data) , &((buffer_pointer)->capacity) , (buffer_pointer)->data_size  , allocate_type);
+
+internal void reallocate_buffer_( void ** data , int * buffer_capacity , int buffer_data_size  , int allocate_type)
+{
+    int new_capacity = (*buffer_capacity) * 2;
+    if(new_capacity == 0) CATCH;
+    
+    unsigned char * new_buffer = allocate_memory( buffer_data_size * new_capacity , allocate_type  );
+    memcpy( new_buffer, (*data) , (*buffer_capacity) * buffer_data_size );
+    (*buffer_capacity) = new_capacity;
+    (*data)= new_buffer;
+}
+
+internal void reallocate_list(List * list , int allocate_type)
+{
+    int new_capacity = list->capacity * 2;
+    if(new_capacity == 0) CATCH;
+    List new_list = allocate_list(new_capacity , allocate_type);
+    
+    for(int node_index = 0 ; node_index < list->capacity + DUMMY_NODE_COUNT ; node_index++)
+    {
+        new_list.all_node[node_index] = list->all_node[node_index];
+    }
+    
+    new_list.unuse_index = list->unuse_index;
+    new_list.capacity = new_capacity;
+    
+    (*list) = new_list;
+}
+
+internal void reallocate_array(Array * array , int allocate_type)
+{
+    int new_capacity = array->capacity * 2;
+    if(new_capacity == 0) CATCH;
+    Array new_array = allocate_array(new_capacity , allocate_type);
+    for(int index = 0 ; index < array->capacity ; index++)
+    {
+        new_array.valid_array[index] = array->valid_array[index];
+    }
+    new_array.capacity = new_capacity;
+    new_array.count = array->count;
+    new_array.lowest_index = array->lowest_index;
+    
+    (*array) = new_array;
+}
+
 //steal from somewhere
 internal unsigned int string_to_hash_W(wchar_t *s)
 {
@@ -759,33 +908,15 @@ internal int hash_int(int key)
 #define SlotToData(Slot , HashTable) (HashTable.DataArray + (Slot - HashTable.HashSlotArray))
 #define DataToSlot(Data , HashTable) ( HashTable.HashSlotArray (Data - HashTable.DataArray))
 
-internal HashTable allocate_hash_table(int count)
+internal HashTable allocate_hash_table(int capacity, int allocate_type)
 {
     
     HashTable hash_table = {};
-    hash_table.entry_array = allocate_temp(HashTableEntry , count);
-    hash_table.slot_array = allocate_temp(HashTableSlot ,count);
-    hash_table.count = count;
+    hash_table.entry_array = (HashTableEntry *)allocate_memory(sizeof(HashTableEntry) * capacity , allocate_type);
+    hash_table.slot_array = (HashTableSlot *)allocate_memory(sizeof(HashTableSlot) * capacity , allocate_type);
+    hash_table.capacity = capacity;
     
-    for (int entry_index = 0; entry_index < count; entry_index++)
-    {
-        hash_table.entry_array[entry_index].head_index = -1;
-        hash_table.entry_array[entry_index].tail_index = -1;
-    }
-    
-    return hash_table;
-    
-}
-
-internal HashTable allocate_hash_table_frame(int count)
-{
-    
-    HashTable hash_table = {};
-    hash_table.entry_array = allocate_frame(HashTableEntry , count);
-    hash_table.slot_array = allocate_frame(HashTableSlot ,count);
-    hash_table.count = count;
-    
-    for (int entry_index = 0; entry_index < count; entry_index++)
+    for (int entry_index = 0; entry_index < capacity; entry_index++)
     {
         hash_table.entry_array[entry_index].head_index = -1;
         hash_table.entry_array[entry_index].tail_index = -1;
@@ -796,7 +927,6 @@ internal HashTable allocate_hash_table_frame(int count)
 }
 
 //this look bad
-
 //this is really really bad
 
 internal int get_emty_slot_index_from_hash_table(int hash_value , HashTable * hash_table)
@@ -805,7 +935,7 @@ internal int get_emty_slot_index_from_hash_table(int hash_value , HashTable * ha
     HashTableSlot * slot_array = hash_table->slot_array;
     HashTableEntry * entry_array = hash_table->entry_array;
     
-    HashTableEntry * entry = entry_array + (hash_value % hash_table->count);
+    HashTableEntry * entry = entry_array + (hash_value % hash_table->capacity);
     
     HashTableSlot * emty_slot = 0;
     
@@ -813,7 +943,7 @@ internal int get_emty_slot_index_from_hash_table(int hash_value , HashTable * ha
     
     if (entry->head_index == -1)
     {
-        emty_slot = slot_array + (hash_value % hash_table->count);
+        emty_slot = slot_array + (hash_value % hash_table->capacity);
     }
     else
     {
@@ -839,7 +969,7 @@ internal int get_emty_slot_index_from_hash_table(int hash_value , HashTable * ha
         }
         
         emty_slot++;
-        if (emty_slot >= (slot_array + hash_table->count)) emty_slot = slot_array;
+        if (emty_slot >= (slot_array + hash_table->capacity)) emty_slot = slot_array;
     }
     
     int emty_slot_index = (emty_slot - slot_array);
@@ -851,7 +981,7 @@ internal int get_hash_table_head_slot_index(int hash_value ,  HashTable * hash_t
 {
     HashTableEntry * entry_array = hash_table->entry_array;
     
-    HashTableEntry * entry = entry_array + (hash_value % hash_table->count);
+    HashTableEntry * entry = entry_array + (hash_value % hash_table->capacity);
     return entry->head_index;
 }
 
@@ -866,7 +996,7 @@ internal int insert_to_hash_table(int slot_index_to_insert_after , int hash_valu
     HashTableSlot * slot_array = ( HashTableSlot *)hash_table->slot_array;
     HashTableEntry * entry_array = ( HashTableEntry *)hash_table->entry_array;
     
-    HashTableEntry * entry = entry_array + (hash_value % hash_table->count);
+    HashTableEntry * entry = entry_array + (hash_value % hash_table->capacity);
     
     int emty_slot_index = get_emty_slot_index_from_hash_table( hash_value , hash_table);
     HashTableSlot * emty_slot = slot_array + emty_slot_index;
@@ -878,7 +1008,7 @@ internal int insert_to_hash_table(int slot_index_to_insert_after , int hash_valu
     }
     
     emty_slot->valid = true;
-    emty_slot->slot_value = (hash_value % hash_table->count);
+    emty_slot->slot_value = (hash_value % hash_table->capacity);
     emty_slot->data_index = data_index;
     emty_slot->next_index = -1;
     emty_slot->previous_index = -1;
@@ -913,7 +1043,7 @@ internal int add_to_hash_table(int hash_value , int data_index , HashTable * has
     HashTableSlot * slot_array = hash_table->slot_array;
     HashTableEntry * entry_array = hash_table->entry_array;
     
-    int entry_index = (hash_value % hash_table->count);
+    int entry_index = (hash_value % hash_table->capacity);
     if(entry_index < 0) CATCH;
     HashTableEntry * entry = entry_array + entry_index;
     
@@ -934,7 +1064,7 @@ internal int add_to_hash_table(int hash_value , int data_index , HashTable * has
     entry->tail_index = emty_slot_index;
     
     emty_slot->valid = true;
-    emty_slot->slot_value = (hash_value % hash_table->count);
+    emty_slot->slot_value = (hash_value % hash_table->capacity);
     emty_slot->data_index = data_index;
     emty_slot->next_index = -1;
     
@@ -946,7 +1076,7 @@ internal void clear_hash_table(HashTable * hash_table)
     HashTableEntry * entry_array = hash_table->entry_array;
     HashTableSlot * slot_array = hash_table->slot_array;
     
-    for(int slot_index = 0 ; slot_index < hash_table->count ; slot_index++)
+    for(int slot_index = 0 ; slot_index < hash_table->capacity ; slot_index++)
     {
         
         entry_array[slot_index].head_index = -1;
@@ -964,7 +1094,7 @@ internal void clear_hash_table(HashTable * hash_table)
 
 internal bool delete_from_hash_table_by_slot_index(int slot_index , int hash_value , HashTable * hash_table)
 {
-    int slot_value = (hash_value % hash_table->count);
+    int slot_value = (hash_value % hash_table->capacity);
     
     HashTableSlot * slot_array = hash_table->slot_array;
     HashTableSlot * slot_chain = slot_array + slot_value;
@@ -1010,10 +1140,10 @@ internal bool delete_from_hash_table_by_slot_index(int slot_index , int hash_val
 internal bool delete_from_hash_table(int hash_value , int data_index , HashTable * hash_table)
 {
     HashTableSlot * slot_array = hash_table->slot_array;
-    HashTableSlot * slot_chain = slot_array + (hash_value % hash_table->count);
+    HashTableSlot * slot_chain = slot_array + (hash_value % hash_table->capacity);
     
     HashTableEntry * entry_array = hash_table->entry_array;
-    HashTableEntry * entry = entry_array + ( hash_value % hash_table->count );
+    HashTableEntry * entry = entry_array + ( hash_value % hash_table->capacity );
     
     if (!entry->head_index == -1) return false;
     
@@ -1033,7 +1163,7 @@ internal bool delete_from_hash_table(int hash_value , int data_index , HashTable
 
 internal int get_hash_table_tail_data_index(int hash_value , HashTable * hash_table)
 {
-    int tail_slot_index = hash_table->entry_array[hash_value % hash_table->count].tail_index;
+    int tail_slot_index = hash_table->entry_array[hash_value % hash_table->capacity].tail_index;
     
     if(tail_slot_index == -1) return -1;
     return hash_table->slot_array[tail_slot_index].data_index;
@@ -1059,9 +1189,9 @@ internal void _iterate_hash_table( int hash_value , int * slot_index , int * dat
 #endif
     
     HashTableSlot * slot_array = hash_table->slot_array;
-    HashTableSlot * slot_chain_head = (slot_array + ( hash_value % hash_table->count ));
+    HashTableSlot * slot_chain_head = (slot_array + ( hash_value % hash_table->capacity ));
     HashTableEntry * entry_array = hash_table->entry_array;
-    HashTableEntry * entry = entry_array + ( hash_value % hash_table->count );
+    HashTableEntry * entry = entry_array + ( hash_value % hash_table->capacity );
     
     if ( (*slot_index) == -1)
     {
@@ -1096,7 +1226,7 @@ internal void _iterate_hash_table_reverse( int hash_value , int * slot_index , i
     
 #endif
     
-    int slot_value = ( hash_value % hash_table->count );
+    int slot_value = ( hash_value % hash_table->capacity );
     
     HashTableSlot * slot_array = hash_table->slot_array;
     
@@ -1119,9 +1249,9 @@ internal void _iterate_hash_table_reverse( int hash_value , int * slot_index , i
     
 }
 
-internal List allocate_list(int count)
+internal List allocate_list(int capacity , int allocate_type)
 {
-    ListNode * all_node = allocate_temp(ListNode , count + DUMMY_NODE_COUNT);
+    ListNode * all_node = (ListNode *)allocate_memory(sizeof(ListNode) * (capacity + DUMMY_NODE_COUNT) , allocate_type );
     ListNode * node_array = all_node + DUMMY_NODE_COUNT;
     
     List list = {};
@@ -1145,7 +1275,7 @@ internal List allocate_list(int count)
     list.all_node = all_node;
     list.node_array = node_array;
     list.unuse_index = 0;
-    list.count = count;
+    list.capacity = capacity;
     
     return list;
 }
@@ -1191,8 +1321,8 @@ internal bool list_full(List * list)
     
     if (node_array[recycled_node_index].data_index == -1)
     {
-        if (list->unuse_index > list->count) CATCH;
-        if (list->unuse_index == list->count) return true;
+        if (list->unuse_index > list->capacity) CATCH;
+        if (list->unuse_index == list->capacity) return true;
     }
     
     return false;
@@ -1217,7 +1347,7 @@ internal int create_new_node( List * list)
     }
     else
     {
-        if (list->unuse_index >= list->count) CATCH;
+        if (list->unuse_index >= list->capacity) CATCH;
         
         new_node_index = list->unuse_index++;
         
@@ -1328,7 +1458,7 @@ internal int get_emty_node_from_list( List * list)
     }
     else
     {
-        if (list->unuse_index >= list->count) return invalid_node;
+        if (list->unuse_index >= list->capacity) return invalid_node;
         new_node_index = list->unuse_index;
     }
     
@@ -1377,10 +1507,10 @@ internal bool delete_from_list(int node_index_to_delete , List * list)
     return true;
 }
 
-internal Array allocate_array(int capacity)
+internal Array allocate_array(int capacity , int allocate_type)
 {
     Array array = {};
-    array.valid_array = allocate_temp(bool , capacity);
+    array.valid_array = allocate_memory(capacity , allocate_type);
     array.capacity = capacity;
     
     return array;
@@ -1468,7 +1598,7 @@ internal bool delete_from_array(Array * array , int data_index)
 	return true;
 }
 
-internal bool is_array_full(Array * array)
+internal bool array_full(Array * array)
 {
     return (array->lowest_index == array->capacity);
 }
@@ -1647,67 +1777,6 @@ internal void iterate_and_draw_bone_arrow( Bone * bone_array , Bone * bone , int
     
 }
 
-internal void member_data_to_string(MemberMetaData* member_meta, unsigned char* data_head, wchar_t* string_buffer)
-{
-    const char* member_name = member_meta->name;
-    int member_offset = member_meta->member_offset;
-    unsigned char* member_data = data_head + member_offset;
-    
-#define TypeToTextBuffer(Type,StringFormat) case GetType(Type): _swprintf(string_buffer, L"%S :" StringFormat, member_name ,*(Type*)member_data); break; 
-    
-    switch (member_meta->member_type)
-    {
-        TypeToTextBuffer(float, L"%f");
-        TypeToTextBuffer(double, L"%f");
-        TypeToTextBuffer(int, L"%d");
-        case GetType(Vector2): _swprintf(string_buffer, L"%S :" "%f,%f", member_name, (*(Vector2*)member_data).x, (*(Vector2*)member_data).y); break;
-        case GetType(Vector3): _swprintf(string_buffer, L"%S :" "%f,%f,%f", member_name, (*(Vector3*)member_data).x, (*(Vector3*)member_data).y, (*(Vector3*)member_data).z); break;
-        
-        default: _swprintf(string_buffer, L"%S :" L"__", member_name); break;
-    }
-}
-
-#define PrintStructMemberInfo(Type,StructData,Quad) _print_struct_member_info(GetStructMeta(Type),(unsigned char*)StructData,Quad)
-
-internal void _print_struct_member_info( StructMetaData struct_meta_data, unsigned char* struct_data, Rect text_quad)
-{
-    wchar_t string_buffer[256] = {};
-    
-    for (int member_index = 0; member_index < struct_meta_data.member_count ; member_index++)
-    {
-        member_data_to_string(struct_meta_data.member_array + member_index, struct_data, string_buffer);
-        
-        D_draw_text_B(text_quad, string_buffer, Fade(WHITE, 0.6f), false);
-        text_quad.position.y -= text_quad.size.y;
-    }
-}
-
-//just leave it be
-internal void create_struct_name_string_hash()
-{
-    
-    _struct_meta_hash = allocate_temp(StructMetaDataNode* , STRUCT_META_HASH_MAX);
-    for(int type_index = 0 ; type_index < _MT_type_count ; type_index++)
-    {
-        
-        const char * type_name = _type_meta_name[type_index];
-        unsigned int type_hash = string_to_hash(type_name);
-        StructMetaDataNode ** node_pointer = _struct_meta_hash + (type_hash %STRUCT_META_HASH_MAX);
-        
-        for(;(*node_pointer); node_pointer = &(*node_pointer)->next);
-        
-        StructMetaDataNode * new_node =allocate_temp(StructMetaDataNode,1);
-        (*node_pointer) = new_node;
-        
-        (*new_node) = (StructMetaDataNode){};
-        new_node->type_index = type_index;
-        new_node->name = type_name;
-        new_node->size = _type_meta_size[type_index];
-        new_node->struct_meta = _type_struct_meta_[type_index];
-    }
-    
-}
-
 internal int get_data_size(char * type_name)
 {
     unsigned int type_hash = string_to_hash(type_name);
@@ -1742,17 +1811,22 @@ internal int get_type_from_name(char * type_name)
 
 internal void create_a_whole_new_world()
 {
-    reference_frame_list = allocate_list(16);
-    all_reference_frame = allocate_temp(Vector3, 16);
+    reference_frame_list = allocate_list(16 , AT_temp);
+    //reference_frame_buffer = allocate_buffer( &all_reference_frame , Vector3, 16 , AT_temp);
+    allocate_buffer(&reference_frame_buffer , Vector3 , 16 , AT_temp);
     
-    all_key_frame = allocate_temp(KeyFrame , all_key_frame_count);
+    //all_key_frame_buffer = allocate_buffer(&all_key_frame , KeyFrame , KEY_FRAME_CAPACITY , AT_temp);
+    allocate_buffer(&all_key_frame_buffer, KeyFrame , KEY_FRAME_CAPACITY , AT_temp);
+    
     editor = allocate_temp(EditorData ,1);
     
-    quad_in_map = allocate_temp(Quad , 16);
-    quad_in_map_array = allocate_array(16);
+    //quad_in_map_buffer = allocate_buffer( &quad_in_map , Quad , 16 , AT_temp);
+    allocate_buffer(&quad_in_map_buffer , Quad , 16 , AT_temp);
+    quad_in_map_array = allocate_array(16 , AT_temp);
     
-    box_in_map = allocate_temp(Box , 16);
-    box_in_map_array = allocate_array(16);
+    //box_in_map_buffer = allocate_buffer( &box_in_map , Box , 16 , AT_temp);
+    allocate_buffer(&box_in_map_buffer , Box , 16 , AT_temp);
+    box_in_map_array = allocate_array(16 , AT_temp);
     
     editor->timeline_scale = 1;
     editor->selected_clip_index = -1;
@@ -1777,16 +1851,17 @@ internal Vector3 mouse_on_plane(Vector3 plane_origin)
 
 internal BoneSelectionResult bone_selection(Vector2 size , Color unactive_color , Color active_color)
 {
-    int data_count = 0;
-    int data_capacity = 16;
-    BoneSelectionResultData * data = allocate_frame(BoneSelectionResultData , data_capacity);
+    BoneSelectionResultDataBuffer data_buffer = {};
+    //BoneSelectionResultData * data = 0;
+    //data_buffer = allocate_buffer(&data , BoneSelectionResultData , 16 , AT_frame);
+    allocate_buffer( &data_buffer , BoneSelectionResultData , 16 , AT_frame);
     
     for(int clip_bone_stack_index = 0 ; clip_bone_stack_index  < clip_bone_stack_count ; clip_bone_stack_index++)
     {
         
         ClipBone * clip_bone = clip_bone_stack + clip_bone_stack_index;
         
-        for(int bone_index = 0 ; bone_index < selected_model->bone_count ; bone_index++)
+        for(int bone_index = 0 ; bone_index < selected_model->bone_buffer.count ; bone_index++)
         {
             
             Bone * final_bone = clip_bone->final_bone_pose + bone_index;
@@ -1805,8 +1880,12 @@ internal BoneSelectionResult bone_selection(Vector2 size , Color unactive_color 
             
             if(check_collision_rect_mouse(bone_screen_rect))
             {
-                REALLOCATE_BUFFER_IF_TOO_SMALL(BoneSelectionResultData , data , data_capacity , data_count , allocate_frame_);
-                BoneSelectionResultData * new_data = data + data_count++;
+                if(data_buffer.count == data_buffer.capacity)
+                {
+                    reallocate_buffer(&data_buffer , AT_temp);
+                }
+                
+                BoneSelectionResultData * new_data = data_buffer.data + data_buffer.count++;
                 
                 new_data->hit_point = hit_point;
                 new_data->bone_index = bone_index;
@@ -1820,8 +1899,8 @@ internal BoneSelectionResult bone_selection(Vector2 size , Color unactive_color 
     }
     
     BoneSelectionResult result = {};
-    result.data_count = data_count;
-    result.data = data;
+    result.data_count = data_buffer.count;
+    result.data = data_buffer.data;
     
     return result;
 }
@@ -1836,12 +1915,12 @@ internal void sort_bone_hash_table(int bone_index , HashTable * hash_table_by_bo
     hash_table_iterate_ex(key_frame_index , key_frame_slot_index , -1 , bone_index , hash_table_by_bone)
     {
         HashTableSlot * slot = slot_array + key_frame_slot_index;
-        KeyFrame * key_frame = all_key_frame + key_frame_index;
+        KeyFrame * key_frame = all_key_frame_buffer.data + key_frame_index;
         
         if(slot->next_index == -1) break;
         
         HashTableSlot * next_slot = slot_array + slot->next_index;
-        KeyFrame * next_key_frame = all_key_frame + next_slot->data_index;
+        KeyFrame * next_key_frame = all_key_frame_buffer.data + next_slot->data_index;
         
         if(key_frame->frame_index > next_key_frame->frame_index)
         {
@@ -3033,12 +3112,14 @@ internal int cell_to_index(Int3 cell)
 //my best chance is delaunay triangulation
 internal void generate_nav_mesh()
 {
+    if(box_in_map_array.count == 0) return;
+    
     Vector3 whole_mesh_max = { -FLT_MAX , -FLT_MAX , -FLT_MAX };
     Vector3 whole_mesh_min = { FLT_MAX , FLT_MAX , FLT_MAX };
     
     array_foreach(box_index , &box_in_map_array)
     {
-        Box box = box_in_map[box_index];
+        Box box = box_in_map_buffer.data[box_index];
         get_bound(box_to_point(box) , box_vertex_count , &whole_mesh_max , &whole_mesh_min );
     }
     
@@ -3100,7 +3181,7 @@ internal void generate_nav_mesh()
     
     array_foreach(box_index , &box_in_map_array)
     {
-        Box box = box_in_map[box_index];
+        Box box = box_in_map_buffer.data[box_index];
         Vector3 * box_vertices = box_to_point(box);
         
         Vector3 box_max = {-FLT_MAX , -FLT_MAX , -FLT_MAX};
@@ -3374,17 +3455,18 @@ internal PathResult path_finding(Vector3 start , Vector3 end)
     if(path_found)
     {
         result.path_found = true;
-        result.capacity = 64;
-        result.count = 0;
-        result.path = allocate_frame(Int3 , result.capacity);
+        allocate_buffer( &result.buffer , Int3 , 64 , AT_frame);
         
         Int3 cell = end_cell;
         
         for(;;)
         {
             CellData * cell_data = nav_mesh_cell + cell_to_index(cell);
-            REALLOCATE_BUFFER_IF_TOO_SMALL(Int3 , result.path , result.capacity , result.count , allocate_frame_);
-            Int3 * new_path_cell = result.path + result.count++;
+            if(result.buffer.count == result.buffer.capacity)
+            {
+                reallocate_buffer( &result.buffer , AT_frame);
+            }
+            Int3 * new_path_cell = result.buffer.data + result.buffer.count++;
             (*new_path_cell) = cell;
             
             if(cell.x == start_cell.x)
