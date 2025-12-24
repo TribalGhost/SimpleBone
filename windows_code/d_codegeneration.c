@@ -1316,7 +1316,7 @@ static void generate_struct_member_meta(IntrospectionData* current_intropection_
 static void generate_enum_string(Token * name_token)
 {	
     
-	fprintf(meta_data_file , "global const char * %.*s_String[] = \n{\n" , name_token->string_length , name_token->string);
+	fprintf(meta_data_file , "global char * %.*s_String[] = \n{\n" , name_token->string_length , name_token->string);
     
     bool member_found = true;
     
@@ -1723,19 +1723,17 @@ extern int main()
 		{ 
 			"../windows_code/d_game_meta_generated.c",
 			{
-				"../windows_code/d_header.h",
-				"../windows_code/d_main_windows.h",
 				"../windows_code/d_renderdata.c",
-				"../game_code/d_gamedata.c",
+                "../game_code/d_gamedata.c",
+				"../windows_code/d_clientdata.c",
                 0
 			},
 			{
-				{ "../windows_code/d_function.c"  , 0  } ,
 				{ "../windows_code/d_render.c" , 0  },
 				{ "../windows_code/d_text.c" , 0  },
 				{ "../game_code/d_gamefunction.c" , 0  },
 				//{ "../windows_code/d_blender_file.h" , 0} ,
-                { "../windows_code/d_game_windows.c" , 0} ,
+                { "../windows_code/d_windows_game.c" , 0} ,
 				
 				{ 0 , 0},
 			}
@@ -1770,13 +1768,11 @@ extern int main()
 			current_tokenHeader->next_header = (TokenHeaderList*)malloc(sizeof(token_header_list));
 			current_tokenHeader = current_tokenHeader->next_header;
 			(*current_tokenHeader) = (TokenHeaderList){};
-            
 		}
         
 		current_tokenHeader = token_header_list;
 		
         generate_enum_meta_data(current_tokenHeader);
-        
         
 		//TypeData * type_data_header = generate_type_data(current_tokenHeader);
         
@@ -1799,20 +1795,18 @@ extern int main()
 				token_head = convert_text_to_token(current_text , 1024*256);
 			}
             
-			FunctionData * function_data_head = find_function_and_move_local_function(token_head,0, false);
-			print_all_function_declaration_or_definition(function_data_head ,current_text , current_text_size,current_scanning_file->output_name , true);
-			print_all_function_declaration_or_definition(function_data_head ,current_text , current_text_size,current_scanning_file->output_name , false);
+			//FunctionData * function_data_head = find_function_and_move_local_function(token_head,0, false);
+			//print_all_function_declaration_or_definition(function_data_head ,current_text , current_text_size,current_scanning_file->output_name , true);
+			//print_all_function_declaration_or_definition(function_data_head ,current_text , current_text_size,current_scanning_file->output_name , false);
             
 			if (current_scanning_file->output_name)
 			{
-                
 				FILE * modified_file = fopen(current_scanning_file->output_name , "w");
 				//fprintf(ModifiedFile , CurrentText );
 				
 				fputs(current_text , modified_file);
                 
 				fclose(modified_file);
-                
 			}
             
 		}

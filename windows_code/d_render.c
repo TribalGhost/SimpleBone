@@ -207,15 +207,48 @@ internal void update_texture(unsigned int * id)
     (*id) = rlLoadTexture(0, app_data->window_size.x, app_data->window_size.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
 }
 
+internal unsigned int load_texture_multi_sample(int width, int height)
+{
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, tex);
+    glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE,4,GL_RGBA8, width, height,GL_FALSE);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE , 0);
+    
+    GL_CATCH;
+    
+    return tex;
+}
+
 internal void update_texture_multi_sample(unsigned int * id)
 {
-    
     if ((*id) != 0)
     {
         rlUnloadTexture((*id) );
     }
     
-    (*id) = load_texture_multi_sample(app_data->window_size.x, app_data->window_size.y);
+    (*id) = load_texture_multi_sample((int)app_data->window_size.x, (int)app_data->window_size.y);
+}
+
+internal unsigned int load_depth_texture_multi_sample(int width , int height)
+{
+    unsigned int id= 0;
+	glGenTextures(1, &id);
+	GL_CATCH;
+    
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, id);
+	
+    GL_CATCH;
+    glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE,4,GL_DEPTH_COMPONENT24, width, height,GL_FALSE);
+    GL_CATCH;
+    
+    GL_CATCH;
+    
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE , 0);
+    
+    GL_CATCH;
+    
+    return id;
 }
 
 //it will compile all the shader and try bind buffer to it
@@ -636,45 +669,6 @@ internal void D_game_draw()
     current_shader_input->vertices_count = 0;
     
 	GL_CATCH;
-}
-
-internal unsigned int load_texture_multi_sample(int width, int height)
-{
-    
-    GLuint tex = 0;
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, tex);
-    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE,4,GL_RGBA8, width, height,GL_FALSE);
-    
-    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE , 0);
-    
-    GL_CATCH;
-    
-    return tex;
-}
-
-internal unsigned int load_depth_texture_multi_sample(int width , int height)
-{
-    
-    unsigned int id= 0;
-	glGenTextures(1, &id);
-	GL_CATCH;
-    
-    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, id);
-	
-    GL_CATCH;
-    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE,4,GL_DEPTH_COMPONENT24, width, height,GL_FALSE);
-    //glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
-    //glTexStorage2DMultisample(, 1, GL_DEPTH_COMPONENT16 , width, height, GL_TRUE);
-    GL_CATCH;
-    
-    GL_CATCH;
-    
-    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE , 0);
-    
-    GL_CATCH;
-    
-    return id;
 }
 
 internal Quad rect_to_quad(Rect rect)
@@ -1304,6 +1298,13 @@ internal void draw_billboard_circle(Vector3 position , float size, Color target_
 	draw_circle(rect, target_color);
 }
 
+internal Rect get_rect()
+{
+	Rect result = {};
+	result.rotation = QuaternionIdentity();
+	return result;
+}
+
 internal void draw_circle_B(Vector3 position,float size, Color target_color)
 {
 	Rect rect = get_rect();
@@ -1579,14 +1580,6 @@ internal unsigned int load_depth_texture(int width, int height)
 	TRACELOG(RL_LOG_INFO, "TEXTURE: Depth texture loaded successfully");
 	
 	return id;
-}
-
-internal float get_line_intersect_with_plane_time(Vector3 start , Vector3 end , Vector3 plane_normal , Vector3 plane_origin)
-{
-	float result = plane_normal.x * (plane_origin.x - start.x) + plane_normal.y * (plane_origin.y - start.y) + plane_normal.z * (plane_origin.z - start.z);
-	result /= plane_normal.x * (end.x - start.x) + plane_normal.y * (end.y - start.y) + plane_normal.z * (end.z - start.z);
-    
-	return result;
 }
 
 internal float ray_get_closest_point(Vector3 o , Vector3 n , Vector3 a)

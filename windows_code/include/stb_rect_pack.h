@@ -110,6 +110,36 @@ extern "C" {
     // The function returns 1 if all of the rectangles were successfully
     // packed and 0 otherwise.
     
+    //////////////////////////////////////////////////////////////////////////////
+    //
+    // the details of the following structures don't matter to you, but they must
+    // be visible so you can handle the memory allocations for them
+    
+    typedef int stbrp_coord;
+    
+    typedef struct stbrp_node stbrp_node;
+    struct stbrp_node
+    {
+        stbrp_coord  x;
+        stbrp_coord y;
+        stbrp_node* next;
+    };
+    
+    typedef struct stbrp_context stbrp_context;
+    struct stbrp_context
+    {
+        int width;
+        int height;
+        int align;
+        int init_mode;
+        int heuristic;
+        int num_nodes;
+        stbrp_node* active_head;
+        stbrp_node* free_head;
+        stbrp_node extra[2]; // we allocate two extra nodes so optimal user-node-count is 'width' not 'width+2'
+    };
+    
+    
     struct stbrp_rect
     {
         // reserved for your use:

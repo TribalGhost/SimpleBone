@@ -1,60 +1,114 @@
-﻿#include "d_header.h"
-#include "d_main_windows.h"
-
-#include "d_function.c"
+#include "d_windows_basic.h"
 
 global D_App_Data _GlobalData = {};
 
 internal GAME_LOOP(GameLoopStub) {}
 
+internal double time_stamp()
+{
+	LARGE_INTEGER frequency = {};
+	LARGE_INTEGER end_time = {};
+	QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&end_time);
+    
+	return (double)(end_time.QuadPart) * 1e6 / (double)frequency.QuadPart;
+}
+
+//this is kinda dumb
+internal void combine_file_path(const char* file_name,char * result_path)
+{
+	strcat(result_path, app_data->application_path);
+	strcat(result_path, file_name);
+}
+
 internal void APIENTRY DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,GLsizei length, const GLchar* message, const void* user)
 {
     if(type != GL_DEBUG_TYPE_PERFORMANCE)
     {
-        if (severity == GL_DEBUG_SEVERITY_HIGH || severity == GL_DEBUG_SEVERITY_MEDIUM)
+    }
+    
+    if (severity == GL_DEBUG_SEVERITY_HIGH || severity == GL_DEBUG_SEVERITY_MEDIUM)
+    {
+        printf(message);
+        printf("\n");
+        
+        if (IsDebuggerPresent())
         {
-            printf(message);
-            printf("\n");
-            
-            if (IsDebuggerPresent())
-            {
-                printf("OpenGL error - check the callstack in debugger");
-                CATCH;
-            }
-            
-            printf("OpenGL API usage error! Use debugger to examine call stack!");
+            printf("OpenGL error - check the callstack in debugger");
             CATCH;
         }
+        
+        printf("OpenGL API usage error! Use debugger to examine call stack!");
+        CATCH;
     }
+    
 }
 
+internal bool compare_string( char * string_A, char * string_B)
+{
+    int string_B_length = 0;
+    for(int char_index = 0 ; string_B[char_index] != '\0' ; char_index++ ,string_B_length++);
+    
+    int name_length = 0;
+    for(int char_index = 0 ; string_A[char_index] != '\0' ; char_index++ , name_length++);
+    
+    if(name_length != string_B_length) return false;
+    
+    for(int char_index = 0 ; char_index < name_length ; char_index++)
+    {
+        if(string_A[char_index] != string_B[char_index])
+        {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+#define malloc_and_memset(type,count) (type*)memset(malloc(sizeof(type)*count),0,sizeof(type)*count)
 
 int main(int parameter_count, char ** parameters)
 {
 	app_data = &_GlobalData;
     app_data->is_server = false;
     app_data->is_client = false;
+    app_data->host_name = "192.168.10.8";
     
     for(int parameter_index = 0 ; parameter_index < parameter_count ; parameter_index++)
     {
         char * parameter = parameters[parameter_index];
         
-        if(compare_string( parameter, "-s"))
+        if(compare_string( parameter, "-server"))
         {
             app_data->is_server = true;
         }
-        
-        if(compare_string(parameter , "-c"))
+        else if(compare_string(parameter , "-client"))
         {
             app_data->is_client = true;
         }
+        else if(compare_string(parameter , "-standalone"))
+        {
+            app_data->is_server = true;
+            app_data->is_client = true;
+            app_data->host_name = "127.0.0.1";
+        }
+        else if(compare_string(parameter , "-client_local"))
+        {
+            app_data->is_client = true;
+            app_data->host_name = "127.0.0.1";
+        }
+        else
+        {
+            app_data->user_name = parameter;
+        }
+        
     }
     
     timeBeginPeriod(1);
     
 	app_data->window_size = (Vector2){ 1280,720 };
     
-	sprintf(app_data->aplication_path ,GetApplicationDirectory());
+	sprintf(app_data->application_path ,GetApplicationDirectory());
     
 	glfwInit();
     
@@ -82,7 +136,8 @@ int main(int parameter_count, char ** parameters)
     //useless
 	//TODO : clean it
 	app_data->current_focus_window = all_windows[main_window];
-	foucsed_windows[main_window] = true;
+	app_data->current_window = all_windows[main_window];
+    foucsed_windows[main_window] = true;
     
 	glfwMakeContextCurrent(all_windows[main_window]);
     
@@ -91,8 +146,6 @@ int main(int parameter_count, char ** parameters)
 		GLFWwindow* WindowToCallback = all_windows[WindowIndex];
 		glfwSetScrollCallback(WindowToCallback, mosue_scroll_callback);
 		glfwSetCharCallback(WindowToCallback, char_callback);
-		glfwSetKeyCallback(WindowToCallback, key_callback);
-		glfwSetMouseButtonCallback(WindowToCallback, MouseCallback);
 		glfwSetWindowFocusCallback(WindowToCallback, focus_callback);
 		glfwSetWindowRefreshCallback(WindowToCallback, refresh_callback);
 	}
@@ -131,8 +184,9 @@ int main(int parameter_count, char ** parameters)
     
 	app_data->_HDC = GetDC(glfwGetWin32Window(glfwGetCurrentContext()));
     
-    glDebugMessageCallback(&DebugCallback, NULL);
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(&DebugCallback, 0);
     
 	HMODULE GameModule = 0;
 	long ModuleModTime = 0;
@@ -163,11 +217,10 @@ int main(int parameter_count, char ** parameters)
 		GameLoad(app_data);
 	}
     
-    
 	app_data->loop_time = time_stamp();
     
 	GL_CATCH;
-	while (1)
+    for(;;)
 	{
 		app_data->loop_count++;
         
@@ -230,15 +283,9 @@ int main(int parameter_count, char ** parameters)
 		app_data->mouse_scroll_delta = 0;
 		app_data->codepoint_queue_count = 0;
 		app_data->codepoint_queue_indedx = 0;
-		app_data->pressed_mouse_array_count = 0;
-		app_data->pressed_key_array_count = 0;
-        app_data->released_key_array_count = 0;
-        
-		app_data->released_mouse_array_count = 0;
-        
+		
 		for (int WindowIndex = 0; WindowIndex < window_count; WindowIndex++)
 		{
-			
             app_data->current_window = all_windows[WindowIndex];
 			current_window_index = WindowIndex;
 			glfwMakeContextCurrent(app_data->current_window);

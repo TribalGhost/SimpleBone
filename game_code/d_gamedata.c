@@ -1,11 +1,121 @@
+//===game===
+typedef struct GameMemory GameMemory;
+struct GameMemory
+{
+	unsigned char* start_memory;
+	unsigned char* current_memory;
+	int size;
+};
+
+global GameMemory run_time_memory = {};
+global GameMemory frame_time_memory = {};
+global GameMemory arena_memory = {};
+
 #define EPSILON 0.000001f
 
-global const char* game_texture_data_name = "Game\\GameTexture.gts";
-
-global char * game_state_save_name = "Game\\game_state_data.da";
+#ifdef BUILD_D_WINDOWS
 global char * map_save_name = "Game\\map_data.ma";
+#endif
 
-global bool shader_compile_failed = false;
+#ifdef BUILD_D_LINUX
+global char * map_save_name = "Game/map_data.ma";
+#endif
+
+//so far this is better
+//i have type instead of void pointer 
+//so that i can rely on type checking when refactorying
+//no need to convert void pointer(and debug)
+#define BUFFER(name , type) \
+typedef struct name name; \
+struct name \
+{ \
+type * data; \
+int data_size; \
+int count; \
+int capacity; \
+}
+
+typedef struct ListNode ListNode;
+struct ListNode
+{
+	int data_index;
+    
+	int next;
+	int previous;
+};
+
+typedef enum DummyNodeTag DummyNodeTag;
+enum DummyNodeTag
+{
+    N_node_head = -1,
+    N_node_tail = -2,
+    
+    N_recycled_node_head = -3,
+    N_recycled_node_tail = -4,
+    
+    invalid_node = -100000,
+};
+
+#define DUMMY_NODE_COUNT 4
+
+//the first node is where the chain start
+//the second node is recycled node chain
+typedef struct List List;
+struct List
+{
+	ListNode * all_node;
+    ListNode * node_array;
+	int unuse_index;
+    int capacity;
+};
+
+//this thing suck
+typedef struct Array Array;
+struct Array
+{
+	bool * valid_array;
+    
+	int capacity;
+	int count;
+	int lowest_index;
+};
+
+//apparently you can move nearby slot to deleted slot
+//sadly i can't move slot
+
+//i choose link list because i can't think of a better way
+//i can't swap slot --- what you mean you can't swap??
+
+//this is terrible
+typedef struct HashTableEntry HashTableEntry;
+struct HashTableEntry
+{
+    int head_index;
+	int tail_index;
+};
+
+typedef struct HashTableSlot HashTableSlot;
+struct HashTableSlot
+{
+	bool valid;
+    
+	int slot_value;
+    
+	int data_index;
+    
+	int next_index;
+	int previous_index;
+};
+
+typedef struct HashTable HashTable; 
+struct HashTable
+{
+    HashTableEntry * entry_array;
+	HashTableSlot * slot_array;
+    int capacity;
+};
+
+BUFFER(Vector3Buffer , Vector3);
 
 typedef enum AllocatorType AllocatorType;
 enum AllocatorType
@@ -13,6 +123,66 @@ enum AllocatorType
     AT_temp,
     AT_frame,
 };
+
+#define FIXED_STRING_SIZE 64
+typedef struct FixedString FixedString;
+struct FixedString
+{
+    char string[FIXED_STRING_SIZE];
+};
+
+typedef struct FixedStringW FixedStringW;
+struct FixedStringW
+{
+    wchar_t string[FIXED_STRING_SIZE];
+};
+
+typedef struct DataHeader DataHeader;
+struct DataHeader
+{
+    FixedString name;
+    int data_offset;
+    //data type, data size and data count can be add to it if i needed it
+};
+
+global unsigned char * scratch_buffer_for_read = 0;
+
+#define MAX_SAVE_SIZE (1024 * 1024 * 16)
+global unsigned char * save_memory = 0;
+global unsigned char * current_save_memory_location = 0;
+
+#define MAX_HEADER_SIZE (1024 * 1024 * 4)
+global DataHeader * data_header_array = 0;
+global DataHeader * current_data_header = 0;
+global DataHeader reading_data_header = {};
+global int save_header_count = 0;
+
+typedef struct Rect Rect;
+struct Rect
+{
+	Vector3 position;
+    Vector2 size;
+	Quaternion rotation;
+};
+
+typedef enum QuadVertexPosition QuadVertexPosition;
+enum QuadVertexPosition
+{
+	vertex_top_right,
+	vertex_top_left,
+	vertex_bottom_right,
+	vertex_bottom_left,
+	quad_vertex_count,
+};
+
+typedef struct Quad Quad;
+struct Quad
+{
+	Vector3 vertex_position[quad_vertex_count];
+	Vector4 vertex_color[quad_vertex_count];// do i even what you here?
+};
+
+BUFFER(QuadBuffer , Quad);
 
 typedef struct ShapeImpactData ShapeImpactData;
 struct ShapeImpactData
@@ -84,198 +254,6 @@ enum BoxVertex
 };
 
 global Rect box_rect[face_count] = {};
-global int start_color_seed = 121365623;
-
-typedef enum GameMenuType GameMenuType;
-enum GameMenuType
-{
-	GMT_descend,
-	GMT_to_the_right,
-};
-
-typedef struct DrawingMenu DrawingMenu;
-struct DrawingMenu
-{
-	
-    Vector2 current_button_position;
-	bool on_screen;
-    
-	float current_button_left;
-    
-	bool button_hover;
-	bool button_clicked;
-    
-	int menu_type;
-	float button_extra_offset;
-    
-};
-
-typedef struct BoneState BoneState;
-struct BoneState
-{
-    
-	Vector3 local_position;
-	Quaternion local_rotation;
-	Vector3 end_point_offset;
-    
-};
-
-typedef struct KeyFrame KeyFrame;
-struct KeyFrame
-{
-    int bone_index;
-    
-    BoneState bone_state;
-	int frame_index;
-    
-    //i don't think i should name it like this
-    Vector3 previous_bezier_offset;
-    Vector3 next_bezier_offset;
-    
-    //int hash_table_by_bone_slot_index;
-    //int hash_table_slot_index;
-};
-
-BUFFER(KeyFrameBuffer , KeyFrame);
-
-typedef enum RotationAxis RotationAxis;
-enum RotationAxis
-{
-    R_None,
-    
-    R_Z,
-    R_Y,
-    R_X,
-    
-    R_count,
-};
-
-typedef struct RotationAxisData RotationAxisData;
-struct RotationAxisData
-{
-    Rect rect;
-    
-    Color target_axis_color;
-    float target_axis_line_size;
-    
-    Color axis_color;
-    float axis_line_size;
-};
-
-typedef struct Bone Bone;
-struct Bone
-{
-    bool from_blend_file;
-    
-    bool IK_enable;
-    int IK_chain_length;
-    
-    int IK_target_bone_index;
-    int IK_pole_bone_index;
-    
-    //TODO : these things should be specifiy by clip
-    bool free_position;
-	
-    //use for look up parent and children bone only
-    //try not forget updating it
-    int bone_index;
-    int parent_bone_index;
-    
-    FixedStringW bone_name;
-    
-	BoneState state;
-	
-	Vector3 position;
-	Vector3 end_position;
-	Quaternion rotation;
-    
-    //it can be edit when the current frame is the key frame belong to this bone
-    bool free_bone;
-};
-
-BUFFER(BoneBuffer , Bone);
-
-global float camera_current_zoom = 1.0;
-
-#define FRAME_PER_SECOND 60
-#define FRAME_TIME 1.0 / ((double)FRAME_PER_SECOND)
-
-#define GetKeyFrameHash(FrameIndex , BoneIndex) (hash_int(16 * BoneIndex + FrameIndex))
-
-typedef struct Clip Clip;
-struct Clip
-{
-    
-    FixedString clip_name;//no idea why this exist
-    
-    int clip_index;
-    
-    //AnimationBlendTag blend_tag;
-    
-    bool not_loop;
-    
-    //TODO : Add clip time to it
-    //i just gonna assume all clip length to 1 
-    
-    //for querying keyframe
-    //probably useless
-    
-    List key_frame_active_list;
-    //too wacky
-    //i can't tell the difference between them
-    HashTable key_frame_hash_table_by_bone;
-    HashTable key_frame_hash_table;
-    
-    List dragging_key_frame_list;
-    
-    int key_frame_start_offset;
-    int key_frame_count_to_save;
-    
-};
-
-//this should be a temporary thing
-//bone interaction are modifying these instead of the actual thing
-
-//TODO: rename this
-typedef struct ClipBone ClipBone;
-struct ClipBone
-{
-    Bone * bone_pose_offset;
-    
-    //these two is really confusing
-    Bone * final_bone_pose;
-    
-    //wait this isn't a temporary thing
-    bool * selected_bone;
-    bool * hovered_bone;
-    
-    int clip_index;
-    
-};
-
-typedef struct BoneSelection BoneSelection;
-struct BoneSelection
-{
-    int clip_bone_stack_index;//?? what is this
-    int clip_index;
-    int bone_index;
-};
-
-#define MAX_CLIP_STACK 64
-#define CLIP_START_CAPACITY 16
-
-global ClipBone clip_bone_stack[MAX_CLIP_STACK] = {};
-global int clip_bone_stack_count = 0;
-global bool add_clip_bone_at_next_frame = false;
-
-#define MAX_CLIP 64
-global Clip * clip_array[MAX_CLIP] = {};
-
-#define KEY_FRAME_CAPACITY 64
-//global KeyFrame * all_key_frame = 0;
-global KeyFrameBuffer all_key_frame_buffer = {};
-//global int all_key_frame_capacity = KEY_FRAME_CAPACITY;
-//global int all_key_frame_count = 0;
 
 typedef struct Box Box;
 struct Box
@@ -286,256 +264,6 @@ struct Box
 };
 
 BUFFER(BoxBuffer , Box);
-
-typedef struct Face Face;
-struct Face
-{
-    Vector3 position;
-    Vector2 size;
-	Quaternion rotation;
-    Vector3 vertex_position[quad_vertex_count];
-};
-
-typedef struct DeformVertexSlice DeformVertexSlice;
-struct DeformVertexSlice
-{
-    int start;
-    int count;
-};
-
-typedef struct DeformVertex DeformVertex;
-struct DeformVertex
-{
-    int bone_index;
-    float weight;
-};
-
-BUFFER(DeformVertexBuffer , DeformVertex);
-
-typedef struct BoneSelectionResultData BoneSelectionResultData;
-struct BoneSelectionResultData
-{
-    int bone_index;
-    Vector3 hit_point;
-};
-
-BUFFER(BoneSelectionResultDataBuffer , BoneSelectionResultData);
-
-typedef struct BoneSelectionResult BoneSelectionResult;
-struct BoneSelectionResult
-{
-    BoneSelectionResultData * data;
-    int data_count;
-};
-
-typedef struct D_Model D_Model;
-struct D_Model
-{
-    DeformVertexSlice * deform_vertex_slice;
-    Vector3 * vertices;
-    int vertex_count;
-    
-    Vector3 * normals;
-    unsigned short * indices;
-    int index_count;
-    
-    DeformVertex * all_deform_vertex;
-    int deform_vertex_count;
-    
-    //Bone * all_bones;
-    //Bone * all_initial_bone;
-    
-    BoneBuffer bone_buffer;
-    BoneBuffer initial_bone_buffer;
-    
-    List root_bone_list;//when should i put you?
-    
-    //HashTable bone_parent_hash_table;
-	HashTable bone_children_hash_table;
-};
-
-#define MAX_MODEL 64
-global D_Model all_models[MAX_MODEL] = {};
-global int model_count = 0;
-
-//TODO:this should be inside clip bone
-global int selected_model_index = -1;
-global D_Model * selected_model = 0;
-
-BUFFER(Vector3Buffer , Vector3);
-
-//global Vector3 * all_reference_frame = 0;
-global Vector3Buffer reference_frame_buffer = {};
-global List reference_frame_list = {};
-
-global int selected_reference_frame_index = -1;
-
-global Vector3 right_direction = {1,0,0};
-global Vector3 up_direction = {0,1,0};
-global Vector3 forward_direction = {0,0,1};
-
-typedef enum EditorType EditorType;
-enum EditorType
-{
-    edit_base_pose,
-    edit_animation,
-    edit_world,
-    demo,
-    
-    edit_type_count,
-};
-
-global int editor_type = edit_base_pose;
-
-typedef struct RightClickMenu RightClickMenu;
-struct RightClickMenu
-{
-    bool on;
-    Vector2 position;
-    
-    int box_index;
-};
-
-global RightClickMenu right_click_menu = {};
-
-typedef enum MapEditType MapEditType;
-enum MapEditType
-{
-    MET_none,
-    MET_quad,
-    MET_box,
-    MET_count,
-};
-
-global int current_map_edit_type = MET_none;
-
-typedef struct DemoData DemoData;
-struct DemoData
-{
-    Vector3 character_position;
-    Vector3 character_velocity;
-    Vector3 character_direction;
-};
-
-global DemoData demo_data = {};
-
-typedef struct EditorData EditorData;
-struct EditorData
-{
-    bool assigning_parent_bone;
-    bool assigning_IK_target_bone;
-    bool assigning_IK_pole_bone;
-    
-    int game_frame;
-    
-    int selected_clip_index;
-    
-    bool control_rig;
-    bool turn_off_bezier_curve;
-    
-    bool selecting_bezier;
-    
-    int selected_bone_count;
-    BoneSelection * selected_bone_stack;
-    
-	bool playing;
-	float play_timer;
-    
-    int IK_iteration_count;
-    
-	float timeline_slider_offset;
-    
-	int current_frame_at_timeline;
-    
-	int start_frame_index;
-	int timeline_frame_length;
-    
-	float timeline_scale;
-    
-	float target_camera_zoom;
-	float current_camera_zoom;
-	
-    Vector3 right;
-    Vector3 up;
-    Quaternion billboard_rotation;
-    
-    Vector3 editor_camera_euler;
-    Vector3 editor_camera_offset;
-    
-    float side_camera_zoom;
-    
-    Vector3 showcase_camera_euler;
-    
-	Vector2 current_mouse_position;
-	Vector2 previous_mouse_position;
-	Vector2 operate_menu_position;
-    
-	bool flat_color;
-    
-};
-
-global EditorData * editor = 0;
-
-//TODO: can model be different in clip?
-//TODO: put this somewhere else
-global Bone * base_pose_bone = 0;
-
-global Vector2 * modifying_menu_position = 0;
-
-global float screen_near_clip = 0;
-global float screen_far_clip = 1;
-
-global Matrix full_screen_pixel_matrix = {};
-global Matrix viewport_screen_pixel_matrix = {};
-global Matrix world_3D_matrix = {};
-global Matrix view_matrix = {};
-global Matrix project_matrix = {};
-
-global Matrix world_3D_to_screen_matrix = {};
-
-global R_Rectangle current_viewport = {};
-global bool update_once = false;
-global bool within_viewport = false;
-global Vector2 mouse_position = {};
-
-global int grid_normal_index = 0;
-
-typedef struct SplitViewport SplitViewport;
-struct SplitViewport
-{
-    R_Rectangle viewport;
-    float camera_zoom;
-    Vector3 camera_euler;
-    Vector3 camera_offset;
-    Vector3 camera_up;
-    bool ortho;
-};
-
-global Ray mouse_ray_3D = {};
-
-global Camera3D game_camera = {};
-
-global Matrix current_matrix = {};
-
-global long long game_update_count = 0;
-
-#define SUBDIVISION (10)
-#define GRID_SIZE (1.0)
-#define UNIT_SIZE (GRID_SIZE / ((double)SUBDIVISION))
-
-global Array box_in_map_array = {};
-global BoxBuffer box_in_map_buffer = {};
-//global Box * box_in_map = 0;
-
-global Array quad_in_map_array = {};
-global QuadBuffer quad_in_map_buffer = {};
-//global Quad * quad_in_map = 0;
-
-global Vector3 * convex_shape_a_vertices = 0;
-global int convex_shape_a_vertices_count = 0;
-
-global Vector3 * convex_shape_b_vertices = 0; 
-global int convex_shape_b_vertices_count = 0;
 
 typedef enum ShapeType ShapeType;
 enum ShapeType
@@ -597,9 +325,36 @@ struct CellIterator
     int cell_forward;
 };
 
+#define INPUT_MAX_KEY 16
+
+typedef struct InputState InputState;
+struct InputState
+{
+    int pressing_key[INPUT_MAX_KEY];
+	int pressing_key_count;
+    
+	int pressed_key[INPUT_MAX_KEY];
+	int pressed_key_count;
+    
+	int released_key[INPUT_MAX_KEY];
+	int released_key_count;
+    
+    int pressing_mouse[INPUT_MAX_KEY];
+    int pressing_mouse_count;
+    
+	int released_mouse[INPUT_MAX_KEY];
+	int released_mouse_count;
+    
+	int pressed_mouse[INPUT_MAX_KEY];
+	int pressed_mouse_count;
+};
+
 typedef struct Player Player;
 struct Player
 {
+    Vector3 camera_target;
+    Vector3 camera_position;
+    
     Vector3 position;
     Vector3 velocity;
     Box box;
@@ -607,7 +362,7 @@ struct Player
     bool grounded;
 };
 
-global Player player = {};
+BUFFER(PlayerBuffer , Player);
 
 typedef struct Int3 Int3;
 struct Int3
@@ -629,22 +384,174 @@ struct CellData
     Int3 previous_cell;
 };
 
-global unsigned int search_index = 0;
-
-global float nav_mesh_cell_size = GRID_SIZE * 0.5f;
-global Box nav_mesh_whole_box = {};
-global Box nav_mesh_start_box = {};
-
-global Int3 nav_mesh_size = {};
-global int nav_mesh_cell_capacity = 0;
-global CellData * nav_mesh_cell = 0;
-
-global int search_queue_capacity = 128;
-global Int3 * search_queue = 0;
-
 typedef struct PathResult PathResult;
 struct PathResult
 {
     bool path_found;
     Int3Buffer buffer;
 };
+
+global long long previous_update_count = -1;
+global Box debug_box = {};
+
+#define SUBDIVISION (10)
+#define GRID_SIZE (1.0)
+#define UNIT_SIZE (GRID_SIZE / ((double)SUBDIVISION))
+
+global Camera3D game_camera = {};
+
+global unsigned int search_index = 0;
+
+global float nav_mesh_cell_size = GRID_SIZE * 0.5f;
+global Box nav_mesh_whole_box = {};
+global Box nav_mesh_start_box = {};
+
+global int search_queue_capacity = 128;
+global Int3 * search_queue = 0;
+
+global Int3 nav_mesh_size = {};
+global int nav_mesh_cell_capacity = 0;
+global CellData * nav_mesh_cell = 0;
+
+global Vector3 right_direction = {1,0,0};
+global Vector3 up_direction = {0,1,0};
+global Vector3 forward_direction = {0,0,1};
+
+global Vector3 * convex_shape_a_vertices = 0;
+global int convex_shape_a_vertices_count = 0;
+
+global Vector3 * convex_shape_b_vertices = 0; 
+global int convex_shape_b_vertices_count = 0;
+
+//===game data===
+
+global bool stop_mouse_input = false;
+global InputState * input_state = 0;
+
+global long long game_update_count = 0;
+
+global PlayerBuffer player_buffer = {};
+global Array player_array = {};
+
+global Array box_in_map_array = {};
+global BoxBuffer box_in_map_buffer = {};
+
+global Array quad_in_map_array = {};
+global QuadBuffer quad_in_map_buffer = {};
+
+global Vector3Buffer reference_frame_buffer = {};
+global List reference_frame_list = {};
+
+//===network===
+
+#define CONNECTION_PORT 35222
+
+typedef enum DataFlag DataFlag;
+enum DataFlag
+{
+    DF_pressing_key_count,
+    DF_pressed_key_count,
+    DF_released_key_count,
+    DF_pressing_mouse_count,
+    DF_pressed_mouse_count,
+    DF_released_mouse_count,
+    
+    DF_pressing_key,
+    DF_pressed_key,
+    DF_released_key,
+    DF_pressing_mouse,
+    DF_pressed_mouse,
+    DF_released_mouse,
+    
+    DF_camera_target,
+    DF_camera_position,
+    
+    DF_player_count,
+    DF_player_position,
+    DF_player_velocity,
+    DF_player_grounded,
+};
+
+typedef enum ReceiveOrder ReceiveOrder;
+enum ReceiveOrder
+{
+    RO_header_count,
+    RO_header,
+    RO_data_size,
+    RO_data,
+    
+    RO_count,
+};
+
+typedef struct NetDataHeader NetDataHeader;
+struct NetDataHeader
+{
+    int flag;
+    int offset;
+};
+
+BUFFER(NetDataHeaderBuffer , NetDataHeader);
+BUFFER(ByteBuffer , unsigned char);
+
+#define MAX_RECEIVE_BUFFER 1024 * 16
+#define MAX_RECEIVE_HEADER 128
+
+typedef struct ReceiveState ReceiveState;
+struct ReceiveState
+{
+    int last_update_index;
+    
+    bool connection_reseted;
+    int available_buffer_index;
+    
+    unsigned char buffer[2][MAX_RECEIVE_BUFFER];
+    NetDataHeader header_buffer[2][MAX_RECEIVE_HEADER];
+    
+    int receiving_buffer_index;
+    
+    ReceiveOrder state;
+    int receiving_socket;
+    
+    int collected_byte;
+    
+    int data_size;
+    int header_count;
+};
+
+#define MESSAGE_SIZE 64
+
+typedef struct PlayerConnection PlayerConnection;
+struct PlayerConnection
+{
+    char message[MESSAGE_SIZE];
+    
+    ReceiveState receive_state;
+    int connection_socket;
+    
+    InputState input_state;
+};
+
+BUFFER(PlayerConnectionBuffer , PlayerConnection);
+
+typedef struct NetState NetState;
+struct NetState
+{
+    NetDataHeaderBuffer header_buffer;
+    ByteBuffer send_buffer;
+    
+    ReceiveState client_receive_state;
+    
+    int listening_socket;
+    int client_to_server_socket;
+    
+    bool connected_to_server;
+    
+    bool is_server;
+    bool is_client;
+};
+
+//===network data===
+
+global PlayerConnectionBuffer player_connection_buffer = {};
+global ReceiveState default_receive_state = {};
+global NetState net_state = {};

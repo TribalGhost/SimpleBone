@@ -1,13 +1,6 @@
-#include "unistd.h"
-#include "stdbool.h"
-#include "time.h"
-#include "sys/stat.h"
-#include "dlfcn.h"
-#include "stdio.h"
-#include "d_main_linux.h"
+#include "d_linux_basic.h"
 
 global AppData global_app_data = {};
-global bool running = true;
 
 internal bool compare_time(struct timespec time_a ,struct  timespec time_b)
 {
@@ -23,7 +16,7 @@ internal bool compare_time(struct timespec time_a ,struct  timespec time_b)
 extern int main()
 {
     app_data = &global_app_data;
-    app_data->running = true;
+    app_data->host_name = "192.168.10.8";
     
     const char * dll_path = "DGAME";
     const char * build_finish = "build_finish";

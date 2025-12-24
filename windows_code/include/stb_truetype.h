@@ -674,6 +674,43 @@ extern "C" {
     //
     // CHARACTER TO GLYPH-INDEX CONVERSIOn
     
+    typedef struct stbtt__buf stbtt__buf;
+    struct stbtt__buf
+    {
+        unsigned char *data;
+        int cursor;
+        int size;
+    };
+    
+    typedef struct stbtt_fontinfo stbtt_fontinfo;
+    struct stbtt_fontinfo
+    {
+        void           * userdata;
+        unsigned char  * data;              // pointer to .ttf file
+        int              fontstart;         // offset of start of font
+        
+        int numGlyphs;                     // number of glyphs, needed for range checking
+        
+        int loca;
+        int head;
+        int glyf;
+        int hhea; 
+        int hmtx;
+        int kern;
+        int gpos;
+        int svg; // table locations as offset from start of .ttf
+        
+        int index_map;                     // a cmap mapping for our chosen character encoding
+        int indexToLocFormat;              // format needed to map from glyph index to glyph
+        
+        stbtt__buf cff;                    // cff font data
+        stbtt__buf charstrings;            // the charstring index
+        stbtt__buf gsubrs;                 // global charstring subroutines index
+        stbtt__buf subrs;                  // private charstring subroutines index
+        stbtt__buf fontdicts;              // array of font dicts
+        stbtt__buf fdselect;               // map from glyph to fontdict
+    };
+    
     STBTT_DEF int stbtt_FindGlyphIndex(const stbtt_fontinfo *info, int unicode_codepoint);
     // If you're going to perform multiple operations on the same character
     // and you want a speed-up, call this function with the character you're

@@ -1378,6 +1378,20 @@ extern "C" {
      */
     typedef void (*GLFWvkproc)(void);
     
+    /*! @brief Opaque window object.
+     *
+     *  Opaque window object.
+     *
+     *  @see @ref window_object
+     *
+     *  @since Added in version 3.0.
+     *
+     *  @ingroup window
+     */
+    
+    typedef struct GLFWwindow GLFWwindow;
+    struct GLFWwindow;
+    
     /*! @brief Opaque monitor object.
      *
      *  Opaque monitor object.

@@ -200,7 +200,7 @@ typedef enum bool { false = 0, true = !false } bool;
 #define RL_BOOL_TYPE
 #endif
 
-#if 0
+#if 1
 // Vector2, 2 components
 typedef struct Vector2 {
     float x;                // Vector x component
@@ -214,13 +214,87 @@ typedef struct Vector3 {
     float z;                // Vector z component
 } Vector3;
 
+typedef struct Vector4{
+    float x;
+    float y;
+    float z;
+    float w;
+} Vector4;
+
 // Quaternion, 4 components (Vector4 alias)
 typedef Vector4 Quaternion;
 
+typedef struct R_Rectangle R_Rectangle;
+struct R_Rectangle {
+    float x;
+    float y;
+    float width;
+    float height;
+};
+
+typedef struct Color 
+{
+    unsigned char r;
+    unsigned char g;
+    unsigned char b;
+    unsigned char a;
+} Color;
+
+typedef struct Matrix Matrix;
+// Matrix, 4x4 components, column major, OpenGL style, right-handed
+struct Matrix {
+    float m0;
+    float m4;
+    float m8;
+    float m12;  // Matrix first row (4 components)
+    
+    
+    float m1;
+    float m5;
+    float m9;
+    float m13;  // Matrix second row (4 components)
+    
+    
+    float m2;
+    float m6;
+    float m10;
+    float m14; // Matrix third row (4 components)
+    
+    
+    
+    float m3;
+    float m7;
+    float m11;
+    float m15; // Matrix fourth row (4 components)
+};
+
 #endif
+
+
+typedef struct Image Image;
+struct Image {
+    void *data;
+    int width;
+    int height;
+    int mipmaps;
+    int format;
+};
+
+// Texture, tex data stored in GPU memory (VRAM)
+typedef struct Texture Texture;
+struct Texture {
+    unsigned int id;        // OpenGL texture id
+    int width;              // Texture base width
+    int height;             // Texture base height
+    int mipmaps;            // Mipmap levels, 1 by default
+    int format;             // Data format (PixelFormat type)
+};
 
 // TextureCubemap, same as Texture
 typedef Texture TextureCubemap;
+
+// Texture2D, same as Texture
+typedef Texture Texture2D;
 
 // RenderTexture, fbo for texture rendering
 typedef struct RenderTexture {
@@ -260,6 +334,16 @@ typedef struct Font {
     R_Rectangle *recs;        // Rectangles in texture for the glyphs
     GlyphInfo *glyphs;      // Glyphs info data
 } Font;
+
+// Camera, defines position/orientation in 3d space
+typedef struct Camera3D Camera3D;
+struct Camera3D {
+    Vector3 position;       // Camera position
+    Vector3 target;         // Camera target it looks-at
+    Vector3 up;             // Camera up vector (rotation over its axis)
+    float fovy;             // Camera field-of-view aperture in Y (degrees) in perspective, used as near plane width in orthographic
+    int projection;         // Camera projection: CAMERA_PERSPECTIVE or CAMERA_ORTHOGRAPHIC
+};
 
 typedef Camera3D Camera;    // Camera type fallback, defaults to Camera3D
 
@@ -353,6 +437,13 @@ typedef struct ModelAnimation {
     Transform **framePoses; // Poses array by frame
     char name[32];          // Animation name
 } ModelAnimation;
+
+typedef struct Ray Ray;
+// Ray, ray for raycasting
+struct Ray {
+    Vector3 position;       // Ray position (origin)
+    Vector3 direction;      // Ray direction
+};
 
 // RayCollision, ray hit information
 typedef struct RayCollision {

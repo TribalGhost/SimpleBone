@@ -1,5 +1,4 @@
-
-//doesn't feel nice
+//TODO: just get the handle, no need to allocate data for it
 typedef enum D_ShaderUniform D_ShaderUniform;
 enum D_ShaderUniform
 {

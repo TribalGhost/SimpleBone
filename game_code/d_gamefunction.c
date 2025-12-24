@@ -1,4 +1,302 @@
-static int hash[] = { 208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,254,245,255,247,247,40,
+#ifdef BUILD_D_WINDOWS
+internal long long counter_stamp()
+{
+	LARGE_INTEGER time = {};
+	QueryPerformanceCounter(&time);
+	return time.QuadPart;
+}
+
+internal double time_stamp()
+{
+    LARGE_INTEGER frequency = {};
+	LARGE_INTEGER end_time = {};
+	QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&end_time);
+    
+	return (double)(end_time.QuadPart) * 1e6 / (double)frequency.QuadPart;
+}
+#endif
+
+#ifdef BUILD_D_LINUX
+internal double time_stamp()
+{
+    struct timespec now = {};
+    clock_gettime(CLOCK_MONOTONIC_RAW , &now);
+    double nano_second = now.tv_nsec;
+    nano_second /= 1000000000.0;
+    return ((double)now.tv_sec) + nano_second;
+}
+#endif
+
+internal Vector4 color_to_linear(Color color)
+{
+    Vector4 result = {};
+    result.x = ((float)color.r) / 255.0f;
+    result.y = ((float)color.g) / 255.0f;
+    result.z = ((float)color.b) / 255.0f;
+    result.w = ((float)color.a) / 255.0f;
+    
+    return result;
+}
+
+internal Color linear_to_color(Vector4 color)
+{
+	Color result = {};
+    result.r = (unsigned char)(color.x * 255.0f);
+    result.g = (unsigned char)(color.y * 255.0f);
+    result.b = (unsigned char)(color.z * 255.0f);
+    result.a = (unsigned char)(color.w * 255.0f);
+    
+    return result;
+}
+
+internal Vector4 linear_fade(Vector4 linear_color ,float mul)
+{
+    linear_color.w *= mul;
+    return linear_color;
+}
+
+//TODO : make blend function?
+internal Color color_multiply_B(Color base , float value)
+{
+	if (value >= 1) value = 1;
+    
+	base.r *= value;
+	base.g *= value;
+	base.b *= value;
+    
+	return base;
+}
+
+internal Color color_invert(Color base)
+{
+	base.r = 255 - base.r;
+	base.g = 255 - base.g;
+	base.b = 255 - base.b;
+    
+	return base;
+}
+
+internal Color color_lerp(Color a , Color b , float t)
+{
+	Color new_color = {0,0,0,255};
+	new_color.r = (unsigned char)Lerp((float)a.r , (float)b.r , t);
+	new_color.g = (unsigned char)Lerp((float)a.g , (float)b.g , t);
+	new_color.b = (unsigned char)Lerp((float)a.b , (float)b.b , t);
+	new_color.a = (unsigned char)Lerp((float)a.a , (float)b.a , t);
+    
+	return new_color;
+}
+
+internal Color color_screen(Color base_color ,Color layer_color , float blend)
+{
+	Vector3 base = {((float)base_color.r)/255.0f , ((float)base_color.g)/255.0f ,((float)base_color.b)/255.0f };
+	Vector3 layer = {((float)layer_color.r)/255.0f ,((float)layer_color.g)/255.0f ,((float)layer_color.b)/255.0f };
+	Vector3 new_color = {};
+    
+	new_color.x = 1.0 - (1.0 - base.x)*( 1.0 - layer.x);
+	new_color.y = 1.0 - (1.0 - base.y)*( 1.0 - layer.y);
+	new_color.z = 1.0 - (1.0 - base.z)*( 1.0 - layer.z);
+    
+	new_color= Vector3Lerp(base , new_color , blend);
+    
+	if (new_color.x > 1.0) new_color.x = 1.0f;	
+	if (new_color.y > 1.0) new_color.y = 1.0f;
+	if (new_color.z > 1.0) new_color.z = 1.0f;
+    
+    Color result = {};
+    result.r = (unsigned char)(new_color.x * 255.0);
+    result.g = (unsigned char)(new_color.y * 255.0);
+    result.b = (unsigned char)(new_color.z * 255.0);
+    result.a = base_color.a;
+    
+    return result;
+}
+
+internal Color color_multiply(Color base , Color layer , float blend)
+{
+    
+	Color new_color = base;
+    
+	new_color.r *= layer.r;
+	new_color.g *= layer.g;
+	new_color.b *= layer.b;
+    
+	base = color_lerp(base , layer , blend);
+    
+	return base;
+}
+
+internal Vector4 vector4_lerp(Vector4 v1, Vector4 v2, float amount)
+{
+	Vector4 result = { 0 };
+    
+	result.x = v1.x + amount * (v2.x - v1.x);
+	result.y = v1.y + amount * (v2.y - v1.y);
+	result.z = v1.z + amount * (v2.z - v1.z);
+	result.w = v1.w + amount * (v2.w - v1.w);
+    
+	return result;
+}
+
+internal void color_quad(Vector4* quad_color , Vector4 target_color)
+{   
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			float* color_component = (float*)(quad_color + i);
+			float* target_color_compeont = (float*)&target_color;
+			color_component[j] = target_color_compeont[j];
+		}
+	}
+}
+
+internal Vector4 random_linear_color()
+{
+    Vector4 result = {};
+	result.x = (float)rand() / (float)(RAND_MAX / 1);
+	result.y = (float)rand() / (float)(RAND_MAX / 1);
+	result.z = (float)rand() / (float)(RAND_MAX / 1);
+	result.w = 1;
+	
+    
+    return result;
+}
+
+//TODO : don't use these
+internal float noise(float seed)
+{
+	int n;
+    
+	n = seed * 57;
+	n = (n << 13) ^ n;
+    
+	return 1.0 - ((n * ((n * n * 15731) + 789221) + 1376312589) & 0x7fffffff) / 1073741824.0;
+}
+
+#define RandomFloat(Min,Max,Seed) Min+((noise(Seed)+1)/2)*(Max-Min)
+
+#define RandomInt(Seed) ((Seed * 1103515245 + 12345) & RAND_MAX)
+
+#define RandomIntRange(Min,Max,Seed) Min+RandomInt(Seed)%(Max-Min)
+
+//stolen
+internal unsigned int string_to_hash(const char * s)
+{
+    unsigned int hash = 0;
+    
+    for(; *s; ++s)
+    {
+        hash += *s;
+        hash += (hash << 10);
+        hash ^= (hash >> 6);
+    }
+    
+    hash += (hash << 3);
+    hash ^= (hash >> 11);
+    hash += (hash << 15);
+    
+    return hash;
+}
+
+#define malloc_and_memset(type,count) (type*)memset(malloc(sizeof(type)*count),0,sizeof(type)*count)
+
+internal Vector4 quaternion_to_vector4(Quaternion _Quaternion)
+{
+    Vector4 result = {_Quaternion.x ,_Quaternion.y , _Quaternion.z, _Quaternion.w};
+	return result;
+}
+
+internal float cubic_bezier(float x1 , float x2 , float x3 ,float x4, float t)
+{
+    float xa = Lerp( x1 , x2 , t );
+    float xb = Lerp( x2 , x3 , t );
+    
+    float xc = Lerp(x2,x3 , t);
+    float xd = Lerp(x3, x4 , t);
+    
+    float xe = Lerp(xa , xb , t);
+    float xf = Lerp(xc , xd , t);
+    
+    return Lerp( xe , xf , t );
+}
+
+internal Vector3 vector3_cubic_bezier(Vector3 p1 , Vector3 p2 , Vector3 p3 , Vector3 p4  , float t)
+{
+    Vector3 result = {};
+    
+    result.x = cubic_bezier(p1.x,  p2.x,p3.x , p4.x , t);
+    result.y = cubic_bezier(p1.y,  p2.y,p3.y , p4.y , t);
+    result.z = cubic_bezier(p1.z,  p2.z,p3.z , p4.z , t);
+    
+    return result;
+}
+
+internal float ease_in_out_sine(float x)
+{
+	return -(cos(PI * x) - 1.0) / 2.0;
+}
+
+internal float ease_in_out_cubic(float x)
+{
+	return x < 0.5 ? 4.0 * x * x * x : 1.0 - pow(-2.0 * x + 2.0 , 3.0 ) / 2.0;
+}
+
+internal float ease_out_quint(float x )
+{
+	return 1.0 - pow(1.0 - x, 5.0);
+}
+
+internal float ease_in_back(float x , float c1)
+{
+	float c3 = c1 + 1;
+    
+	return c3 * x * x * x - c1 * x * x;
+}
+
+internal float ease_out_back(float x  , float c1)
+{
+	float c3 = c1 + 1;
+    
+	return 1 + c3 * pow(x - 1, 3) + c1 * pow(x - 1, 2);
+}
+
+internal bool compare_string_C(char * string_A, char * string_B , int count)
+{
+    for(int char_index = 0 ; char_index < count ; char_index++)
+    {
+        if(string_A[char_index] != string_B[char_index])
+        {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+internal bool compare_string_W( wchar_t * string_A , wchar_t * string_B)
+{
+    int string_B_length = 0;
+    for(int char_index = 0 ; string_B[char_index] != '\0' ; char_index++ ,string_B_length++);
+    
+    int name_length = 0;
+    for(int char_index = 0 ; string_A[char_index] != '\0' ; char_index++ , name_length++);
+    
+    if(name_length != string_B_length) return false;
+    
+    for(int char_index = 0 ; char_index < name_length ; char_index++)
+    {
+        if(string_A[char_index] != string_B[char_index])
+        {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+static int hash_array[] = { 208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,254,245,255,247,247,40,
     185,248,251,245,28,124,204,204,76,36,1,107,28,234,163,202,224,245,128,167,204,
     9,92,217,54,239,174,173,102,193,189,190,121,100,108,167,44,43,77,180,204,8,81,
     70,223,11,38,24,254,210,210,177,32,81,195,243,125,8,169,112,32,97,53,195,13,
@@ -11,98 +309,249 @@ static int hash[] = { 208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,254,2
     135,176,183,191,253,115,184,21,233,58,129,233,142,39,128,211,118,137,139,255,
     114,20,218,113,154,27,127,246,250,1,8,198,250,209,92,222,173,21,88,102,219 };
 
-#define PNoise2(x, y,SEED) hash[(hash[(y + SEED) % 256] + x) % 256];
+#define PNoise2(x, y,SEED) hash_array[(hash_array[(y + SEED) % 256] + x) % 256];
 
 #define PLinInter(x,y,s) x + s * (y - x)
 
 #define SmoothInter(x, y, s) PLinInter(x, y, s * s * (3 - 2 * s))
 
-internal Rect quad_position_left(Rect rect, float position_offset_x, float size_x, float size_offset_y)
+internal bool key_pressing(int key)
 {
-	rect.position.x = ((position_offset_x + size_x / 2) / app_data->window_size.x)* app_data->right *2 - app_data->right;
-	rect.position.y = 0;
+    for (int i = 0; i < input_state->pressing_key_count; i++)
+	{
+		if (input_state->pressing_key[i] == key) return true;
+	}
     
-	rect.size.x = (size_x / app_data->window_size.x) * app_data->right*2;
-	rect.size.y = app_data->top * 2 - ((size_offset_y / app_data->window_size.y) * app_data->top *2);
-    
-	return rect;
+    return false;
 }
 
-internal Rect quad_position_left_B(float position_offset_x, float size_x, float size_offset_y)
+internal bool key_pressed(int key)
 {
-	return quad_position_left(get_rect(), position_offset_x, size_x, size_offset_y);
+	for (int i = 0; i < input_state->pressed_key_count; i++)
+	{
+		if (input_state->pressed_key[i] == key) return true;
+	}
+    
+	return false;
 }
 
-internal Rect offset_from_bottom_left(float pixel_offset_x, float pixel_offset_y, float pixel_size_x,float pixel_size_y)
+internal bool key_released(int key)
 {
-	Rect rect = get_rect();
+    for (int i = 0; i < input_state->released_key_count; i++)
+	{
+		if (input_state->released_key[i] == key)return true;
+	}
     
-	rect.position.x= ((pixel_offset_x + pixel_size_x / 2) / app_data->window_size.x) * app_data->right * 2 - app_data->right;
-	rect.position.y= ((pixel_offset_y + pixel_size_y / 2) / app_data->window_size.y) * app_data->top * 2 - app_data->top ;
-    
-	rect.size.x = (pixel_size_x / app_data->window_size.x) * app_data->right * 2;
-	rect.size.y = (pixel_size_y / app_data->window_size.y) * app_data->top * 2;
-    
-	return rect;
+	return false;
 }
 
-internal Rect offset_from_quad_top_left(Rect parent_rect, Rect child_rect, float pixel_offset_x,float pixel_offset_y)
+internal bool mouse_pressing_no_check(int button)
 {
-	child_rect.position = parent_rect.position;
-	child_rect.position.x -= parent_rect.size.x/2;
-	child_rect.position.y += parent_rect.size.y/2;
+    for(int mouse_index = 0; mouse_index < input_state->pressing_mouse_count; mouse_index++)
+    {
+        if(input_state->pressing_mouse[mouse_index] == button) return true;
+    }
     
-	child_rect.position.x += child_rect.size.x / 2;
-	child_rect.position.y -= child_rect.size.y / 2;
-    
-	Vector2 child_rect_offset = {pixel_offset_x, pixel_offset_y};
-    
-    child_rect.position.x += child_rect_offset.x;
-    child_rect.position.y -= child_rect_offset.y;
-    
-    return child_rect;
+    return false;
 }
 
-internal Rect offset_from_top_left(Rect rect , float pixel_offset_x,float pixel_offset_y)
+internal bool mouse_pressing(int Button)
 {
+    if(stop_mouse_input) return false;
     
-    Vector2 world_position = {0,0};
-    rect.position.x = world_position.x + rect.size.x * 0.5f + pixel_to_width(pixel_offset_x);
-    rect.position.y = world_position.y - rect.size.y * 0.5f + pixel_to_height(pixel_offset_y);
+    return mouse_pressing_no_check(Button);
+}
+
+
+internal bool mouse_pressed_no_check(int button)
+{
+	for (int i = 0; i < input_state->pressed_mouse_count; i++)
+	{
+		if (input_state->pressed_mouse[i] == button)return true;
+	}
     
-    return rect;
+	return false;
 }
 
-internal Rect quad_to_top_left(Rect rect)
+internal bool mouse_pressed(int button)
 {
-    rect.position.x -= rect.size.x * 0.5f;
-    rect.position.y += rect.size.y * 0.5f;
+    if(stop_mouse_input) return false;
     
-    return rect;
+    return mouse_pressed_no_check(button);
 }
 
-internal Rect quad_to_bottom_left(Rect rect)
+internal bool mouse_released_no_check(int button)
 {
-    rect.position.x -= rect.size.x * 0.5f;
-    rect.position.y -= rect.size.y * 0.5f;
+	for (int i = 0; i < input_state->released_mouse_count; i++)
+	{
+		if (input_state->released_mouse[i] == button) return true;
+	}
     
-    return rect;
+	return false;
 }
 
-internal Rect quad_move_down_half(Rect rect)
+internal bool mouse_relased(int button)
 {
-    rect.position.y -= rect.size.y * 0.5f;
-    return rect;
+    if(stop_mouse_input) return false;
+    
+    return mouse_released_no_check(button);
 }
 
-internal Vector2 get_rect_top_right_corner(Rect rect)
+#define allocate_temp( type , count) (type*)allocate_temp_(sizeof(type)*(count))
+
+internal unsigned char* allocate_temp_(int size)
 {
-    return (Vector2){ rect.position.x + rect.size.x * 0.5f, rect.position.y + rect.size.y * 0.5f };
+	if (size == 0)
+	{
+		return 0;
+	}
+    
+	unsigned char* start = run_time_memory.current_memory;
+	run_time_memory.current_memory += size;
+	if (run_time_memory.current_memory >= run_time_memory.start_memory + run_time_memory.size)
+	{
+		CATCH;
+	}
+    
+	memset(start, 0, size);
+    
+	return start;
 }
 
-internal Vector2 get_rect_bottom_left_corner(Rect rect)
+#define allocate_frame(Type,Size) (Type*)allocate_frame_(sizeof(Type)*(Size))
+
+internal unsigned char * allocate_frame_(int size)
 {
-    return (Vector2){ rect.position.x - rect.size.x * 0.5f, rect.position.y - rect.size.y * 0.5f };
+    if (size == 0)
+	{
+		return 0;
+	}
+    
+	unsigned char* start = frame_time_memory.current_memory;
+	frame_time_memory.current_memory += size;
+	if (frame_time_memory.current_memory >= frame_time_memory.start_memory + frame_time_memory.size)
+	{
+		CATCH;
+	}
+    
+	memset(start, 0, size);
+    
+	return start;
+}
+
+internal void * allocate_memory(int size , int allocate_type)
+{
+    unsigned char * memory = 0;
+    
+    switch(allocate_type)
+    {
+        case AT_temp:
+        {
+            memory = allocate_temp_(size);
+        }
+        break;
+        
+        case AT_frame:
+        {
+            memory = allocate_frame_(size);
+        }
+        break;
+        
+        default: CATCH; break;
+    }
+    
+    return memory;
+}
+
+internal bool compare_string( char * string_A, char * string_B)
+{
+    int string_B_length = 0;
+    for(int char_index = 0 ; string_B[char_index] != '\0' ; char_index++ ,string_B_length++);
+    
+    int name_length = 0;
+    for(int char_index = 0 ; string_A[char_index] != '\0' ; char_index++ , name_length++);
+    
+    if(name_length != string_B_length) return false;
+    
+    for(int char_index = 0 ; char_index < name_length ; char_index++)
+    {
+        if(string_A[char_index] != string_B[char_index])
+        {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+internal wchar_t * combine_string_W(wchar_t * string_a , wchar_t * string_b)
+{
+    int string_size= wcslen(string_a) + wcslen(string_b) + 2;//adding 2 just to be save
+    wchar_t * temp_string = allocate_frame(wchar_t , string_size);
+    
+	wcscpy(temp_string , string_a);
+	wcscat(temp_string , string_b);
+    
+	return temp_string;
+}
+
+#define read_buffer(data_to_assign , name , type , index) \
+{\
+local_persist bool initialized = false;\
+local_persist type * buffer = 0;\
+if(!initialized) {initialized = true; buffer = (type *)get_data_buffer_by_name(name);}\
+if(buffer) (data_to_assign) = buffer[index];\
+}
+
+#define read_data(data , name , type) { type * data_pointer = (type *)get_data_buffer_by_name(name) ; if(data_pointer) data = (*data_pointer); }
+
+internal unsigned char * get_data_buffer_by_name(char * name)
+{
+    for(int header_index = 0 ; header_index < save_header_count ; header_index++)
+    {
+        DataHeader * current_header = data_header_array + header_index;
+        
+        if(compare_string(current_header->name.string , name))
+        {
+            return save_memory + current_header->data_offset;
+        }
+        
+    }
+    
+    return 0;
+}
+
+//this is kinda dumb
+internal void combine_file_path(const char* file_name,char * result_path)
+{
+	strcat(result_path, app_data->application_path);
+	strcat(result_path, file_name);
+}
+
+internal char * combine_string(char * string_a , char * string_b)
+{
+	int string_size= strlen(string_a) + strlen(string_b) + 2;//adding 2 just to be save
+	char * temp_string = allocate_frame(char , string_size);
+    
+	strcpy(temp_string , string_a);
+	strcat(temp_string , string_b);
+    
+	return temp_string;
+}
+
+internal char * get_app_file_path(const char* file_name)
+{
+	return combine_string(app_data->application_path , (char*) file_name);
+}
+
+internal char * get_level_file_path(const char * level_name)
+{
+	return combine_string(combine_string(app_data->application_path , "GameLevel\\") , (char*)level_name);
+}
+
+internal char * get_level_file_path_B()
+{
+	return combine_string(app_data->application_path , "GameLevel\\");
 }
 
 internal Quad resize_block(Quad quad,float size)
@@ -162,41 +611,60 @@ internal Quad resize_block_B(Quad * quad, float size)
     return resize_block(*quad, size);
 }
 
-internal bool check_collision_rect(Rect rect , Vector2 point)
+//beware the normal isn't normalized
+internal RayCollision get_ray_collision_triangle(Ray ray, Vector3 p1, Vector3 p2, Vector3 p3)
 {
-    Vector2 top_right = get_rect_top_right_corner(rect);
-    Vector2 bottom_left = get_rect_bottom_left_corner(rect);
+	RayCollision collision = { 0 };
+	Vector3 edge1 = { 0 };
+	Vector3 edge2 = { 0 };
+	Vector3 p, q, tv;
+	float det, invDet, u, v, t;
     
-    if (point.x < top_right.x && point.y < top_right.y)
-    {
-        if (point.x > bottom_left.x && point.y > bottom_left.y)
-        {
-            return true;
-        }
-    }
+	// Find vectors for two edges sharing V1
+	edge1 = Vector3Subtract(p2, p1);
+	edge2 = Vector3Subtract(p3, p1);
     
-    return false;
-}
-
-internal bool check_collision_rect_mouse(Rect rect)
-{
-    return check_collision_rect( rect , (Vector2){app_data->mouse_position.x, app_data->mouse_position.y});
-}
-
-internal bool check_collision_rect_mouse_B(Vector2 top_right , Vector2 bottom_left)
-{
+	// Begin calculating determinant - also used to calculate u parameter
+	p = Vector3CrossProduct(ray.direction, edge2);
     
-    Vector2 current_mouse_position = {app_data->mouse_position.x , app_data->mouse_position.y};
+	// If determinant is near zero, ray lies in plane of triangle or ray is parallel to plane of triangle
+	det = Vector3DotProduct(edge1, p);
     
-    if (current_mouse_position.x < top_right.x && current_mouse_position.y < top_right.y)
-    {
-        if (current_mouse_position.x > bottom_left.x && current_mouse_position.y > bottom_left.y)
-        {
-            return true;
-        }
-    }
+	// Avoid culling!
+	if ((det > -EPSILON) && (det < EPSILON)) return collision;
     
-    return false;
+	invDet = 1.0f / det;
+    
+	// Calculate distance from V1 to ray origin
+	tv = Vector3Subtract(ray.position, p1);
+    
+	// Calculate u parameter and test bound
+	u = Vector3DotProduct(tv, p) * invDet;
+    
+	// The intersection lies outside the triangle
+	if ((u < 0.0f) || (u > 1.0f)) return collision;
+    
+	// Prepare to test v parameter
+	q = Vector3CrossProduct(tv, edge1);
+    
+	// Calculate V parameter and test bound
+	v = Vector3DotProduct(ray.direction, q) * invDet;
+    
+	// The intersection lies outside the triangle
+	if ((v < 0.0f) || ((u + v) > 1.0f)) return collision;
+    
+	t = Vector3DotProduct(edge2, q) * invDet;
+    
+	if (t > EPSILON)
+	{
+		// Ray hit, get hit point and normal
+		collision.hit = true;
+		collision.distance = t;
+		collision.normal = Vector3CrossProduct(edge1, edge2);
+		collision.point = Vector3Add(ray.position, Vector3Scale(ray.direction, t));
+	}
+    
+	return collision;
 }
 
 internal Vector3 get_edge_direction(Vector3 start,Vector3 end , Vector3 point)
@@ -280,14 +748,6 @@ internal bool check_collision_quad_to_rect(Quad quad , Rect rect)
     return false;
 }
 
-internal bool check_collision_quad_mouse(Quad quad)
-{
-    
-    Vector2 mouse_world_position = {app_data->mouse_position.x, app_data->mouse_position.y};
-    return check_collision_quad_point(quad, (Vector3){ mouse_world_position.x,mouse_world_position.y,0 });
-    
-}
-
 internal Vector4 selection_from_start_to_end_to_rect(Vector2 start_position, Vector2 end)
 {
     Vector2 drag_centre = {};
@@ -305,271 +765,6 @@ internal Vector4 selection_from_start_to_end_to_rect(Vector2 start_position, Vec
         drag_size.y *= -1;
     
     return (Vector4){ drag_centre.x,drag_centre.y,drag_size.x,drag_size.y };
-    
-}
-
-//this is dumb
-internal Vector2 get_menu_individual_item_position_end(Vector2 position, String* option_string, bool on_screen,int index,int offset_y)
-{
-    Rect starting_point_quad = get_rect();
-    
-    float pixel_size = 20;
-    
-    float font_size = 0;
-    
-    if (on_screen)
-        font_size = pixel_to_height(pixel_size);
-    else
-        font_size = pixel_to_height(pixel_size * (1 / camera_current_zoom));
-    
-    starting_point_quad.position.x = position.x;
-    starting_point_quad.position.y = position.y;
-    
-    Rect menu_option_quad = starting_point_quad;
-    menu_option_quad.position.y -= index * font_size;
-    menu_option_quad.position.y -= font_size * 0.5f;
-    
-    if (on_screen)
-        menu_option_quad.position.x += pixel_to_width(pixel_size / 2);
-    else 
-        menu_option_quad.position.x += pixel_to_width(pixel_size / 2) * (1/ camera_current_zoom);
-    
-    const wchar_t* string = option_string[index].start;
-    
-    Vector2 option_end_position = {};
-    
-    if (string)
-    {
-        float string_width = get_total_string_width(string, font_size);
-        
-        menu_option_quad.size.x = string_width;
-        menu_option_quad.size.y = font_size;
-        
-        Rect operation_menu_text_rect = menu_option_quad;
-        
-        menu_option_quad.position.x += menu_option_quad.size.x * 0.5f;
-        
-        if (on_screen)
-        {
-            menu_option_quad.size.x += pixel_to_width(pixel_size);
-        }
-        else
-        {
-            menu_option_quad.size.x += pixel_to_width(pixel_size) * (1 / camera_current_zoom );
-        }
-        
-        option_end_position.x += menu_option_quad.position.x;
-        option_end_position.y += menu_option_quad.position.y;
-        
-        option_end_position.x += menu_option_quad.size.x * 0.5f;
-        option_end_position.y += menu_option_quad.size.y * 0.5f;
-        
-        option_end_position.y -= font_size * offset_y;
-    }
-    
-    return option_end_position;
-}
-
-internal Vector2 get_menu_individual_item_position_end_B(Vector2 position, String* option_string, bool on_screen, int index)
-{
-    return get_menu_individual_item_position_end(position, option_string, on_screen, index,0);
-}
-
-global float font_pixel_size = 20;
-
-internal DrawingMenu start_draw_menu(Vector2 position , bool on_screen , GameMenuType menu_type)
-{
-    
-    DrawingMenu menu = {};
-    menu.current_button_position = position;
-    menu.on_screen = on_screen;
-    menu.menu_type = menu_type;
-    
-    return menu;
-    
-}
-
-internal DrawingMenu start_draw_dragging_menu(Vector2 * pixel_position , GameMenuType menu_type)
-{
-    
-    Rect drag_rect = get_rect(90, 20);
-    drag_rect.position.x = pixel_position->x;
-    drag_rect.position.y = pixel_position->y;
-    
-    drag_rect.position.y += drag_rect.size.y * 0.8;
-    drag_rect.position.x += drag_rect.size.x * 0.6;
-    
-    if (check_collision_rect_mouse(drag_rect))
-    {
-        
-        draw_rect_D(drag_rect, drag_rect.size.y * 0.3f, Fade(WHITE, 0.6));
-        
-        if (mouse_button_pressed(MOUSE_LEFT_BUTTON))
-        {
-            modifying_menu_position = pixel_position;
-        }
-    }
-    else
-    {
-        draw_rect_D(drag_rect, drag_rect.size.y * 0.3f, Fade(WHITE, 0.4));
-    }
-    
-    if (modifying_menu_position == pixel_position)
-    {
-        stop_mouse_input= true;
-        
-        Vector2 mouse_delta = app_data->mouse_position;
-        mouse_delta.x -= editor->previous_mouse_position.x;
-        mouse_delta.y -= editor->previous_mouse_position.y;
-        
-        (*pixel_position).x += mouse_delta.x;
-        (*pixel_position).y += mouse_delta.y;
-        
-        draw_rect_D(drag_rect, 10, Fade(WHITE, 0.8));
-        
-        if (mouse_button_released(MOUSE_LEFT_BUTTON))
-        {
-            modifying_menu_position = 0;
-        }
-    }
-    
-    Rect text_rect = drag_rect;
-    text_rect.position.x -= text_rect.size.x * 0.5f;
-    text_rect.position.x += pixel_to_width(5);
-    D_draw_text_B(text_rect, L"按住拖动", DARKBLUE, false);
-    
-    Vector2 dragging_position ={drag_rect.position.x, drag_rect.position.y}; 
-    dragging_position.y -= drag_rect.size.y * 0.5f;
-    dragging_position.x -= drag_rect.size.y * 0.5f;
-    
-    DrawingMenu menu = {};
-    menu.current_button_position = dragging_position;
-    menu.on_screen = true;
-    menu.menu_type = menu_type;
-    
-    return menu;
-}
-
-internal DrawingMenu start_draw_menu_mouse()
-{
-    DrawingMenu menu = {};
-    menu.current_button_position = editor->operate_menu_position;
-    menu.on_screen = false;
-    menu.menu_type = GMT_descend;
-    
-    return menu;
-}
-
-internal bool draw_menu_button_W_EX(DrawingMenu * menu, wchar_t * button_string , Color button_text_color , bool change_button_text_color)
-{
-    
-    menu->button_hover = false;
-    menu->button_clicked = false;
-    
-    Rect button_rect = get_rect();
-    button_rect.position.x = menu->current_button_position.x;
-    button_rect.position.y = menu->current_button_position.y;
-    
-    float font_size = 0;
-    
-    //this "on_screen" is absurd
-    if(menu->on_screen)
-        font_size = font_pixel_size;
-    else
-        font_size = font_pixel_size * (1 / camera_current_zoom);
-    
-    float button_offset_y = font_size;
-    
-    button_rect.position.x += font_pixel_size / 2;
-    button_rect.position.y -= button_offset_y;
-    
-    if (button_string)
-    {
-        
-        float string_width = get_total_string_width(button_string, font_size);
-        
-        button_rect.size.x = string_width / 2;
-        button_rect.size.y = font_size;
-        
-        button_rect.position.x += button_rect.size.x * 0.5f;
-        button_rect.size.x += font_size * 0.4f;
-        
-        Rect button_text_rect = button_rect;
-        
-        if (menu->on_screen)
-        {
-            button_text_rect.size.x += font_pixel_size / 2;
-        }
-        else
-        {
-            button_text_rect.size.x += (font_pixel_size / 2) * (1 / camera_current_zoom);
-        }
-        
-        Color text_color = Fade(WHITE, 0.8);
-        
-        if (check_collision_rect_mouse(button_rect))
-        {
-            if (mouse_button_pressed(MOUSE_BUTTON_LEFT))
-            {
-                menu->button_clicked = true;
-                stop_mouse_input = true;
-            }
-            
-            //StopMouseInput = true;
-            menu->button_hover = true;
-            text_color = Fade(YELLOW,0.8);
-        }
-        
-        if(change_button_text_color)
-        {
-            text_color = button_text_color;
-        }
-        
-        menu->current_button_left = button_rect.position.x;
-        menu->current_button_left += button_rect.size.x * 0.5;
-        
-        draw_rect_D(button_rect, button_rect.size.y*0.3, Fade(BLACK, 0.7f));
-        button_text_rect.size.y *= 0.5f;
-        D_draw_text_B(button_text_rect, button_string, text_color, true);
-        
-    }
-    
-    if (menu->menu_type == GMT_descend)
-    {
-        menu->current_button_position.y -= button_offset_y;		
-        menu->current_button_position.y -= menu->button_extra_offset;
-    }
-    else if (menu->menu_type == GMT_to_the_right)
-    {
-        menu->current_button_position.x += button_rect.size.x;
-        menu->current_button_position.x += menu->button_extra_offset;
-    }
-    
-    return menu->button_clicked;
-    
-}
-
-internal bool draw_menu_button_EX(DrawingMenu * menu, char * button_string , Color button_text_color , bool change_button_text_color)
-{
-    int string_length = strlen(button_string);
-    wchar_t * new_string = allocate_frame(wchar_t , string_length + 1);
-    for(int i = 0 ; i < string_length ; i++) new_string[i] = button_string[i];
-    
-    return draw_menu_button_W_EX(menu , new_string ,button_text_color , change_button_text_color);
-}
-
-internal bool draw_menu_button_W(DrawingMenu * menu, wchar_t * button_string )
-{
-    return draw_menu_button_W_EX(menu,button_string , (Color){} , false);
-}
-
-internal bool draw_menu_button(DrawingMenu * menu, char * button_string)
-{
-    int string_length = strlen(button_string);
-    wchar_t * new_string = allocate_frame(wchar_t , string_length + 1);
-    for(int i = 0 ; i < string_length ; i++) new_string[i] = button_string[i];
-    
-    return draw_menu_button_W(menu , new_string);
 }
 
 //why are you broken??
@@ -644,181 +839,11 @@ internal Vector2 ray_line_segment_intersection_(Vector3 o, Vector3 d, Vector3 a,
     return (Vector2){ t1 , t2 };
 }
 
-//TODO : rename all of these
-internal bool check_collision_rect_with_rect(Rect rect_A, Rect rect_B)
-{
-    Vector2 quad_B_top_right = get_rect_top_right_corner(rect_B);
-    Vector2 quad_B_bottom_left = get_rect_bottom_left_corner(rect_B);
-    Vector2 quad_A_top_right = get_rect_top_right_corner(rect_A);
-    Vector2 quad_A_bottom_left = get_rect_bottom_left_corner(rect_A);
-    
-    bool x_intersect = false;
-    
-    if (quad_B_bottom_left.x < quad_A_bottom_left.x)
-    {
-        if (quad_B_top_right.x > quad_A_bottom_left.x)
-        {
-            x_intersect = true;
-        }
-    }
-    else
-    {
-        if (quad_A_top_right.x > quad_B_bottom_left.x)
-        {
-            x_intersect = true;
-        }
-    }
-    
-    if (x_intersect)
-    {
-        if (quad_B_bottom_left.y < quad_A_bottom_left.y)
-        {
-            if (quad_B_top_right.y > quad_A_bottom_left.y )
-            {
-                return true;
-            }
-        }
-        else
-        {
-            if (quad_A_top_right.y > quad_B_bottom_left.y)
-            {
-                return true;
-            }
-        }
-    }
-    
-    return false;
-}
-
-internal RayCollision get_collision_quad_3D(Quad quad_to_check)
-{
-	Vector3 world_space_vertex[quad_vertex_count] = {};
-	world_space_vertex[0] = quad_to_check.vertex_position[vertex_top_left];
-    
-	world_space_vertex[1] = quad_to_check.vertex_position[vertex_top_right];
-    
-	world_space_vertex[2] = quad_to_check.vertex_position[vertex_bottom_left];
-    
-	world_space_vertex[3] = quad_to_check.vertex_position[vertex_bottom_right];
-    
-	RayCollision ray_result = get_ray_collision_triangle(mouse_ray_3D, world_space_vertex[0], world_space_vertex[1], world_space_vertex[2]);
-    
-	if (!ray_result.hit)
-		ray_result = get_ray_collision_triangle(mouse_ray_3D, world_space_vertex[1], world_space_vertex[3], world_space_vertex[2]);
-    
-	return ray_result;
-    
-}
-
-internal bool check_collision_quad_3D_B(Quad quad_to_check)
-{
-	return get_collision_quad_3D(quad_to_check).hit;
-}
-
-internal RayCollision get_collision_rect_3D_B(Rect rect)
-{
-	return get_collision_rect_3D(mouse_ray_3D, rect);
-}
-
-internal bool check_collision_rect_3D(Rect rect)
-{
-	return get_collision_rect_3D(mouse_ray_3D,rect).hit;
-}
-
-//i think this worth being a macro
-//if this can be replace to something sane i will be the happiest man alive
-//wait i can generate it
-
-//don't generate this yet, make it a function first
-#if 0
-#define REALLOCATE_BUFFER_IF_TOO_SMALL( type , buffer  , capacity , count , allocate_func) \
-if(capacity == count) \
-{ \
-\
-if(count > capacity) CATCH;\
-capacity *= 2; \
-type * new_buffer = (type *)allocate_func(sizeof(type) * capacity);\
-for(int _buffer_index = 0; _buffer_index < count ; _buffer_index++)\
-{\
-new_buffer[_buffer_index] = buffer[_buffer_index];\
-}\
-buffer = new_buffer; \
-}
-
-
-//oh no there is one more
-#define REALLOCATE_LIST_IF_TOO_SMALL(type , buffer , list )\
-if(list_full(list))\
-{\
-type * new_buffer = allocate_temp(type , (list)->count * 2);\
-List new_list = allocate_list((list)->count * 2 , AT_temp);\
-for(int buffer_index = 0 ; buffer_index < (list)->count ; buffer_index++)\
-{\
-new_buffer[buffer_index] = buffer[buffer_index];\
-}\
-\
-for(int node_index = 0 ; node_index < (list)->count + DUMMY_NODE_COUNT ; node_index++)\
-{\
-new_list.all_node[node_index] = (list)->all_node[node_index];\
-}\
-new_list.unuse_index = (list)->unuse_index;\
-new_list.count = (list)->count * 2;\
-buffer = new_buffer;\
-(*(list)) = new_list;\
-}
-
-
-#define REALLOCATE_ARRAY_IF_TOO_SMALL(type , buffer , array )\
-if(is_array_full(array))\
-{\
-type * new_buffer = allocate_temp(type , (array)->capacity * 2);\
-Array new_array = allocate_array((array)->capacity * 2);\
-for(int buffer_index = 0 ; buffer_index < (array)->count ; buffer_index++)\
-{\
-new_buffer[buffer_index] = buffer[buffer_index];\
-}\
-\
-for(int index = 0 ; index < (array)->capacity ; index++)\
-{\
-new_array.valid_array[index] = (array)->valid_array[index];\
-}\
-new_array.capacity = (array)->capacity * 2;\
-new_array.count = (array)->count;\
-new_array.lowest_index = (array)->lowest_index;\
-buffer = new_buffer;\
-(*(array)) = new_array;\
-}
-
-#endif
-
-internal unsigned char * allocate_memory(int size , int allocate_type)
-{
-    unsigned char * memory = 0;
-    
-    switch(allocate_type)
-    {
-        case AT_temp:
-        {
-            memory = allocate_temp_(size);
-        }
-        break;
-        
-        case AT_frame:
-        {
-            memory = allocate_frame_(size);
-        }
-        break;
-        
-        default: CATCH; break;
-    }
-    
-    return memory;
-}
-
 #define buffer_full(buffer) ((buffer).count == (buffer).capacity)
 
 #define allocate_buffer( buffer_pointer , data_type , new_capacity , allocate_type) \
-allocate_buffer_( &((buffer_pointer)->data) , &((buffer_pointer)->data_size) , &((buffer_pointer)->count) , &((buffer_pointer)->capacity) , sizeof(data_type) , new_capacity , allocate_type)
+{data_type * type_check = (buffer_pointer)->data;} allocate_buffer_( (void**)&((buffer_pointer)->data) , &((buffer_pointer)->data_size) , &((buffer_pointer)->count) , &((buffer_pointer)->capacity) , sizeof(data_type) , new_capacity , allocate_type);
+
 
 internal void allocate_buffer_( void ** buffer_data, int * buffer_data_size , int * buffer_count , int * buffer_capacity ,  int  data_size , int capacity , int allocate_type)
 {
@@ -828,7 +853,7 @@ internal void allocate_buffer_( void ** buffer_data, int * buffer_data_size , in
     (*buffer_data) = allocate_memory(data_size * capacity , allocate_type);
 }
 
-#define reallocate_buffer(buffer_pointer , allocate_type) reallocate_buffer_( &((buffer_pointer)->data) , &((buffer_pointer)->capacity) , (buffer_pointer)->data_size  , allocate_type);
+#define reallocate_buffer(buffer_pointer , allocate_type) reallocate_buffer_( (void **)&((buffer_pointer)->data) , &((buffer_pointer)->capacity) , (buffer_pointer)->data_size  , allocate_type);
 
 internal void reallocate_buffer_( void ** data , int * buffer_capacity , int buffer_data_size  , int allocate_type)
 {
@@ -841,10 +866,42 @@ internal void reallocate_buffer_( void ** data , int * buffer_capacity , int buf
     (*data)= new_buffer;
 }
 
+internal List allocate_list(int capacity , int allocate_type)
+{
+    ListNode * all_node = (ListNode *)allocate_memory(sizeof(ListNode) * (capacity + DUMMY_NODE_COUNT) , allocate_type );
+    ListNode * node_array = all_node + DUMMY_NODE_COUNT;
+    
+    List list = {};
+    
+    node_array[N_node_head].next = N_node_tail;
+    node_array[N_node_head].previous = invalid_node;
+    node_array[N_node_head].data_index = -1;
+    
+    node_array[N_node_tail].previous = N_node_head;
+    node_array[N_node_tail].next = invalid_node;
+    node_array[N_node_tail].data_index = -1;
+    
+    node_array[N_recycled_node_head].next = N_recycled_node_tail;
+    node_array[N_recycled_node_head].previous = invalid_node;
+    node_array[N_recycled_node_head].data_index = -1;
+    
+    node_array[N_recycled_node_tail].previous = N_recycled_node_head;
+    node_array[N_recycled_node_tail].next = invalid_node;
+    node_array[N_recycled_node_tail].data_index = -1;
+    
+    list.all_node = all_node;
+    list.node_array = node_array;
+    list.unuse_index = 0;
+    list.capacity = capacity;
+    
+    return list;
+}
+
 internal void reallocate_list(List * list , int allocate_type)
 {
     int new_capacity = list->capacity * 2;
     if(new_capacity == 0) CATCH;
+    
     List new_list = allocate_list(new_capacity , allocate_type);
     
     for(int node_index = 0 ; node_index < list->capacity + DUMMY_NODE_COUNT ; node_index++)
@@ -856,6 +913,15 @@ internal void reallocate_list(List * list , int allocate_type)
     new_list.capacity = new_capacity;
     
     (*list) = new_list;
+}
+
+internal Array allocate_array(int capacity , int allocate_type)
+{
+    Array array = {};
+    array.valid_array = allocate_memory(capacity , allocate_type);
+    array.capacity = capacity;
+    
+    return array;
 }
 
 internal void reallocate_array(Array * array , int allocate_type)
@@ -1178,6 +1244,8 @@ _iterate_hash_table((HashValue),  &SlotIndex , &DataIndex , hash_tableVar) ,Slot
 
 #define hash_table_iterate(DataIndex , HashValue , hash_tableVar) hash_table_iterate_ex(DataIndex , SlotIndex , -1 , HashValue , hash_tableVar)
 
+#define HASH_DEBUG 0
+
 internal void _iterate_hash_table( int hash_value , int * slot_index , int * data_index, HashTable * hash_table)
 {
     
@@ -1204,7 +1272,6 @@ internal void _iterate_hash_table( int hash_value , int * slot_index , int * dat
     
     (*slot_index) = slot->next_index;
     (*data_index) = slot_array[slot->next_index].data_index;
-    
 }
 
 #define hash_table_iterate_reverse_ex(DataIndex , SlotIndex , StartSlotIndex , HashValue , hash_tableVar)\
@@ -1247,37 +1314,6 @@ internal void _iterate_hash_table_reverse( int hash_value , int * slot_index , i
     (*slot_index) = slot->previous_index;
     (*data_index) = slot_array[slot->previous_index].data_index;
     
-}
-
-internal List allocate_list(int capacity , int allocate_type)
-{
-    ListNode * all_node = (ListNode *)allocate_memory(sizeof(ListNode) * (capacity + DUMMY_NODE_COUNT) , allocate_type );
-    ListNode * node_array = all_node + DUMMY_NODE_COUNT;
-    
-    List list = {};
-    
-    node_array[N_node_head].next = N_node_tail;
-    node_array[N_node_head].previous = invalid_node;
-    node_array[N_node_head].data_index = -1;
-    
-    node_array[N_node_tail].previous = N_node_head;
-    node_array[N_node_tail].next = invalid_node;
-    node_array[N_node_tail].data_index = -1;
-    
-    node_array[N_recycled_node_head].next = N_recycled_node_tail;
-    node_array[N_recycled_node_head].previous = invalid_node;
-    node_array[N_recycled_node_head].data_index = -1;
-    
-    node_array[N_recycled_node_tail].previous = N_recycled_node_head;
-    node_array[N_recycled_node_tail].next = invalid_node;
-    node_array[N_recycled_node_tail].data_index = -1;
-    
-    list.all_node = all_node;
-    list.node_array = node_array;
-    list.unuse_index = 0;
-    list.capacity = capacity;
-    
-    return list;
 }
 
 #define list_foreach_reverse_EX(DataIndexVar , start_node_index , node_index , List) \
@@ -1507,15 +1543,6 @@ internal bool delete_from_list(int node_index_to_delete , List * list)
     return true;
 }
 
-internal Array allocate_array(int capacity , int allocate_type)
-{
-    Array array = {};
-    array.valid_array = allocate_memory(capacity , allocate_type);
-    array.capacity = capacity;
-    
-    return array;
-}
-
 internal void clear_array(Array * array)
 {
 	for (int array_index = 0; array_index < array->count; array_index++)
@@ -1617,116 +1644,7 @@ internal bool iterate_array(int * data_index , Array * array)
 }
 
 //this is much better
-#define array_foreach(data_index , array) for (int data_index = 0 ; iterate_array(&data_index , (array)) ; data_index++)
-
-internal void draw_arrow_line_EX(Vector3 start_position , Vector3 end_position , Color start_color , Color end_color)
-{
-    float arrow_line_width = 10;
-    
-    draw_round_line(start_position , end_position, arrow_line_width, start_color , end_color);
-    
-    Vector3 line_direction = Vector3Normalize(Vector3Subtract(end_position , start_position));
-    Vector3 line_vertical_direction = Vector3CrossProduct(line_direction , Vector3Subtract(game_camera.target , game_camera.position));
-    line_vertical_direction = Vector3Normalize(line_vertical_direction);
-    
-    Vector3 arrow_offset_y = Vector3Scale(line_direction , -0.05f);
-    
-    Vector3 arrow_left_line = Vector3Scale(line_vertical_direction , 0.05);
-    Vector3 arrow_right_line = Vector3Scale(line_vertical_direction  , -0.05);
-    
-    arrow_left_line = Vector3Add(arrow_left_line , end_position);
-    arrow_right_line = Vector3Add(arrow_right_line , end_position);
-    
-    arrow_left_line = Vector3Add(arrow_left_line , arrow_offset_y );
-    arrow_right_line = Vector3Add(arrow_right_line , arrow_offset_y );
-    
-    draw_round_line(end_position , arrow_left_line , arrow_line_width , end_color , end_color);
-    draw_round_line(end_position , arrow_right_line , arrow_line_width , end_color , end_color);
-}
-
-internal void draw_arrow_line_B(Vector3 start_position , Vector3 end_position , Color line_color)
-{
-    draw_arrow_line_EX( start_position , end_position , line_color , line_color);
-}
-
-internal void draw_arrow_ray_EX(Vector3 start_position , Vector3 direction  ,Color start_color , Color end_color)
-{
-    Vector3 end_position = Vector3Add(start_position , direction );
-    draw_arrow_line_EX(start_position , end_position , start_color , end_color);
-}
-
-internal void draw_arrow_ray(Vector3 start_position , Vector3 direction  , Color line_color)
-{
-    draw_arrow_ray_EX(start_position , direction , line_color , line_color);
-}
-
-//TODO : i'm a bit lost
-internal void lerp_bone_state(Bone * base_bone , Bone * blend_bone , int bone_index , float weight)
-{
-    if(weight < 0) weight = 0;
-    if(weight > 1) weight = 1;
-    
-    base_bone[bone_index].state.local_position = Vector3Lerp(base_bone[bone_index].state.local_position , blend_bone[bone_index].state.local_position , weight);
-    base_bone[bone_index].state.local_rotation= QuaternionLerp(base_bone[bone_index].state.local_rotation , blend_bone[bone_index].state.local_rotation , weight);
-    
-    //this one should be rotate not lerp
-    base_bone[bone_index].state.end_point_offset = Vector3Lerp(base_bone[bone_index].state.end_point_offset ,  blend_bone[bone_index].state.end_point_offset , weight);
-}
-
-internal void lerp_multiple_bone_state( Bone * base_bone , Bone * blend_bone , int base_bone_count , float weight)
-{
-    for(int bone_index = 0; bone_index < base_bone_count ; bone_index++)
-    {
-        lerp_bone_state(base_bone , blend_bone , bone_index , weight);
-    }
-}
-
-internal int get_key_frame_count( KeyFrame * start_key_frame , KeyFrame * end_key_frame , int target_start_frame , int target_frame_count)
-{
-    int end_key_frame_index = target_start_frame + target_frame_count - 1;
-    int frame_count = end_key_frame->frame_index - start_key_frame->frame_index;
-    
-    if(end_key_frame->frame_index < start_key_frame->frame_index)
-    {
-        frame_count = end_key_frame_index - start_key_frame->frame_index + 1;
-        frame_count += end_key_frame->frame_index - target_start_frame;
-    }
-    
-    return frame_count;
-}
-
-internal bool is_rig(int bone_index)
-{
-    switch(bone_index)
-    {
-        //case B_right_hand_controller: 
-        //case B_right_arm_pole_target: 
-        //case B_left_arm_pole_target: 
-        //case B_left_hand_controller: 
-        
-        //case B_right_leg_controller: 
-        //case B_right_leg_pole_target: 
-        //case B_left_leg_pole_target: 
-        //case B_left_leg_controller: 
-        
-        //case B_origin: 
-        //case B_slapee_origin: 
-        
-        return true;
-    }
-    
-    return false;
-}
-
-internal void get_bone(Bone * bone_array , int bone_array_count)
-{
-    for(int bone_index = 0 ; bone_index < bone_array_count ; bone_index++)
-    {
-        bone_array[bone_index] = (Bone){};
-        bone_array[bone_index].rotation = QuaternionIdentity();
-        bone_array[bone_index].state.local_rotation = QuaternionIdentity();
-    }
-}
+#define array_foreach(data_index , array) for(int data_index = 0 ; iterate_array(&data_index , (array)) ; data_index++)
 
 internal Box get_box()
 {
@@ -1735,218 +1653,19 @@ internal Box get_box()
     return box;
 }
 
-internal Color get_random_color()
-{
-    
-    Color random_color ={};
-    
-    start_color_seed = ((start_color_seed * 1103515245 + 12345) & RAND_MAX);
-    random_color.r = (start_color_seed%255);
-    start_color_seed = ((start_color_seed * 1103515245 + 12345) & RAND_MAX);
-    random_color.g = (start_color_seed%255);
-    start_color_seed = ((start_color_seed * 1103515245 + 12345) & RAND_MAX);
-    random_color.b = (start_color_seed%255);
-    random_color.a = 255;
-    
-    return random_color;
-}
-
-internal void iterate_and_draw_bone_arrow( Bone * bone_array , Bone * bone , int stack_index)
-{
-    //if(stack_index > 3) return;
-    
-    //Vector3 bone_up = Vector3RotateByQuaternion((Vector3){0, 0 ,0.1} ,bone->rotation);
-    //Vector3 bone_right = Vector3RotateByQuaternion((Vector3){0.1, 0 ,0},bone->rotation);
-    
-    //DrawArrowRay(Startposition , BoneUp  ,Fade(GREEN,0.5) );
-    //DrawArrowRay(Startposition , BoneRight  ,Fade(BLUE,0.5) );
-    
-    Vector3 end_position = Vector3Add(bone->position , Vector3RotateByQuaternion(bone->state.end_point_offset , bone->rotation));
-    draw_arrow_line_EX(bone->position , end_position , Fade(YELLOW , 0.4) ,RED);
-    
-    int bone_index = bone->bone_index;
-    
-    hash_table_iterate(child_bone_index , bone_index, &selected_model->bone_children_hash_table)
-    {
-        Bone * child_bone = bone_array + child_bone_index;
-        iterate_and_draw_bone_arrow(bone_array , child_bone , stack_index + 1);
-    }
-    
-}
-
 internal void create_a_whole_new_world()
 {
     reference_frame_list = allocate_list(16 , AT_temp);
-    //reference_frame_buffer = allocate_buffer( &all_reference_frame , Vector3, 16 , AT_temp);
     allocate_buffer(&reference_frame_buffer , Vector3 , 16 , AT_temp);
     
-    //all_key_frame_buffer = allocate_buffer(&all_key_frame , KeyFrame , KEY_FRAME_CAPACITY , AT_temp);
-    allocate_buffer(&all_key_frame_buffer, KeyFrame , KEY_FRAME_CAPACITY , AT_temp);
-    
-    editor = allocate_temp(EditorData ,1);
-    
-    //quad_in_map_buffer = allocate_buffer( &quad_in_map , Quad , 16 , AT_temp);
     allocate_buffer(&quad_in_map_buffer , Quad , 16 , AT_temp);
     quad_in_map_array = allocate_array(16 , AT_temp);
     
-    //box_in_map_buffer = allocate_buffer( &box_in_map , Box , 16 , AT_temp);
     allocate_buffer(&box_in_map_buffer , Box , 16 , AT_temp);
     box_in_map_array = allocate_array(16 , AT_temp);
     
-    editor->timeline_scale = 1;
-    editor->selected_clip_index = -1;
-    editor->IK_iteration_count = 20;
-    editor->assigning_parent_bone = false;
-    
-    editor->selected_bone_stack = allocate_temp(BoneSelection , 256);
-}
-
-internal Vector3 mouse_on_plane(Vector3 plane_origin)
-{
-    
-    Vector3 position = mouse_ray_3D.position;
-    Vector3 end_point = Vector3Add(position , mouse_ray_3D.direction);
-    
-    Vector3 plane_normal = Vector3Subtract(game_camera.target , game_camera.position);
-    
-    float camera_intersect = get_line_intersect_with_plane_time( position , end_point , plane_normal , plane_origin);
-    return Vector3Lerp(position , end_point , camera_intersect);
-    
-}
-
-internal BoneSelectionResult bone_selection(Vector2 size , Color unactive_color , Color active_color)
-{
-    BoneSelectionResultDataBuffer data_buffer = {};
-    //BoneSelectionResultData * data = 0;
-    //data_buffer = allocate_buffer(&data , BoneSelectionResultData , 16 , AT_frame);
-    allocate_buffer( &data_buffer , BoneSelectionResultData , 16 , AT_frame);
-    
-    for(int clip_bone_stack_index = 0 ; clip_bone_stack_index  < clip_bone_stack_count ; clip_bone_stack_index++)
-    {
-        
-        ClipBone * clip_bone = clip_bone_stack + clip_bone_stack_index;
-        
-        for(int bone_index = 0 ; bone_index < selected_model->bone_buffer.count ; bone_index++)
-        {
-            
-            Bone * final_bone = clip_bone->final_bone_pose + bone_index;
-            
-            Vector3 bone_position_end = Vector3RotateByQuaternion(final_bone->state.end_point_offset , final_bone->rotation);
-            bone_position_end = Vector3Add(bone_position_end , final_bone->position);
-            
-            Vector3 bone_position = bone_position_end;
-            Vector3 bone_screen_point = transform_vector(bone_position , world_3D_to_screen_matrix);
-            
-            Rect bone_screen_rect = get_rect();
-            bone_screen_rect.position = bone_screen_point;
-            bone_screen_rect.size = size;
-            
-            Vector3 hit_point = mouse_on_plane(bone_position);
-            
-            if(check_collision_rect_mouse(bone_screen_rect))
-            {
-                if(data_buffer.count == data_buffer.capacity)
-                {
-                    reallocate_buffer(&data_buffer , AT_temp);
-                }
-                
-                BoneSelectionResultData * new_data = data_buffer.data + data_buffer.count++;
-                
-                new_data->hit_point = hit_point;
-                new_data->bone_index = bone_index;
-                draw_rect_line_E(bone_screen_rect , active_color , 4);
-            }
-            else
-            {
-                draw_rect_line_E(bone_screen_rect , unactive_color , 4);
-            }
-        }
-    }
-    
-    BoneSelectionResult result = {};
-    result.data_count = data_buffer.count;
-    result.data = data_buffer.data;
-    
-    return result;
-}
-
-//i just gonna sort all key frame instead of caching thing
-//i "could" make another hash table for slot for hash table
-internal void sort_bone_hash_table(int bone_index , HashTable * hash_table_by_bone)
-{
-    
-    HashTableSlot * slot_array = hash_table_by_bone->slot_array;
-    
-    hash_table_iterate_ex(key_frame_index , key_frame_slot_index , -1 , bone_index , hash_table_by_bone)
-    {
-        HashTableSlot * slot = slot_array + key_frame_slot_index;
-        KeyFrame * key_frame = all_key_frame_buffer.data + key_frame_index;
-        
-        if(slot->next_index == -1) break;
-        
-        HashTableSlot * next_slot = slot_array + slot->next_index;
-        KeyFrame * next_key_frame = all_key_frame_buffer.data + next_slot->data_index;
-        
-        if(key_frame->frame_index > next_key_frame->frame_index)
-        {
-            int temp_index = slot->data_index;
-            slot->data_index = next_slot->data_index;
-            next_slot->data_index = temp_index;
-        }
-        
-        if(key_frame->frame_index == next_key_frame->frame_index) CATCH;
-    }
-    
-}
-
-internal Quad direction_to_quad(Vector3 direction , float width)
-{
-    Quad quad = {};
-    
-    Vector3 up = Vector3Scale(editor->up , width);
-    Vector3 right = Vector3Scale(editor->right , width);
-    
-    Vector3 top_left = Vector3Subtract(direction , right);
-    top_left = Vector3Add(top_left , up);
-    
-    Vector3 top_right = Vector3Add(direction , right);
-    top_right = Vector3Add(top_right , up);
-    
-    Vector3 bottom_left = Vector3Subtract(Vector3Negate(up) , right);
-    Vector3 bottom_right = Vector3Add(Vector3Negate(up) , right);
-    
-#if 1
-    if(Vector3DotProduct(direction , up) > 0)
-    {
-        Vector3 temp_1 = top_left;
-        Vector3 temp_2 = top_right;
-        
-        top_left = bottom_left;
-        top_right = bottom_right;
-        
-        bottom_left = temp_1;
-        bottom_right = temp_2;
-    }
-    
-    if(Vector3DotProduct(direction , right) > 0)
-    {
-        Vector3 temp_1 = top_left;
-        Vector3 temp_2 = bottom_left;
-        
-        top_left = top_right;
-        bottom_left = bottom_right;
-        
-        top_right = temp_1;
-        bottom_right = temp_2;
-    }
-#endif
-    
-    quad.vertex_position[vertex_top_left] = top_left;
-    quad.vertex_position[vertex_top_right] = top_right;
-    quad.vertex_position[vertex_bottom_left] = bottom_left;
-    quad.vertex_position[vertex_bottom_right] = bottom_right;
-    
-    return quad;
+    allocate_buffer(&player_buffer , Player , 16 , AT_temp);
+    player_array = allocate_array(16 , AT_temp);
 }
 
 internal Vector3 * box_to_point(Box box)
@@ -1969,6 +1688,14 @@ internal Vector3 * box_to_point(Box box)
     }
     
     return points;
+}
+
+internal float get_line_intersect_with_plane_time(Vector3 start , Vector3 end , Vector3 plane_normal , Vector3 plane_origin)
+{
+	float result = plane_normal.x * (plane_origin.x - start.x) + plane_normal.y * (plane_origin.y - start.y) + plane_normal.z * (plane_origin.z - start.z);
+	result /= plane_normal.x * (end.x - start.x) + plane_normal.y * (end.y - start.y) + plane_normal.z * (end.z - start.z);
+    
+	return result;
 }
 
 internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box , int * hit_face , float * hit_time)
@@ -2375,69 +2102,6 @@ internal bool iterate_simplex( GJK_State * state)
     return false;
 }
 
-internal void draw_simplex_triangle(Vector3 a , Vector3 b , Vector3 c)
-{
-    draw_round_line(a , b , 5 , Fade(RED , 0.5) , Fade(GREEN, 0.5));
-    draw_round_line(b , c , 5 , Fade(GREEN , 0.5) , Fade(BLUE , 0.5));
-    draw_round_line(c , a , 5 , Fade(BLUE , 0.5) , Fade(RED , 0.5));
-}
-
-internal void draw_simplex(GJK_State * state)
-{
-    Vector3 a = state->simplex[0];
-    Vector3 b = state->simplex[1];
-    Vector3 c = state->simplex[2];
-    Vector3 d = state->simplex[3];
-    
-    if(state->simplex_count == 1)
-    {
-        draw_round_line((Vector3){} , a , 5 , RED , RED);
-    }
-    else if(state->simplex_count == 2)
-    {
-        draw_round_line(a , b , 5 , RED , GREEN);
-    }
-    else if(state->simplex_count == 3)
-    {
-        draw_round_line(a , b , 5 , RED , GREEN);
-        draw_round_line(b , c , 5 , GREEN , BLUE);
-        draw_round_line(c , a , 5 , BLUE , RED);
-    }
-    else if(state->simplex_count == 4)
-    {
-        draw_round_line(a , b , 5 , RED , GREEN);
-        draw_round_line(b , c , 5 , GREEN , BLUE);
-        draw_round_line(c , a , 5 , BLUE , RED);
-        draw_round_line(d , a , 5 , BLACK ,  RED);
-        draw_round_line(d , b , 5 , BLACK  ,GREEN);
-        draw_round_line(d , c , 5 , BLACK  ,BLUE);
-        
-        Vector3 a_to_b = Vector3Subtract(b , a);
-        Vector3 a_to_d = Vector3Subtract(d , a);
-        Vector3 a_b_d_face_outward_direction = Vector3CrossProduct(a_to_b , a_to_d );
-        Vector3 a_to_origin = Vector3Subtract(state->origin , a);
-        
-        Vector3 b_to_c = Vector3Subtract(c , b);
-        Vector3 b_to_d = Vector3Subtract(d , b);
-        Vector3 b_c_d_face_outward_direction = Vector3CrossProduct(b_to_c , b_to_d);
-        Vector3 b_to_origin = Vector3Subtract(state->origin , b);
-        
-        Vector3 c_to_a = Vector3Subtract(a , c);
-        Vector3 c_to_d = Vector3Subtract(d , c);
-        Vector3 c_a_d_face_outward_direction = Vector3CrossProduct(c_to_a , c_to_d);
-        Vector3 c_to_origin = Vector3Subtract(state->origin , c);
-        
-        draw_arrow_ray(a , a_b_d_face_outward_direction  , RED);
-        draw_arrow_ray(a , a_to_origin  , RED);
-        
-        draw_arrow_ray(b , b_c_d_face_outward_direction  , GREEN);
-        draw_arrow_ray(b , b_to_origin  , GREEN);
-        
-        draw_arrow_ray(c , c_a_d_face_outward_direction  , BLUE);
-        draw_arrow_ray(c , c_to_origin  , BLUE);
-    }
-}
-
 internal bool check_shape(Vector3 origin , Vector3 * vertices_a , int vertices_a_count , Vector3 * vertices_b , int vertices_b_count)
 {
     convex_shape_a_vertices = vertices_a;
@@ -2652,6 +2316,7 @@ internal bool check_shape_impact(ShapeImpactData * data)
         Vector3 closest_point = {};
         
         int simplex_iterate_count = 0;
+        int retry_count = 0;
         
         for(;;)
         {
@@ -2700,16 +2365,32 @@ internal bool check_shape_impact(ShapeImpactData * data)
             {
                 closest_distance = current_distance;
                 closest_point = current_closest_point;
+                
+                //retry_count = 0;
+            }
+            else if(retry_count < 1)
+            {
+                //i think it added existing point to the simplex because it wasn't a triangle but a line
+                //it result the same distance
+                //check one more time to see is this really the closest simplex
+                //TODO: check if the simplex a line or a point
+                
+                //ok this 2 lines was all luck
+                //it just fix the bug with no idea however
+                closest_distance = current_distance;
+                closest_point = current_closest_point;
+                
+                retry_count++;
             }
             else
             {
-                closest_point = current_closest_point;
-                
-                //simplex[vertex_to_replace] = new_support_point;
-                
                 a = simplex[0];
                 b = simplex[1];
                 c = simplex[2];
+                
+                closest_point = current_closest_point;
+                
+                //simplex[vertex_to_replace] = new_support_point;
                 
                 Vector3 a_to_b = Vector3Subtract(b , a);
                 Vector3 b_to_c = Vector3Subtract(c , b);
@@ -2766,6 +2447,9 @@ internal bool check_shape_impact(ShapeImpactData * data)
             simplex[vertex_to_replace] = new_support_point;
         }
         
+        //draw_arrow_line_B( closest_point , ray_end  , Fade(PINK , 0.5f));
+        //draw_arrow_line_B((Vector3){} , ray_end , Fade(ORANGE , 0.3f));
+        
 #if 0
         if(result)
         {
@@ -2821,17 +2505,104 @@ internal bool check_shape_impact(ShapeImpactData * data)
         
         ray_end = Vector3Scale(data->ray_direction , ray_time);
         ray_end = Vector3Add( (Vector3){} , ray_end);
+        
     }
     
     //printf("total iterate count : %d\n", total_simplex_iterate_count);
     return result;
 }
 
+internal void get_bound(Vector3 * vertices , int vertices_count , Vector3 * right_top_forward , Vector3 * left_bottom_backward )
+{
+    for(int vertex_index = 0 ; vertex_index < vertices_count ; vertex_index++)
+    {
+        Vector3 vertex = vertices[vertex_index];
+        if(right_top_forward->x < vertex.x) right_top_forward->x = vertex.x;
+        if(right_top_forward->y < vertex.y) right_top_forward->y = vertex.y;
+        if(right_top_forward->z < vertex.z) right_top_forward->z = vertex.z;
+        if(left_bottom_backward->x > vertex.x) left_bottom_backward->x = vertex.x;
+        if(left_bottom_backward->y > vertex.y) left_bottom_backward->y = vertex.y;
+        if(left_bottom_backward->z > vertex.z) left_bottom_backward->z = vertex.z;
+    }
+}
+
+internal bool bounding_box_collided(BoundingBoxNode box_a , BoundingBoxNode box_b)
+{
+    float a_right = box_a.right_top_forward.x;
+    float a_top = box_a.right_top_forward.y;
+    float a_forward = box_a.right_top_forward.z;
+    float a_left = box_a.left_bottom_backward.x;
+    float a_bottom = box_a.left_bottom_backward.y;
+    float a_backward = box_a.left_bottom_backward.z;
+    
+    float b_right = box_b.right_top_forward.x;
+    float b_top = box_b.right_top_forward.y;
+    float b_forward = box_b.right_top_forward.z;
+    float b_left = box_b.left_bottom_backward.x;
+    float b_bottom = box_b.left_bottom_backward.y;
+    float b_backward = box_b.left_bottom_backward.z;
+    
+    bool x_collided = false;
+    
+    if(a_right > b_right)
+    {
+        if(a_left < b_right)
+        {
+            x_collided = true;
+        }
+    }
+    else
+    {
+        if(b_left < a_right)
+        {
+            x_collided = true;
+        }
+    }
+    
+    if(!x_collided) return false;
+    
+    bool y_collided = false;
+    
+    if(a_top > b_top)
+    {
+        if(a_bottom < b_top)
+        {
+            y_collided = true;
+        }
+    }
+    else
+    {
+        if(b_bottom < a_top)
+        {
+            y_collided = true;
+        }
+    }
+    
+    if(!y_collided) return false;
+    
+    if(a_forward > b_forward)
+    {
+        if(a_backward < b_forward)
+        {
+            return true;
+        }
+    }
+    else
+    {
+        if(b_backward < a_forward)
+        {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
 internal ShapeBuffer get_collided_bounding_box(ConvexShape convex_shape)
 {
     double tree_walk_time = time_stamp();
     
-    Vector3 all_vertices[box_vertex_count * 2] = {};
+    Vector3 * all_vertices = allocate_frame(Vector3 , convex_shape.vertices_count * 2);
     for(int vertex_index = 0 ; vertex_index < convex_shape.vertices_count ; vertex_index++)
     {
         all_vertices[vertex_index] = convex_shape.vertices[vertex_index];
@@ -2839,13 +2610,33 @@ internal ShapeBuffer get_collided_bounding_box(ConvexShape convex_shape)
     
     for(int vertex_index = 0 ; vertex_index < convex_shape.vertices_count ; vertex_index++)
     {
-        all_vertices[vertex_index + box_vertex_count] = Vector3Add(convex_shape.vertices[vertex_index] , convex_shape.velocity);
+        all_vertices[vertex_index + convex_shape.vertices_count] = Vector3Add(convex_shape.vertices[vertex_index] , convex_shape.velocity);
     }
     
     BoundingBoxNode convex_shape_bounding_box = {};
     convex_shape_bounding_box.right_top_forward = (Vector3){-FLT_MAX , -FLT_MAX , -FLT_MAX};
     convex_shape_bounding_box.left_bottom_backward = (Vector3){FLT_MAX , FLT_MAX , FLT_MAX};
-    get_bound(all_vertices , box_vertex_count * 2 , &convex_shape_bounding_box.right_top_forward , &convex_shape_bounding_box.left_bottom_backward );
+    get_bound(all_vertices , convex_shape.vertices_count * 2 , &convex_shape_bounding_box.right_top_forward , &convex_shape_bounding_box.left_bottom_backward );
+    
+    convex_shape_bounding_box.right_top_forward.x += UNIT_SIZE * 0.5f;
+    convex_shape_bounding_box.right_top_forward.y += UNIT_SIZE * 0.5f;
+    convex_shape_bounding_box.right_top_forward.z += UNIT_SIZE * 0.5f;
+    
+    convex_shape_bounding_box.left_bottom_backward.x -= UNIT_SIZE * 0.5f;
+    convex_shape_bounding_box.left_bottom_backward.y -= UNIT_SIZE * 0.5f;
+    convex_shape_bounding_box.left_bottom_backward.z -= UNIT_SIZE * 0.5f;
+    
+    if(previous_update_count != game_update_count)
+    {
+        previous_update_count = game_update_count;
+        debug_box = get_box();
+        debug_box.position = Vector3Add(convex_shape_bounding_box.right_top_forward , convex_shape_bounding_box.left_bottom_backward);
+        debug_box.position = Vector3Scale(debug_box.position , 0.5f);
+        debug_box.size = Vector3Subtract(convex_shape_bounding_box.right_top_forward , convex_shape_bounding_box.left_bottom_backward);
+        debug_box.size.x = fabs(debug_box.size.x);
+        debug_box.size.y = fabs(debug_box.size.y);
+        debug_box.size.z = fabs(debug_box.size.z);
+    }
     
     ShapeBuffer shape_buffer = {};
     allocate_buffer( &shape_buffer , Shape , 16 , AT_frame);
@@ -2985,7 +2776,7 @@ internal Vector3 update_convex_collision(ConvexShape convex_shape)
             {
                 if(Vector3DotProduct(convex_shape.velocity , surface_normal) < 0)
                 {
-                    project_velocity = (Vector3){}; 
+                    project_velocity = (Vector3){};
                 }
             } 
             else
@@ -2997,23 +2788,24 @@ internal Vector3 update_convex_collision(ConvexShape convex_shape)
                 }
                 else
                 {
+                    CATCH;
                     project_velocity = convex_shape.velocity;
                 }
             }
             
+            //detect invalid value
             if(project_velocity.x != project_velocity.x) CATCH;
             
             //draw_arrow_ray( convex_shape.position , project_velocity , YELLOW );
             
             //printf("%f %f %f\n" , surface_normal.x , surface_normal.y , surface_normal.z);
             //printf("velocity %f %f %f -> %f %f %f\n" , convex_shape.velocity.x , convex_shape.velocity.y , convex_shape.velocity.z , project_velocity.x , project_velocity.y , project_velocity.z);
-            convex_shape.velocity = project_velocity;
             
+            convex_shape.velocity = project_velocity;
             if(Vector3LengthSqr(convex_shape.velocity) < 0.000001f) break;
         }
         else
         {
-            //printf("out\n");
             break;
         }
     }
@@ -3146,93 +2938,7 @@ internal bool iterate_cell_by_bound(CellIterator * iterator, Vector3 * vertices 
     return true;
 }
 
-internal bool bounding_box_collided(BoundingBoxNode box_a , BoundingBoxNode box_b)
-{
-    float a_right = box_a.right_top_forward.x;
-    float a_top = box_a.right_top_forward.y;
-    float a_forward = box_a.right_top_forward.z;
-    float a_left = box_a.left_bottom_backward.x;
-    float a_bottom = box_a.left_bottom_backward.y;
-    float a_backward = box_a.left_bottom_backward.z;
-    
-    float b_right = box_b.right_top_forward.x;
-    float b_top = box_b.right_top_forward.y;
-    float b_forward = box_b.right_top_forward.z;
-    float b_left = box_b.left_bottom_backward.x;
-    float b_bottom = box_b.left_bottom_backward.y;
-    float b_backward = box_b.left_bottom_backward.z;
-    
-    bool x_collided = false;
-    
-    if(a_right > b_right)
-    {
-        if(a_left < b_right)
-        {
-            x_collided = true;
-        }
-    }
-    else
-    {
-        if(b_left < a_right)
-        {
-            x_collided = true;
-        }
-    }
-    
-    if(!x_collided) return false;
-    
-    bool y_collided = false;
-    
-    if(a_top > b_top)
-    {
-        if(a_bottom < b_top)
-        {
-            y_collided = true;
-        }
-    }
-    else
-    {
-        if(b_bottom < a_top)
-        {
-            y_collided = true;
-        }
-    }
-    
-    if(!y_collided) return false;
-    
-    if(a_forward > b_forward)
-    {
-        if(a_backward < b_forward)
-        {
-            return true;
-        }
-    }
-    else
-    {
-        if(b_backward < a_forward)
-        {
-            return true;
-        }
-    }
-    
-    return false;
-}
-
-internal void get_bound(Vector3 * vertices , int vertices_count , Vector3 * right_top_forward , Vector3 * left_bottom_backward )
-{
-    for(int vertex_index = 0 ; vertex_index < vertices_count ; vertex_index++)
-    {
-        Vector3 vertex = vertices[vertex_index];
-        if(right_top_forward->x < vertex.x) right_top_forward->x = vertex.x;
-        if(right_top_forward->y < vertex.y) right_top_forward->y = vertex.y;
-        if(right_top_forward->z < vertex.z) right_top_forward->z = vertex.z;
-        if(left_bottom_backward->x > vertex.x) left_bottom_backward->x = vertex.x;
-        if(left_bottom_backward->y > vertex.y) left_bottom_backward->y = vertex.y;
-        if(left_bottom_backward->z > vertex.z) left_bottom_backward->z = vertex.z;
-    }
-}
-
-internal BoundingBoxNode * split_bounding_box(BoundingBoxNode * buffer , int buffer_count , int split_type)
+internal BoundingBoxNode * split_bounding_box(BoundingBoxNode * buffer , int buffer_count , int split_type , int split_fail_attemp)
 {
     if(buffer_count == 0) return 0;
     if(buffer_count == 1) return buffer;
@@ -3310,8 +3016,29 @@ internal BoundingBoxNode * split_bounding_box(BoundingBoxNode * buffer , int buf
     split_type++;
     if(split_type >= split_count) split_type = split_yz;
     
-    root_node->right = split_bounding_box(right_buffer , right_buffer_count , split_type);
-    root_node->left = split_bounding_box(left_buffer , left_buffer_count , split_type);
+    bool split_failed = false;
+    if(right_buffer_count == 0) split_failed = true;
+    if(left_buffer_count == 0) split_failed = true;
+    
+    if(split_failed) 
+    {
+        split_fail_attemp++;
+    }
+    else
+    {
+        split_fail_attemp = 0;
+    }
+    
+    if(split_fail_attemp < 3)
+    {
+        root_node->right = split_bounding_box(right_buffer , right_buffer_count , split_type , split_fail_attemp);
+        root_node->left = split_bounding_box(left_buffer , left_buffer_count , split_type , split_fail_attemp);
+    }
+    else
+    {
+        root_node->right = split_bounding_box(right_buffer , right_buffer_count - 1 , split_type , 0);
+        root_node->left = split_bounding_box(right_buffer + right_buffer_count - 1 , 1 , split_type , 0);
+    }
     
     return root_node;
 }
@@ -3706,4 +3433,838 @@ internal PathResult path_finding(Vector3 start , Vector3 end)
     }
     
     return result;
+}
+
+internal bool load_data_from_file(char * path)
+{
+    FILE * game_save_file = fopen(path , "rb");
+    
+    if(!game_save_file) return false;
+    
+    int save_header_size = 0;
+    fread(&save_header_size , sizeof(int), 1, game_save_file);
+    
+    save_header_count = save_header_size / sizeof(DataHeader);
+    
+    int save_size = 0;
+    fread(&save_size , sizeof(int), 1, game_save_file);
+    
+    scratch_buffer_for_read = malloc(save_header_size + save_size);
+    
+    fread(scratch_buffer_for_read , save_header_size + save_size , 1 , game_save_file);
+    
+    fclose(game_save_file);
+    
+    data_header_array = (DataHeader*)scratch_buffer_for_read;
+    current_data_header = data_header_array;
+    
+    save_memory = scratch_buffer_for_read + save_header_size;
+    current_save_memory_location = save_memory;
+    
+    return true;
+}
+
+internal bool load_map()
+{
+    if(!load_data_from_file(get_app_file_path(map_save_name))) return false;
+    
+    int quad_count = 0;
+    int quad_capacity = 1;
+    read_data(quad_count , "map_quad_count" , int);
+    for( ;quad_capacity < quad_count; quad_capacity *= 2 );
+    quad_in_map_array = allocate_array(quad_capacity , AT_temp);
+    allocate_buffer( &quad_in_map_buffer , Quad , quad_capacity , AT_temp);
+    
+    for(int quad_index = 0 ; quad_index < quad_count ; quad_index++)
+    {
+        Quad * quad = quad_in_map_buffer.data + add_to_array(&quad_in_map_array);
+        
+        read_buffer(quad->vertex_position[vertex_top_left] , "map_quad_top_left_vertex" , Vector3 , quad_index);
+        read_buffer(quad->vertex_position[vertex_top_right] , "map_quad_top_right_vertex" , Vector3 , quad_index);
+        read_buffer(quad->vertex_position[vertex_bottom_left] , "map_quad_bottom_left_vertex" , Vector3 , quad_index);
+        read_buffer(quad->vertex_position[vertex_bottom_right] , "map_quad_bottom_right_vertex" , Vector3 , quad_index);
+    }
+    
+    int box_count = 0;
+    int box_capacity = 1;
+    read_data(box_count , "map_box_count" , int);
+    for(;box_capacity < box_count; box_capacity *= 2);
+    box_in_map_array = allocate_array(box_capacity , AT_temp);
+    allocate_buffer(&box_in_map_buffer , Box , box_capacity , AT_temp);
+    
+    for(int box_index = 0 ; box_index < box_count ; box_index++)
+    {
+        Box * box = box_in_map_buffer.data + add_to_array(&box_in_map_array);
+        
+        read_buffer(box->position , "map_box_position" , Vector3 , box_index);
+        read_buffer(box->size , "map_box_size" , Vector3 , box_index);
+        read_buffer(box->rotation , "map_box_rotation" , Quaternion , box_index);
+    }
+    
+#ifdef BUILD_D_WINDOWS
+    read_data(selected_reference_frame_index , "selected reference frame" , int);
+    
+    int reference_frame_count = 0;
+    read_data(reference_frame_count , "reference frame count" , int);
+    
+    for(int reference_frame_index = 0 ; reference_frame_index < reference_frame_count ; reference_frame_index++)
+    {
+        Vector3 refernce_frame = {};
+        read_buffer(refernce_frame , "reference frame" , Vector3 , reference_frame_index);
+        
+        if(list_full(&reference_frame_list))
+        {
+            reallocate_list(&reference_frame_list , AT_temp);
+            reallocate_buffer( &reference_frame_buffer , AT_temp);
+        }
+        
+        int new_reference_frame_index= add_to_list_tail_B(&reference_frame_list);
+        reference_frame_buffer.data[new_reference_frame_index] = refernce_frame;
+    }
+#endif
+    
+    free(scratch_buffer_for_read);
+    
+    return true;
+}
+
+internal void world_update()
+{
+#ifdef BUILD_D_WINDOWS
+    glClearDepth(1);
+    glClear(GL_DEPTH_BUFFER_BIT);
+#endif
+    
+#if 0
+    double nav_mesh_time = time_stamp();
+    generate_nav_mesh();
+    nav_mesh_time = (time_stamp() - nav_mesh_time) / (1000.0f);
+    printf( "nav mesh time : %f\n" , nav_mesh_time );
+#endif
+    
+    double shape_tree_time = time_stamp();
+    
+    BoundingBoxNodeBuffer bounding_box_buffer = {};
+    allocate_buffer( &bounding_box_buffer , BoundingBoxNode , 128 , AT_frame);;
+    
+    array_foreach( box_index , &box_in_map_array)
+    {
+        Box box = box_in_map_buffer.data[box_index];
+        
+        Vector3 * box_vertices = box_to_point(box);
+        
+        Vector3 right_top_forward = {-FLT_MAX , -FLT_MAX , -FLT_MAX};
+        Vector3 left_bottom_backward = {FLT_MAX , FLT_MAX , FLT_MAX};
+        
+        get_bound(box_vertices , box_vertex_count , &right_top_forward , &left_bottom_backward);
+        
+        if(buffer_full(bounding_box_buffer))
+        {
+            reallocate_buffer(&bounding_box_buffer , AT_frame);
+        }
+        
+        BoundingBoxNode * new_bounding_box = bounding_box_buffer.data + bounding_box_buffer.count++;
+        new_bounding_box->right_top_forward = right_top_forward;
+        new_bounding_box->left_bottom_backward = left_bottom_backward;
+        new_bounding_box->shape.type = ST_box;
+        new_bounding_box->shape.index = box_index;
+        new_bounding_box->left = 0;
+        new_bounding_box->right = 0;
+    }
+    
+    bounding_box_root = split_bounding_box(bounding_box_buffer.data , bounding_box_buffer.count , split_yz , 0);
+    
+    shape_tree_time = (time_stamp() - shape_tree_time) / (1000.0);
+    
+    array_foreach(player_index , &player_array)
+    {
+        Player * player = player_buffer.data + player_index;
+        PlayerConnection * player_connection = player_connection_buffer.data + player_index;
+        
+        input_state = &player_connection->input_state;
+        
+        player->box = get_box();
+        player->box.position = player->position;
+        player->box.size = (Vector3){0.6, 1.0 , 0.6};
+        //player->box.rotation = QuaternionFromVector3ToVector3( (Vector3){0,1,0} , Vector3Normalize( (Vector3){0.5,1,2.63}) );
+        Vector3 * player_box_vertices = box_to_point(player->box);
+        
+        player->velocity = Vector3Add(player->velocity , (Vector3){0,-UNIT_SIZE * 0.1f,0});
+        
+        float player_forward = 0;
+        float player_right = 0;
+        
+        //this feel too clear
+        //hope this never change
+        if(key_pressing(KEY_W)) player_forward += 1;
+        if(key_pressing(KEY_S)) player_forward -= 1;
+        if(key_pressing(KEY_D)) player_right += 1;
+        if(key_pressing(KEY_A)) player_right -= 1;
+        
+        player_forward *= UNIT_SIZE * 0.1f;
+        player_right *= UNIT_SIZE * 0.1f;
+        
+        Vector3 player_forward_direction = Vector3Subtract(player->camera_target , player->camera_position);
+        Vector3 player_right_direction = Vector3CrossProduct(player_forward_direction , (Vector3){0,1,0});
+        player_forward_direction = Vector3CrossProduct((Vector3){0,1,0} , player_right_direction);
+        
+        player_forward_direction = Vector3Normalize(player_forward_direction);
+        player_right_direction = Vector3Normalize(player_right_direction);
+        
+        player->velocity = Vector3Add(player->velocity , Vector3Scale(player_forward_direction , player_forward));
+        player->velocity = Vector3Add(player->velocity , Vector3Scale(player_right_direction , player_right));
+        
+        ConvexShape ray_cast_shape = {};
+        ray_cast_shape.vertices = player_box_vertices;
+        ray_cast_shape.vertices_count = box_vertex_count;
+        ray_cast_shape.velocity = player->velocity;
+        ray_cast_shape.velocity.x = 0;
+        ray_cast_shape.velocity.z = 0;
+        ray_cast_shape.position = player->position;
+        
+        RayCastResult result = convex_shape_ray_cast(ray_cast_shape);
+        player->grounded = result.impacted;
+        
+        if(player->grounded)
+        {
+            if(key_pressed(KEY_SPACE))
+            {
+                player->velocity = Vector3Add(player->velocity , (Vector3){0,UNIT_SIZE * 3.0f,0});
+            }
+        }
+        
+        bool player_try_to_stand_still = false;
+        
+        if((fabs(player_forward) + fabs(player_right)) == 0)
+        {
+            if(player->grounded)
+            {
+                player_try_to_stand_still = true;
+            }
+        }
+        
+        if(player_try_to_stand_still)
+        {
+            //printf("standing here %lld\n" , game_update_count);
+            player->velocity = Vector3Scale(player->velocity , 0.6f);
+        }
+        else
+        {
+            player->velocity = Vector3Scale(player->velocity , 0.94f);
+        }
+        
+        ConvexShape player_shape = {};
+        player_shape.vertices = player_box_vertices;
+        player_shape.vertices_count = box_vertex_count;
+        player_shape.velocity = player->velocity;
+        player_shape.position = player->position;
+        
+        player->velocity = update_convex_collision(player_shape);
+        player->position = Vector3Add(player->position , player->velocity);
+        
+    }
+}
+
+#define send_all(target_socket , buffer , type , count) send_all_EX( target_socket , buffer , sizeof(type) * count)
+internal void send_all_EX(int target_socket, void * source, int buffer_size)
+{
+    unsigned char * buffer = source;
+    
+    int total = 0;
+    int bytes_left = buffer_size;
+    int sent_bytes = 0;
+    
+    while(total < buffer_size) 
+    {
+        int send_flag = 0;
+        
+#ifdef BUILD_D_LINUX
+        send_flag = MSG_NOSIGNAL;
+#endif
+        
+        sent_bytes = send(target_socket, buffer + total , bytes_left, send_flag);
+        if (sent_bytes == -1) 
+        {
+            int error_code = get_socket_error();
+            
+            if(0)
+            {
+            }
+#ifdef BUILD_D_WINDOWS
+            else if(error_code == WSAECONNRESET)
+            {
+                //TODO: what next?
+                CATCH;
+            }
+#endif
+            else
+            {
+                CATCH;
+            }
+        }
+        total += sent_bytes;
+        bytes_left -= sent_bytes;
+    }
+}
+
+internal void send_pack(int target_socket , NetDataHeaderBuffer * header_buffer , ByteBuffer * byte_buffer)
+{
+    send_all(target_socket , &header_buffer->count , int , 1);
+    send_all(target_socket , header_buffer->data , NetDataHeader , header_buffer->count);
+    send_all(target_socket , &byte_buffer->count , int , 1);
+    send_all(target_socket , byte_buffer->data , unsigned char , byte_buffer->count);
+}
+
+#define data_pack(flag , data ,count , type ) data_pack_EX(flag , data , sizeof(type) * count)
+internal void data_pack_EX(int flag , void * data , int data_size)
+{
+    if(data_size == 0) return;
+    if(net_state.header_buffer.count >= net_state.header_buffer.capacity) CATCH;
+    if(net_state.send_buffer.count >= net_state.send_buffer.capacity) CATCH;
+    
+    int data_offset = net_state.send_buffer.count;
+    unsigned char * buffer = net_state.send_buffer.data + data_offset;
+    net_state.send_buffer.count += data_size;
+    memcpy(buffer , data , data_size);
+    
+    NetDataHeader * new_header = net_state.header_buffer.data + net_state.header_buffer.count++;
+    new_header->flag = flag;
+    new_header->offset = data_offset;
+}
+
+global int initialize_pack_buffer_index = 0;
+
+#define buffer_pack( flag , data , index , count , type ) \
+{ \
+local_persist int _last_initialize_index = -1;\
+local_persist type * _hidden_buffer = 0;\
+if(_last_initialize_index != initialize_pack_buffer_index) \
+{\
+_last_initialize_index = initialize_pack_buffer_index;\
+_hidden_buffer = buffer_pack_EX(flag , sizeof(type) * count);\
+}\
+_hidden_buffer[index] = data;\
+}
+
+internal void * buffer_pack_EX(int flag , int data_size)
+{
+    if(data_size == 0) return 0;
+    if(net_state.header_buffer.count >= net_state.header_buffer.capacity) CATCH;
+    if(net_state.send_buffer.count >= net_state.send_buffer.capacity) CATCH;
+    
+    int data_offset = net_state.send_buffer.count;
+    net_state.send_buffer.count += data_size;
+    
+    NetDataHeader * new_header = net_state.header_buffer.data + net_state.header_buffer.count++;
+    new_header->flag = flag;
+    new_header->offset = data_offset;
+    
+    return net_state.send_buffer.data + data_offset;
+}
+
+internal void update_receive_state(ReceiveState * receive_state)
+{
+    for(;;)
+    {
+        int receive_buffer_index = receive_state->receiving_buffer_index;
+        unsigned char * byte_buffer = receive_state->buffer[receive_buffer_index];
+        NetDataHeader * header_buffer = receive_state->header_buffer[receive_buffer_index];
+        
+        int receive_size = -1;
+        unsigned char * receive_buffer = 0;
+        
+        switch(receive_state->state)
+        {
+            case RO_header_count: receive_buffer = (void *)&receive_state->header_count; receive_size = sizeof(int); break;
+            case RO_header: receive_buffer = (void *)header_buffer; receive_size = sizeof(NetDataHeader) * receive_state->header_count ; break;
+            case RO_data_size: receive_buffer = (void *)&receive_state->data_size; receive_size = sizeof(int); break;
+            case RO_data: receive_buffer = (void *)byte_buffer; receive_size = receive_state->data_size ; break;
+            
+            default: CATCH; break;
+        }
+        
+        int received_byte = recv(receive_state->receiving_socket , receive_buffer + receive_state->collected_byte  , receive_size - receive_state->collected_byte , 0);
+        
+        if(received_byte == -1)
+        {
+            int error_code = get_socket_error();
+            
+            if(error_code == EAGAIN)
+            {
+                break;
+            }
+            else if(error_code == EWOULDBLOCK)
+            {
+                break;
+            }
+            else if(error_code == ECONNRESET)
+            {
+                receive_state->connection_reseted = true;
+                break;
+            }
+#ifdef BUILD_D_WINDOWS
+            else if(error_code == WSAEWOULDBLOCK)
+            {
+                break;
+            }
+#endif
+            else
+            {
+                CATCH;
+            }
+        }
+        else if(received_byte < 0)
+        {
+            CATCH;
+        }
+        else if(received_byte == 0)
+        {
+            break;
+        }
+        
+        receive_state->collected_byte += received_byte;
+        if(receive_state->collected_byte == receive_size) 
+        {
+            if(receive_state->data_size > MAX_RECEIVE_BUFFER) CATCH;
+            if(receive_state->header_count > MAX_RECEIVE_HEADER) CATCH;
+            
+            receive_state->collected_byte = 0;
+            
+            bool received_full_pack = false;
+            
+            switch(receive_state->state)
+            {
+                case RO_header_count:
+                {
+                    if(receive_state->header_count > 0)
+                    {
+                        receive_state->state = RO_header;
+                    }
+                    else
+                    {
+                        receive_state->state = RO_data_size;
+                    }
+                }
+                break;
+                
+                case RO_header: receive_state->state = RO_data_size; break;
+                
+                case RO_data_size: 
+                {
+                    if(receive_state->data_size > 0)
+                    {
+                        receive_state->state = RO_data;
+                    }
+                    else
+                    {
+                        received_full_pack = true;
+                        receive_state->state = RO_header_count;
+                    }
+                }
+                break;
+                
+                case RO_data: receive_state->state = RO_header_count; received_full_pack = true; break;
+            }
+            
+            if(received_full_pack)
+            {
+                receive_state->last_update_index = game_update_count;
+                
+                if(receive_state->receiving_buffer_index == 0) 
+                {
+                    receive_state->receiving_buffer_index = 1;
+                    receive_state->available_buffer_index = 0;
+                }
+                else
+                {
+                    receive_state->receiving_buffer_index = 0;
+                    receive_state->available_buffer_index = 1;
+                }
+                
+                int buffer_to_clear_index = receive_state->receiving_buffer_index;
+            }
+        }
+    }
+}
+
+global ReceiveState * state_to_unpack = 0;
+
+internal void get_data_from_pack(int flag ,  NetDataHeader * header_result , void ** buffer_result)
+{
+    if(buffer_result) (*buffer_result) = 0;
+    if(header_result) (*header_result) = (NetDataHeader){};
+    
+    int buffer_index = state_to_unpack->available_buffer_index;
+    if( buffer_index == -1) return;
+    
+    NetDataHeader * header_buffer = state_to_unpack->header_buffer[buffer_index];
+    unsigned char * byte_buffer = state_to_unpack->buffer[buffer_index];
+    
+    for(int header_index = 0 ; header_index < state_to_unpack->header_count ; header_index++)
+    {
+        NetDataHeader * header = header_buffer + header_index;
+        if(header->flag == flag)
+        {
+            unsigned char * buffer_data = byte_buffer + header->offset;
+            if(buffer_result) (*buffer_result) = buffer_data;
+            if(header_result) (*header_result) = (*header);
+            return;
+        }
+    }
+}
+
+#define data_unpack(flag , source , count , type) data_unpack_EX(flag , source , sizeof(type) * count) 
+internal void data_unpack_EX(int flag , void * source , int size)
+{
+    NetDataHeader header = {};
+    void * buffer = 0;
+    get_data_from_pack(flag , &header , &buffer);
+    
+    if(buffer) memcpy(source , buffer , size);
+}
+
+global int initialize_unpack_buffer_index = 0;
+
+#define buffer_unpack(flag , data_pointer , index , type ) \
+{\
+local_persist int _last_initialize_unpack_index = -1;\
+local_persist type * _hidden_buffer = 0;\
+if(_last_initialize_unpack_index != initialize_unpack_buffer_index)\
+{\
+_last_initialize_unpack_index = initialize_unpack_buffer_index;\
+get_data_from_pack(flag , 0 , (void **)&_hidden_buffer);\
+}\
+if(_hidden_buffer) (*(data_pointer)) = _hidden_buffer[index];\
+}
+
+internal void set_socket_to_unblock(int target_socket)
+{
+    
+#ifdef BUILD_D_WINDOWS
+    int non_blocking = 1;
+    ioctlsocket(target_socket, FIONBIO, &non_blocking);
+#endif
+    
+#ifdef BUILD_D_LINUX
+    fcntl(target_socket, F_SETFL, O_NONBLOCK);
+#endif
+    
+}
+
+internal void server_update()
+{
+    initialize_pack_buffer_index++;
+    initialize_unpack_buffer_index++;
+    
+    struct sockaddr_storage connection_address = {};
+    int conection_address_size = sizeof(struct sockaddr_storage);
+    int connection_socket = accept(net_state.listening_socket , (struct sockaddr * )&connection_address , &conection_address_size);
+    
+    if(connection_socket == -1) 
+    {
+        int error_code = get_socket_error();
+        
+        if(error_code == EAGAIN)
+        {
+            
+        }
+        else if(error_code == EWOULDBLOCK)
+        {
+            
+        }
+        else if(error_code == WSAEWOULDBLOCK)
+        {
+            
+        }
+        else 
+        {
+            CATCH;
+        }
+    }
+    else
+    {
+        if(array_full(&player_array))
+        {
+            CATCH;
+        }
+        
+        set_socket_to_unblock(connection_socket);
+        
+        int new_player_index = add_to_array(&player_array);
+        
+        player_buffer.data[new_player_index] = (Player){};
+        PlayerConnection * new_connection = player_connection_buffer.data + new_player_index;
+        
+        new_connection->connection_socket = connection_socket;
+        ReceiveState * new_receive_state = &new_connection->receive_state;
+        
+        new_receive_state->receiving_socket = connection_socket;
+        new_receive_state->connection_reseted = false;
+        new_receive_state->available_buffer_index = -1;
+        new_receive_state->receiving_buffer_index = 0;
+        new_receive_state->data_size = 0;
+        new_receive_state->header_count = 0;
+    }
+    
+    array_foreach(player_index , &player_array)
+    {
+        Player * player = player_buffer.data + player_index;
+        PlayerConnection * player_connection = player_connection_buffer.data + player_index;
+        
+        input_state = &player_connection->input_state;
+        
+        update_receive_state(&player_connection->receive_state);
+        
+        if(player_connection->receive_state.connection_reseted)
+        {
+            printf( "%s say goodbye!\n", player_connection->message);
+            if(!delete_from_array(&player_array , player_index)) CATCH;
+            
+            continue;
+        }
+        
+        state_to_unpack = &player_connection->receive_state;
+        data_unpack(DF_pressing_key_count , &input_state->pressing_key_count , 1 , int);
+        data_unpack(DF_pressed_key_count , &input_state->pressed_key_count , 1 , int);
+        data_unpack(DF_released_key_count , &input_state->released_key_count , 1 , int);
+        data_unpack(DF_pressing_mouse_count , &input_state->pressing_mouse_count , 1 , int);
+        data_unpack(DF_pressed_mouse_count , &input_state->pressed_mouse_count , 1 , int);
+        data_unpack(DF_released_mouse_count , &input_state->released_mouse_count , 1 , int);
+        
+        data_unpack(DF_pressing_key , input_state->pressing_key , input_state->pressing_key_count , int);
+        data_unpack(DF_pressed_key , input_state->pressed_key , input_state->pressed_key_count , int);
+        data_unpack(DF_released_key , input_state->released_key , input_state->released_key_count , int);
+        data_unpack(DF_pressing_mouse , input_state->pressing_mouse , input_state->pressing_mouse_count , int);
+        data_unpack(DF_pressed_mouse , input_state->pressed_mouse , input_state->pressed_mouse_count , int);
+        data_unpack(DF_released_mouse , input_state->released_mouse , input_state->released_mouse_count , int);
+        
+        data_unpack(DF_camera_target , &player->camera_target , 1 , Vector3);
+        data_unpack(DF_camera_position , &player->camera_position , 1 , Vector3);
+    }
+    
+    world_update();
+    
+    net_state.send_buffer.count = 0;
+    net_state.header_buffer.count = 0;
+    
+    int player_count = 0;
+    array_foreach(player_index , &player_array) player_count++;
+    
+    data_pack(DF_player_count , &player_count , 1 , int );
+    
+    int player_index = 0;
+    array_foreach(array_index , &player_array)
+    {
+        Player * player = player_buffer.data + array_index;
+        
+        buffer_pack(DF_player_position , player->position , player_index , player_count , Vector3);
+        buffer_pack(DF_player_velocity , player->velocity , player_index , player_count , Vector3 );
+        buffer_pack(DF_player_grounded , player->grounded , player_index , player_count , bool);
+        player_index++;
+    }
+    
+    array_foreach(array_index , &player_array)
+    {
+        PlayerConnection * player_connection = player_connection_buffer.data + array_index;
+        send_pack(player_connection->connection_socket , &net_state.header_buffer , &net_state.send_buffer);
+    }
+}
+
+#ifdef BUILD_D_WINDOWS
+internal void client_update()
+{
+    if(!net_state.connected_to_server)
+    {
+        if(net_state.client_to_server_socket == -1)
+        {
+            net_state.client_to_server_socket = socket(AF_INET, SOCK_STREAM, 0);
+            if(net_state.client_to_server_socket == -1) CATCH;
+        }
+        
+        struct hostent * host = gethostbyname(app_data->host_name);
+        struct sockaddr_in test = {};
+        test.sin_port = htons(CONNECTION_PORT);
+        test.sin_family = AF_INET;
+        test.sin_addr.s_addr = ((struct in_addr *)(host->h_addr))->s_addr;
+        
+        //inet_ntop(AF_INET, &test.sin_addr.s_addr , ip_string, INET6_ADDRSTRLEN);
+        
+        int non_blocking = 1;
+        ioctlsocket(net_state.client_to_server_socket, FIONBIO, &non_blocking);
+        
+        bool connected = false;
+        
+        if(connect(net_state.client_to_server_socket , (struct sockaddr *)&test , sizeof(struct sockaddr_in)) == -1) 
+        {
+            int error_code = -1;
+            error_code = get_socket_error();
+            
+            //it return WSAEWOULDBLOCK even it connected or i just seeing things?
+            if(error_code == WSAEWOULDBLOCK)
+            {
+            }
+            else if(error_code == EAGAIN)
+            {
+            }
+            else if(error_code == WSAEISCONN)
+            {
+                connected = true;
+            }
+            else if(error_code == WSAEALREADY)
+            {
+            }
+            else if(error_code == WSAECONNREFUSED)
+            {
+            }
+            else
+            {
+                switch(error_code)
+                {
+                    default: CATCH; break;
+                }
+            }
+            
+        }
+        else
+        {
+            connected = true;
+        }
+        
+        if(connected)
+        {
+            net_state.connected_to_server = true;
+            net_state.client_receive_state.receiving_socket = net_state.client_to_server_socket;
+        }
+    }
+    
+    if(net_state.connected_to_server)
+    {
+        net_state.send_buffer.count = 0;
+        net_state.header_buffer.count = 0;
+        initialize_pack_buffer_index++;
+        initialize_unpack_buffer_index++;
+        
+        data_pack(DF_pressing_key_count , &input_state->pressing_key_count , 1 , int );
+        data_pack(DF_pressed_key_count , &input_state->pressed_key_count , 1 , int );
+        data_pack(DF_released_key_count , &input_state->released_key_count , 1 , int);
+        data_pack(DF_pressing_mouse_count , &input_state->pressing_mouse_count , 1 , int);
+        data_pack(DF_pressed_mouse_count , &input_state->pressed_mouse_count , 1 , int);
+        data_pack(DF_released_mouse_count , &input_state->released_mouse_count , 1 ,int);
+        
+        data_pack(DF_pressing_key, input_state->pressing_key , input_state->pressing_key_count , int);
+        data_pack(DF_pressed_key, input_state->pressed_key , input_state->pressed_key_count , int);
+        data_pack(DF_released_key, input_state->released_key , input_state->released_key_count , int);
+        data_pack(DF_pressing_mouse, input_state->pressing_mouse , input_state->pressing_mouse_count , int);
+        data_pack(DF_pressed_mouse, input_state->pressed_mouse , input_state->pressed_mouse_count , int);
+        data_pack(DF_released_mouse, input_state->released_mouse , input_state->released_mouse_count , int);
+        
+        data_pack(DF_camera_target , &game_camera.target , 1 , Vector3);
+        data_pack(DF_camera_position , &game_camera.position , 1 , Vector3);
+        
+        send_pack(net_state.client_to_server_socket , &net_state.header_buffer , &net_state.send_buffer);
+        
+        update_receive_state(&net_state.client_receive_state);
+        state_to_unpack = &net_state.client_receive_state;
+        
+        int player_count = 0;
+        data_unpack(DF_player_count , &player_count , 1 , int);
+        clear_array(&player_array);
+        if(player_count > player_array.capacity)
+        {
+            reallocate_array(&player_array , AT_temp);
+            reallocate_buffer(&player_buffer , AT_temp);
+        }
+        
+        Vector3 * all_position = 0;
+        get_data_from_pack(DF_player_position , 0 , (void **)&all_position);
+        
+        for(int player_index = 0 ; player_index < player_count ; player_index++)
+        {
+            int new_player_index = add_to_array(&player_array);
+            Player * player = player_buffer.data + new_player_index;
+            PlayerConnection * player_connection = player_connection_buffer.data + new_player_index;
+            
+            buffer_unpack( DF_player_position , &player->position , player_index , Vector3 );
+            buffer_unpack( DF_player_velocity , &player->velocity , player_index , Vector3 );
+            buffer_unpack( DF_player_grounded , &player->grounded , player_index , bool );
+        }
+    }
+}
+#endif
+
+internal void start_connection()
+{
+    allocate_buffer(&net_state.header_buffer , NetDataHeader , 256 , AT_temp);
+    allocate_buffer(&net_state.send_buffer , unsigned char , 1024 * 64 , AT_temp);
+    
+    allocate_buffer(&player_connection_buffer , PlayerConnection , player_array.capacity , AT_temp);
+    
+    default_receive_state = (ReceiveState){};
+    default_receive_state.available_buffer_index = -1;
+    default_receive_state.receiving_buffer_index = 0;
+    default_receive_state.state = RO_header_count;
+    default_receive_state.receiving_socket = -1;
+    default_receive_state.last_update_index = -1;
+    
+    net_state.client_receive_state = default_receive_state;
+    net_state.connected_to_server = false;
+    
+    if(net_state.is_server)
+    {
+        for(int player_buffer_index = 0; player_buffer_index < player_connection_buffer.capacity ; player_buffer_index++ )
+        {
+            PlayerConnection * player_connection = player_connection_buffer.data + player_buffer_index;
+            player_connection->receive_state = default_receive_state;
+            
+            player_connection->connection_socket = -1;
+            player_connection->input_state = (InputState){};
+        }
+    }
+    
+#ifdef BUILD_D_WINDOWS
+    WSADATA data = {};
+    WSAStartup( MAKEWORD(2,2) , &data);
+#endif
+    
+    char ip_string[INET6_ADDRSTRLEN] = {};
+    
+    if(net_state.is_server)
+    {
+        struct hostent * host = gethostbyname(app_data->host_name);
+        inet_ntop(AF_INET, &((struct in_addr *)(host->h_addr))->s_addr , ip_string, INET6_ADDRSTRLEN);
+        
+        struct sockaddr_in test = {};
+        test.sin_port = htons(CONNECTION_PORT);
+        test.sin_family = AF_INET;
+        test.sin_addr.s_addr = ((struct in_addr *)(host->h_addr))->s_addr;
+        
+        net_state.listening_socket = socket(AF_INET, SOCK_STREAM, 0);
+        
+        int yes = true;
+        if(setsockopt(net_state.listening_socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(int)) == -1) CATCH;
+        
+        set_socket_to_unblock(net_state.listening_socket);
+        
+        if(bind(net_state.listening_socket, (struct sockaddr * )&test, sizeof(struct sockaddr_in)) == -1) 
+        {
+            int error_code = get_socket_error();
+            CATCH;
+        }
+        
+        if(listen(net_state.listening_socket , 10) == -1) CATCH;
+    }
+}
+
+internal void end_connection()
+{
+#ifdef BUILD_D_LINUX
+    close(net_state.listening_socket);
+#endif
+    
+#ifdef BUILD_D_WINDOWS
+    
+    if(net_state.is_server) closesocket(net_state.listening_socket);
+    if(net_state.is_client) closesocket(net_state.client_to_server_socket);
+    WSACleanup();
+#endif
 }

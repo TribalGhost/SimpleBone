@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35327.3
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{911E67C6-3D85-4FCE-B560-20A9C3E3FF48}") = "DAPP", "build\DAPP.exe", "{F32E09D4-25DB-4721-ABE9-741B0482D139}"
+	ProjectSection(DebuggerProjectSystem) = preProject
+		PortSupplier = 00000000-0000-0000-0000-000000000000
+		Executable = D:\MoveOnWill\build\DAPP.exe
+		RemoteMachine = AARON-PC
+		StartingDirectory = D:\MoveOnWill\build
+		Arguments = -standalone Jack
+		Environment = Default
+		LaunchingEngine = 00000000-0000-0000-0000-000000000000
+		UseLegacyDebugEngines = No
+		LaunchSQLEngine = No
+		AttachLaunchAction = No
+		IORedirection = Auto
+	EndProjectSection
+EndProject
+Project("{911E67C6-3D85-4FCE-B560-20A9C3E3FF48}") = "DAPP_2", "build2\DAPP_2.exe", "{8120B634-68EA-4C7F-BBAB-C9E2F7909F8F}"
+	ProjectSection(DebuggerProjectSystem) = preProject
+		PortSupplier = 00000000-0000-0000-0000-000000000000
+		Executable = D:\MoveOnWill\build2\DAPP_2.exe
+		RemoteMachine = AARON-PC
+		StartingDirectory = D:\MoveOnWill\build2
+		Arguments = -client_local Aku
+		Environment = Default
+		LaunchingEngine = 00000000-0000-0000-0000-000000000000
+		UseLegacyDebugEngines = No
+		LaunchSQLEngine = No
+		AttachLaunchAction = No
+		IORedirection = Auto
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F32E09D4-25DB-4721-ABE9-741B0482D139}.Release|x64.ActiveCfg = Release|x64
+		{8120B634-68EA-4C7F-BBAB-C9E2F7909F8F}.Release|x64.ActiveCfg = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5DB6F75F-597A-4E5A-9194-05917BAB3F2F}
+	EndGlobalSection
+EndGlobal

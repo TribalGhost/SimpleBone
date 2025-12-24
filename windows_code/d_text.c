@@ -504,8 +504,8 @@ internal void update_float_input()
         
         bool break_by_user = false;
         
-        if(mouse_button_pressed(MOUSE_BUTTON_LEFT)) break_by_user = true;
-        if(mouse_button_pressed(MOUSE_BUTTON_RIGHT)) break_by_user = true;
+        if(mouse_pressed(MOUSE_BUTTON_LEFT)) break_by_user = true;
+        if(mouse_pressed(MOUSE_BUTTON_RIGHT)) break_by_user = true;
         if(key_pressed(KEY_ESCAPE)) break_by_user = true;
         if(key_pressed(KEY_ENTER)) break_by_user = true;
         
