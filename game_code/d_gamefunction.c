@@ -1857,6 +1857,17 @@ internal Vector3 position_to_grid(Vector3 position , float size)
     return position;
 }
 
+internal Vector3 position_to_cell(Vector3 position , float size)
+{
+    position = Vector3Scale(position , 1.0 / size);
+    position.x = round(position.x);
+    position.y = round(position.y);
+    position.z = round(position.z);
+    position = Vector3Scale(position , size);
+    
+    return position;
+}
+
 internal Vector3 get_farest_point_by_direction( Vector3 direction , Vector3 * points , int point_count)
 {
     Vector3 furthest_point = {};
@@ -3801,9 +3812,9 @@ internal bool load_map()
     
     for(int entity_index = 0; entity_index < entity_count ; entity_index++)
     {
-        Entity * entity = entity_layout_buffer.data + add_to_array(&entity_layout_array);
+        //Entity * entity = entity_layout_buffer.data + add_to_array(&entity_layout_array);
         
-        read_buffer(entity->position , "entity_position" , Vector3 , entity_index);
+        //read_buffer(entity->position , "entity_position" , Vector3 , entity_index);
     }
     
 #ifdef BUILD_D_WINDOWS

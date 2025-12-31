@@ -2035,6 +2035,7 @@ internal void editor_GUI()
                 case MET_quad: button_text = L"网格"; break;
                 case MET_box: button_text = L"盒子"; break;
                 case MET_camera_trigger: button_text = L"相机"; break;
+                case MET_entity: button_text = L"实体"; break;
             }
             
             if(draw_menu_button_W_EX(&top_right_bar , button_text , YELLOW , current_map_edit_type == button_index))
@@ -2044,7 +2045,12 @@ internal void editor_GUI()
             }
         }
         
-        if(current_map_edit_type == MET_box || current_map_edit_type == MET_camera_trigger)
+        bool enable_side_bar_tool = false;
+        if(current_map_edit_type == MET_box) enable_side_bar_tool = true;
+        if(current_map_edit_type == MET_camera_trigger) enable_side_bar_tool = true;
+        if(current_map_edit_type == MET_entity) enable_side_bar_tool = true;
+        
+        if(enable_side_bar_tool)
         {
             for(int button_index = 0 ; button_index < edit_count ; button_index++)
             {
@@ -2056,15 +2062,35 @@ internal void editor_GUI()
                     case edit_stretch: name = L"拉伸"; break;
                     case edit_drag_new_box: name = L"创建新盒子"; break;
                     case edit_camera_offset: name = L"相机方向"; break;
+                    case edit_add_entity: name = L"添加实体"; break;
                 }
                 
-                if(button_index == edit_camera_offset)
+                switch(button_index)
                 {
-                    if(current_map_edit_type != MET_camera_trigger) continue;
-                    if(!last_clicked_box) continue;
+                    case edit_camera_offset:
+                    {
+                        if(current_map_edit_type != MET_camera_trigger) continue;
+                        if(!last_clicked_box) continue;
+                        
+                        draw_menu_button_W(&side_list_menu , 0);
+                        draw_menu_button_W(&side_list_menu , 0);
+                    }
+                    break;
                     
-                    draw_menu_button_W(&side_list_menu , 0);
-                    draw_menu_button_W(&side_list_menu , 0);
+                    case edit_move:
+                    case edit_rotate:
+                    case edit_stretch:
+                    case edit_drag_new_box:
+                    {
+                        if(current_map_edit_type != MET_box && current_map_edit_type != MET_camera_trigger) continue;
+                    }
+                    break;
+                    
+                    case edit_add_entity:
+                    {
+                        if(current_map_edit_type != MET_entity) continue;
+                    }
+                    break;
                 }
                 
                 if(draw_menu_button_W_EX(&side_list_menu , name , YELLOW ,  current_edit_type == button_index))
@@ -2074,7 +2100,6 @@ internal void editor_GUI()
                 
                 if(button_index == edit_camera_offset)
                 {
-                    
                     if(last_clicked_box)
                     {
                         draw_menu_button_W(&side_list_menu , L"预设相机角度:");
@@ -3581,7 +3606,7 @@ internal bool drag_to_move(Vector3 * position_to_modify , bool * hovering)
     return dragging_origin;
 }
 
-internal void edit_box(Vector3 origin , Vector3 grid_normal , Vector3 intersect_point)
+internal void edit_box(Vector3 mouse_on_grid , Vector3 intersect_point)
 {
     local_persist bool editing_box = false;
     local_persist bool rotating = false;
@@ -3798,27 +3823,6 @@ internal void edit_box(Vector3 origin , Vector3 grid_normal , Vector3 intersect_
         current_box_buffer = &camera_zone_buffer;
     }
     
-    Vector3 grid_offset = Vector3Subtract((Vector3){1,1,1} , grid_normal);
-    
-    Vector3 mouse_on_grid = intersect_point;
-    mouse_on_grid = Vector3Subtract(mouse_on_grid , origin);
-    mouse_on_grid = Vector3Subtract(mouse_on_grid , Vector3Scale(grid_normal , 0.001f));
-    mouse_on_grid.x += GRID_SIZE * 0.5f * grid_offset.x;
-    mouse_on_grid.y += GRID_SIZE * 0.5f * grid_offset.y;
-    mouse_on_grid.z += GRID_SIZE * 0.5f * grid_offset.z;
-    
-    mouse_on_grid = position_to_grid(mouse_on_grid , GRID_SIZE);
-    
-    mouse_on_grid.x -= GRID_SIZE * grid_offset.x;
-    mouse_on_grid.y -= GRID_SIZE * grid_offset.y;
-    mouse_on_grid.z -= GRID_SIZE * grid_offset.z;
-    
-    mouse_on_grid = Vector3Add(mouse_on_grid , origin);
-    
-    //mouse_on_grid.x -= GRID_SIZE * 0.5f;
-    //mouse_on_grid.y -= GRID_SIZE * 0.5f;
-    //mouse_on_grid.z -= GRID_SIZE * 0.5f;
-    
     if(drag_and_make_box)
     {
         drag_timer += DELTA_TIME;
@@ -3872,33 +3876,33 @@ internal void edit_box(Vector3 origin , Vector3 grid_normal , Vector3 intersect_
         }
     }
     
-    if(current_edit_type == edit_drag_new_box)
+    hovering_box = 0;
+    
+    bool box_collided = false;
+    float closest_box_hit_time = FLT_MAX;
+    Box * closest_box = 0;
+    int closest_box_face_index = -1;
+    
+    array_foreach(box_index , current_box_array)
     {
-        hovering_box = 0;
+        Box * box = current_box_buffer->data + box_index;
         
-        bool box_collided = false;
-        float closest_box_hit_time = FLT_MAX;
-        Box * closest_box = 0;
-        int closest_box_face_index = -1;
-        
-        array_foreach(box_index , current_box_array)
+        float box_hit_time = 0;
+        int box_face_index = 0;
+        if(box_collision_ray(mouse_ray_3D.position , mouse_ray_3D.direction , (*box) , &box_face_index , &box_hit_time))
         {
-            Box * box = current_box_buffer->data + box_index;
-            
-            float box_hit_time = 0;
-            int box_face_index = 0;
-            if(box_collision_ray(mouse_ray_3D.position , mouse_ray_3D.direction , (*box) , &box_face_index , &box_hit_time))
+            box_collided = true;
+            if(closest_box_hit_time > box_hit_time)
             {
-                box_collided = true;
-                if(closest_box_hit_time > box_hit_time)
-                {
-                    closest_box_hit_time = box_hit_time;
-                    closest_box = box;
-                    closest_box_face_index = box_face_index;
-                }
+                closest_box_hit_time = box_hit_time;
+                closest_box = box;
+                closest_box_face_index = box_face_index;
             }
         }
-        
+    }
+    
+    if(current_edit_type != edit_drag_new_box)
+    {
         if(box_collided)
         {
             if(mouse_pressed(MOUSE_BUTTON_LEFT))
@@ -3908,15 +3912,15 @@ internal void edit_box(Vector3 origin , Vector3 grid_normal , Vector3 intersect_
             
             hovering_box = closest_box;
         }
-        
+    }
+    
+    if(current_edit_type == edit_drag_new_box)
+    {
         if(mouse_pressed(MOUSE_BUTTON_LEFT))
         {
-            if(!box_collided)
-            {
-                box_start_point = mouse_on_grid;
-                drag_and_make_box = true;
-                drag_timer = 0;
-            }
+            box_start_point = mouse_on_grid;
+            drag_and_make_box = true;
+            drag_timer = 0;
         }
     }
 }
@@ -3966,6 +3970,54 @@ internal void edit_map(Vector3 origin)
         rect_in_cell.size = (Vector2){GRID_SIZE , GRID_SIZE};
         rect_in_cell.rotation = QuaternionFromVector3ToVector3( (Vector3){0,0,1} , grid_normal);
         
+        float mouse_grid_size = GRID_SIZE;
+        if(current_map_edit_type == MET_entity) mouse_grid_size = UNIT_SIZE;
+        
+        Vector3 mouse_on_grid_centre = intersect_point;
+        mouse_on_grid_centre = Vector3Subtract(mouse_on_grid_centre , origin);
+        
+        Vector3 grid_normal_to_camera = grid_normal;
+        if(Vector3DotProduct(Vector3Subtract(world_camera.position , origin) , grid_normal_to_camera) < 0)
+        {
+            grid_normal_to_camera = Vector3Negate(grid_normal_to_camera);
+        }
+        
+        mouse_on_grid_centre = Vector3Add(mouse_on_grid_centre , Vector3Scale(grid_normal_to_camera , 0.0001f));
+        
+        Vector3 mouse_on_grid = mouse_on_grid_centre;
+        
+        mouse_on_grid.x += mouse_grid_size * 0.5f;
+        mouse_on_grid.y += mouse_grid_size * 0.5f;
+        mouse_on_grid.z += mouse_grid_size * 0.5f;
+        
+        mouse_on_grid = position_to_grid(mouse_on_grid , mouse_grid_size);
+        mouse_on_grid_centre = position_to_grid(mouse_on_grid_centre , mouse_grid_size);
+        
+        mouse_on_grid_centre.x -= mouse_grid_size * 0.5f;
+        mouse_on_grid_centre.y -= mouse_grid_size * 0.5f;
+        mouse_on_grid_centre.z -= mouse_grid_size * 0.5f;
+        
+        if(current_map_edit_type == MET_entity)
+        {
+            float gap = (GRID_SIZE / mouse_grid_size);
+            gap = fmod(gap , 2.0f);
+            
+            if(gap < 0.0001f)
+            {
+                mouse_on_grid_centre.x += GRID_SIZE * grid_normal_to_camera.x * 0.5f;
+                mouse_on_grid_centre.y += GRID_SIZE * grid_normal_to_camera.y * 0.5f;
+                mouse_on_grid_centre.z += GRID_SIZE * grid_normal_to_camera.z * 0.5f;
+                
+                mouse_on_grid_centre.x -= mouse_grid_size * 0.5f;
+                mouse_on_grid_centre.y -= mouse_grid_size * 0.5f;
+                mouse_on_grid_centre.z -= mouse_grid_size * 0.5f;
+                
+            }
+        }
+        
+        mouse_on_grid = Vector3Add(mouse_on_grid , origin);
+        mouse_on_grid_centre = Vector3Add(mouse_on_grid_centre , origin);
+        
         if(current_map_edit_type == MET_quad)
         {
             draw_rect_D(rect_in_cell , 0 , Fade(WHITE , 0.3));
@@ -3997,7 +4049,7 @@ internal void edit_map(Vector3 origin)
             
             if(enable_box_editing)
             {
-                edit_box(origin , grid_normal , intersect_point);
+                edit_box(mouse_on_grid , intersect_point);
             }
             
             if(current_map_edit_type == MET_camera_trigger)
@@ -4020,6 +4072,23 @@ internal void edit_map(Vector3 origin)
                 }
             }
             
+            if(current_map_edit_type == MET_entity)
+            {
+                if(current_edit_type == edit_add_entity)
+                {
+                    Box entity_box = get_box();
+                    entity_box.size = (Vector3){GRID_SIZE , GRID_SIZE , GRID_SIZE};
+                    entity_box.position = mouse_on_grid_centre;
+                    
+                    draw_box(entity_box , Fade(BLUE , 0.5f));
+                    draw_box_line(entity_box , WHITE , 5 );
+                    
+                    if(mouse_pressed(MOUSE_BUTTON_LEFT))
+                    {
+                        Entity * new_entity = entity_layout_buffer.data + add_to_array(&entity_layout_array);
+                    }
+                }
+            }
         }
         else if(current_map_edit_type == MET_quad)
         {

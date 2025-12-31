@@ -268,6 +268,7 @@ enum MapEditType
     MET_quad,
     MET_box,
     MET_camera_trigger,
+    MET_entity,
     MET_count,
 };
 
@@ -279,6 +280,7 @@ enum EditType
     edit_stretch,
     edit_drag_new_box,
     edit_camera_offset,
+    edit_add_entity,
     edit_count,
 };
 
