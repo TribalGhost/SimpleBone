@@ -44,10 +44,10 @@ typedef ADDRINFOA addrinfo;
 
 #define D_UPDATE_RATE 60
 
-#define DeltaTime 1.0f/D_UPDATE_RATE
+#define DELTA_TIME 1.0f/D_UPDATE_RATE
 
 //return an array of string
-#define enum_to_string(Enum) Enum##_String
+//#define enum_to_string(Enum) Enum##_String
 
 global int CurrentGLError = 0;
 #define GL_CATCH if((CurrentGLError =glGetError() )!= GL_NO_ERROR) CATCH

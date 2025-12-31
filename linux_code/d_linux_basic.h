@@ -196,7 +196,7 @@ struct Camera3D {
 
 #define D_UPDATE_RATE 60
 
-#define DeltaTime 1.0f/D_UPDATE_RATE
+#define DELTA_TIME 1.0f/D_UPDATE_RATE
 
 typedef struct AppData AppData;
 

@@ -89,6 +89,14 @@ global char * BoxVertex_String[] =
  "box_vertex_count",
 };
 
+global char * D_Direction_String[] = 
+{
+ "D_right",
+ "D_up",
+ "D_forward",
+ "D_count",
+};
+
 global char * ShapeType_String[] = 
 {
  "ST_invalid",
@@ -124,6 +132,7 @@ global char * DataFlag_String[] =
  "DF_player_position",
  "DF_player_velocity",
  "DF_player_grounded",
+ "DF_player_owned",
 };
 
 global char * ReceiveOrder_String[] = 
@@ -143,10 +152,9 @@ global char * GameMenuType_String[] =
 
 global char * RotationAxis_String[] = 
 {
- "R_None",
- "R_Z",
- "R_Y",
  "R_X",
+ "R_Y",
+ "R_Z",
  "R_count",
 };
 
@@ -156,7 +164,7 @@ global char * EditorType_String[] =
  "edit_animation",
  "edit_world",
  "demo",
- "edit_type_count",
+ "editor_type_count",
 };
 
 global char * MapEditType_String[] = 
@@ -164,6 +172,16 @@ global char * MapEditType_String[] =
  "MET_none",
  "MET_quad",
  "MET_box",
+ "MET_camera_trigger",
  "MET_count",
+};
+
+global char * EditType_String[] = 
+{
+ "edit_move",
+ "edit_rotate",
+ "edit_stretch",
+ "edit_camera_offset",
+ "edit_count",
 };
 

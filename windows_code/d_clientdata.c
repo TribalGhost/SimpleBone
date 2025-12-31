@@ -16,7 +16,6 @@ enum GameMenuType
 typedef struct DrawingMenu DrawingMenu;
 struct DrawingMenu
 {
-	
     Vector2 current_button_position;
 	bool on_screen;
     
@@ -27,7 +26,6 @@ struct DrawingMenu
     
 	int menu_type;
 	float button_extra_offset;
-    
 };
 
 typedef struct BoneState BoneState;
@@ -59,11 +57,9 @@ BUFFER(KeyFrameBuffer , KeyFrame);
 typedef enum RotationAxis RotationAxis;
 enum RotationAxis
 {
-    R_None,
-    
-    R_Z,
-    R_Y,
     R_X,
+    R_Y,
+    R_Z,
     
     R_count,
 };
@@ -260,21 +256,10 @@ enum EditorType
     edit_world,
     demo,
     
-    edit_type_count,
+    editor_type_count,
 };
 
 global int editor_type = edit_base_pose;
-
-typedef struct RightClickMenu RightClickMenu;
-struct RightClickMenu
-{
-    bool on;
-    Vector2 position;
-    
-    int box_index;
-};
-
-global RightClickMenu right_click_menu = {};
 
 typedef enum MapEditType MapEditType;
 enum MapEditType
@@ -282,10 +267,20 @@ enum MapEditType
     MET_none,
     MET_quad,
     MET_box,
+    MET_camera_trigger,
     MET_count,
 };
 
-global int current_map_edit_type = MET_none;
+typedef enum EditType EditType;
+enum EditType
+{
+    edit_move,
+    edit_rotate,
+    edit_stretch,
+    edit_drag_new_box,
+    edit_camera_offset,
+    edit_count,
+};
 
 typedef struct EditorData EditorData;
 struct EditorData
@@ -378,6 +373,25 @@ struct SplitViewport
     bool ortho;
 };
 
+global Vector3Buffer reference_frame_buffer = {};
+global List reference_frame_list = {};
+
 global Ray mouse_ray_3D = {};
 global Matrix current_matrix = {};
 global InputState client_input_state = {};
+
+global int current_map_edit_type = MET_none;
+global int current_edit_type = edit_move;
+
+global Box * last_clicked_box = 0;
+global Box * hovering_box = 0;
+
+global Vector3 game_camera_position = {};
+global Vector3 game_camera_offset = {};
+
+global Array camera_array = {};
+global CameraTriggerBuffer camera_buffer = {};
+global BoxBuffer camera_zone_buffer = {};
+
+global List camera_within_list = {};
+global Vector3 last_camera_offset = {};

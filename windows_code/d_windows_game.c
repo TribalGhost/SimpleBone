@@ -4,13 +4,12 @@
 #include "d_gamedata.c"
 #include "d_clientdata.c"
 #include "d_renderdata.c"
-#include "d_game_meta_generated.c"
 #include "d_gamefunction.c"
 #include "d_render.c"
 #include "d_text.c"
 #include "d_blender_file.h"
 
-internal void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+internal void key_call_back(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (action == GLFW_RELEASE)
 	{
@@ -35,8 +34,10 @@ internal void key_callback(GLFWwindow* window, int key, int scancode, int action
     
 	if (action == GLFW_PRESS)
 	{
-		input_state->pressing_key[input_state->pressing_key_count++] = key;
-		input_state->pressed_key[input_state->pressed_key_count++] = key;
+		int new_pressing_key_index = input_state->pressing_key_count++;
+        input_state->pressing_key[new_pressing_key_index] = key;
+		input_state->pressing_key_time[new_pressing_key_index] = 0;
+        input_state->pressed_key[input_state->pressed_key_count++] = key;
         if(input_state->pressing_key_count >= INPUT_MAX_KEY) CATCH;
         if(input_state->pressed_key_count >= INPUT_MAX_KEY) CATCH;
     }
@@ -359,8 +360,6 @@ internal DrawingMenu start_draw_dragging_menu(Vector2 * pixel_position , GameMen
     
     if (modifying_menu_position == pixel_position)
     {
-        stop_mouse_input= true;
-        
         Vector2 mouse_delta = app_data->mouse_position;
         mouse_delta.x -= editor->previous_mouse_position.x;
         mouse_delta.y -= editor->previous_mouse_position.y;
@@ -370,7 +369,7 @@ internal DrawingMenu start_draw_dragging_menu(Vector2 * pixel_position , GameMen
         
         draw_rect_D(drag_rect, 10, Fade(WHITE, 0.8));
         
-        if (mouse_relased(MOUSE_LEFT_BUTTON))
+        if (mouse_released(MOUSE_LEFT_BUTTON))
         {
             modifying_menu_position = 0;
         }
@@ -405,7 +404,6 @@ internal DrawingMenu start_draw_menu_mouse()
 
 internal bool draw_menu_button_W_EX(DrawingMenu * menu, wchar_t * button_string , Color button_text_color , bool change_button_text_color)
 {
-    
     menu->button_hover = false;
     menu->button_clicked = false;
     
@@ -455,10 +453,8 @@ internal bool draw_menu_button_W_EX(DrawingMenu * menu, wchar_t * button_string 
             if (mouse_pressed(MOUSE_BUTTON_LEFT))
             {
                 menu->button_clicked = true;
-                stop_mouse_input = true;
             }
             
-            //StopMouseInput = true;
             menu->button_hover = true;
             text_color = Fade(YELLOW,0.8);
         }
@@ -474,7 +470,6 @@ internal bool draw_menu_button_W_EX(DrawingMenu * menu, wchar_t * button_string 
         draw_rect_D(button_rect, button_rect.size.y*0.3, Fade(BLACK, 0.7f));
         button_text_rect.size.y *= 0.5f;
         D_draw_text_B(button_text_rect, button_string, text_color, true);
-        
     }
     
     if (menu->menu_type == GMT_descend)
@@ -651,7 +646,7 @@ internal Vector3 mouse_on_plane(Vector3 plane_origin)
     Vector3 position = mouse_ray_3D.position;
     Vector3 end_point = Vector3Add(position , mouse_ray_3D.direction);
     
-    Vector3 plane_normal = Vector3Subtract(game_camera.target , game_camera.position);
+    Vector3 plane_normal = Vector3Subtract(world_camera.target , world_camera.position);
     
     float camera_intersect = get_line_intersect_with_plane_time( position , end_point , plane_normal , plane_origin);
     return Vector3Lerp(position , end_point , camera_intersect);
@@ -714,18 +709,19 @@ internal BoneSelectionResult bone_selection(Vector2 size , Color unactive_color 
 
 internal void draw_arrow_line_EX(Vector3 start_position , Vector3 end_position , Color start_color , Color end_color)
 {
-    float arrow_line_width = 10;
+    float arrow_line_width = 15;
     
+    render_state.same_brush = true;
     draw_round_line(start_position , end_position, arrow_line_width, start_color , end_color);
     
     Vector3 line_direction = Vector3Normalize(Vector3Subtract(end_position , start_position));
-    Vector3 line_vertical_direction = Vector3CrossProduct(line_direction , Vector3Subtract(game_camera.target , game_camera.position));
+    Vector3 line_vertical_direction = Vector3CrossProduct(line_direction , Vector3Subtract(world_camera.target , world_camera.position));
     line_vertical_direction = Vector3Normalize(line_vertical_direction);
     
-    Vector3 arrow_offset_y = Vector3Scale(line_direction , -0.05f);
+    Vector3 arrow_offset_y = Vector3Scale(line_direction , -0.1f);
     
-    Vector3 arrow_left_line = Vector3Scale(line_vertical_direction , 0.05);
-    Vector3 arrow_right_line = Vector3Scale(line_vertical_direction  , -0.05);
+    Vector3 arrow_left_line = Vector3Scale(line_vertical_direction , 0.1);
+    Vector3 arrow_right_line = Vector3Scale(line_vertical_direction  , -0.1);
     
     arrow_left_line = Vector3Add(arrow_left_line , end_position);
     arrow_right_line = Vector3Add(arrow_right_line , end_position);
@@ -735,6 +731,8 @@ internal void draw_arrow_line_EX(Vector3 start_position , Vector3 end_position ,
     
     draw_round_line(end_position , arrow_left_line , arrow_line_width , end_color , end_color);
     draw_round_line(end_position , arrow_right_line , arrow_line_width , end_color , end_color);
+    
+    render_state.same_brush = false;
 }
 
 internal void draw_arrow_line_B(Vector3 start_position , Vector3 end_position , Color line_color)
@@ -926,12 +924,18 @@ internal Quad direction_to_quad(Vector3 direction , float width)
     return quad;
 }
 
-
 internal void draw_simplex_triangle(Vector3 a , Vector3 b , Vector3 c)
 {
-    draw_round_line(a , b , 5 , Fade(RED , 0.5) , Fade(GREEN, 0.5));
-    draw_round_line(b , c , 5 , Fade(GREEN , 0.5) , Fade(BLUE , 0.5));
-    draw_round_line(c , a , 5 , Fade(BLUE , 0.5) , Fade(RED , 0.5));
+    Vector3 all_vertices[3] = {};
+    all_vertices[0] = a;
+    all_vertices[1] = b;
+    all_vertices[2] = c;
+    
+    draw_triangle(all_vertices , color_to_linear(Fade(RED , 0.2)));
+    
+    draw_round_line(a , b , 10 , Fade(RED , 0.5) , Fade(GREEN, 0.5));
+    draw_round_line(b , c , 10 , Fade(GREEN , 0.5) , Fade(BLUE , 0.5));
+    draw_round_line(c , a , 10 , Fade(BLUE , 0.5) , Fade(RED , 0.5));
 }
 
 internal void draw_simplex(GJK_State * state)
@@ -1002,7 +1006,7 @@ internal void animation_timeline_GUI()
     
 	local_persist bool dragging_frame_pointer = false;
     
-	if (mouse_relased(MOUSE_BUTTON_LEFT))
+	if (mouse_released(MOUSE_BUTTON_LEFT))
 	{
 		dragging_frame_pointer = false;
 	}
@@ -1074,8 +1078,6 @@ internal void animation_timeline_GUI()
     
 	if (dragging_frame_pointer)
 	{
-		stop_mouse_input = true;
-        
         editor->current_frame_at_timeline = closest_frame_index_to_mouse;
 	}
     
@@ -1138,7 +1140,7 @@ internal void animation_timeline_GUI()
     
 	local_persist int previous_frame_index = -1;
     
-	if (mouse_pressed(MOUSE_BUTTON_LEFT))
+	if(mouse_pressed_no_check(MOUSE_BUTTON_LEFT))
 	{
 		previous_frame_index = closest_frame_index_to_mouse;
 	}
@@ -1153,7 +1155,7 @@ internal void animation_timeline_GUI()
             
             Clip * clip = clip_array[current_bone_selection->clip_index];
             
-            if (mouse_relased(MOUSE_BUTTON_LEFT))
+            if (mouse_released(MOUSE_BUTTON_LEFT))
             {
                 dragging_key_frame = false;
                 clear_list(&clip->dragging_key_frame_list);
@@ -1164,8 +1166,6 @@ internal void animation_timeline_GUI()
                 
                 list_foreach(key_frame_being_drag_index , &clip->dragging_key_frame_list)
                 {
-                    
-                    stop_mouse_input = true;
                     KeyFrame * key_frame_being_drag = all_key_frame_buffer.data + key_frame_being_drag_index;
                     
                     bool frame_existed = false;
@@ -1256,7 +1256,6 @@ internal void animation_timeline_GUI()
         
         if (mouse_pressed(MOUSE_BUTTON_LEFT))
 		{
-            stop_mouse_input = true;
             dragging_frame_pointer = true;
 		}
 	}
@@ -1324,7 +1323,7 @@ internal void animation_timeline_GUI()
 	}
 	else
 	{
-		editor->play_timer += DeltaTime;
+		editor->play_timer += DELTA_TIME;
         
 		if (editor->play_timer > FRAME_TIME)
 		{
@@ -1548,7 +1547,7 @@ internal void editor_GUI()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glDisable(GL_DEPTH_TEST);
     
-	if (mouse_pressed(MOUSE_BUTTON_RIGHT))
+	if (mouse_pressed_no_check(MOUSE_BUTTON_RIGHT))
 	{
         editor->operate_menu_position = app_data->mouse_position;
     }
@@ -1800,18 +1799,31 @@ internal void editor_GUI()
     
     DrawingMenu side_list_menu = top_right_bar;
     side_list_menu.menu_type = GMT_descend;
-    side_list_menu.button_extra_offset = 0;
-    draw_menu_button_W(&side_list_menu , L"" );
+    side_list_menu.button_extra_offset = 5;
+    draw_menu_button_W(&side_list_menu , 0);
+    draw_menu_button_W(&side_list_menu , 0);
     
-    for(int type_index = 0 ; type_index < edit_type_count ; type_index++)
+    if(net_state.is_server) draw_menu_button_W(&top_right_bar , L"主机" );
+    
+    for(int type_index = 0 ; type_index < editor_type_count ; type_index++)
     {
-        char * edit_type_name = enum_to_string(EditorType)[type_index];
+        wchar_t * name = 0;
         
-        if(draw_menu_button_EX(&top_right_bar , edit_type_name , YELLOW , editor_type == type_index))
+        switch(type_index)
+        {
+            case edit_base_pose: name = L"调整基础姿态"; break;
+            case edit_animation: name = L"动画"; break;
+            case edit_world: name = L"编辑地图"; break;
+            case demo: name = L"游戏"; break;
+        }
+        
+        if(draw_menu_button_W_EX(&top_right_bar , name , YELLOW , editor_type == type_index))
         {
             editor_type = type_index;
         }
     }
+    
+    top_right_bar.current_button_position.x += 30;
     
     if(editor_type == edit_animation)
     {
@@ -1938,28 +1950,78 @@ internal void editor_GUI()
         }
     }
     
-    if(right_click_menu.on)
+    local_persist bool box_menu_on = false;
+    local_persist Vector2 box_menu_position = {};
+    
+    if(box_menu_on)
     {
-        DrawingMenu menu = start_draw_menu(right_click_menu.position , true , GMT_descend);
+        DrawingMenu menu = start_draw_menu(box_menu_position , true , GMT_descend);
         
         if(draw_menu_button_W(&menu , L"删除盒子"))
         {
-            delete_from_array( &box_in_map_array , right_click_menu.box_index);
-            right_click_menu.on = false;
+            if(current_map_edit_type == MET_box)
+            {
+                int index_to_remove = last_clicked_box - box_in_map_buffer.data;
+                delete_from_array( &box_in_map_array , index_to_remove);
+            }
+            
+            if(current_map_edit_type == MET_camera_trigger)
+            {
+                int index_to_remove = last_clicked_box - camera_zone_buffer.data;
+                delete_from_array(&camera_array , index_to_remove);
+            }
+            
+            last_clicked_box = 0;
+            box_menu_on = false;
+        }
+        
+        if(draw_menu_button_W(&menu , L"重置旋转"))
+        {
+            last_clicked_box->rotation = QuaternionIdentity();
         }
     }
     
-    if(editor_type != edit_world) right_click_menu.on = false;
-    if(mouse_pressed(MOUSE_BUTTON_RIGHT)) right_click_menu.on = false;
-    if(mouse_pressed(MOUSE_BUTTON_LEFT)) right_click_menu.on = false;
+    capture_collision = false;
+    
+    if(store_multiple_frame_collision)
+    {
+        capture_collision = true;
+        display_all_captured_collision = true;
+    }
+    else
+    {
+        if(capture_collision_non_stop)
+        {
+            capture_collision = true;
+            collision_visual_buffer.count = 0;
+            current_collision_visual_index = 0;
+            collision_visual_offset = (Vector3){};
+            display_all_captured_collision = true;
+        }
+        else
+        {
+            display_all_captured_collision = display_all_visual;
+        }
+    }
+    
+    if(buffer_full(frame_collision_buffer))
+    {
+        reallocate_buffer(&frame_collision_buffer , AT_temp);
+    }
+    
+    if(editor_type != edit_world) box_menu_on = false;
+    if(mouse_pressed_no_check(MOUSE_BUTTON_LEFT)) box_menu_on = false;
+    
+    if(editor_type != edit_world) box_menu_on = false;
     
     if(editor_type == edit_world)
     {
-        if(draw_menu_button_W(&top_right_bar , L"重置玩家位置"))
+        if(mouse_pressed_no_check(MOUSE_BUTTON_RIGHT))
         {
-            array_foreach(player_index , &player_array)
+            if(last_clicked_box)
             {
-                player_buffer.data[player_index].position = (Vector3){};
+                box_menu_on = !box_menu_on;
+                box_menu_position = mouse_position;
             }
         }
         
@@ -1972,53 +2034,230 @@ internal void editor_GUI()
                 case MET_none: button_text = L"无"; break;
                 case MET_quad: button_text = L"网格"; break;
                 case MET_box: button_text = L"盒子"; break;
+                case MET_camera_trigger: button_text = L"相机"; break;
             }
             
             if(draw_menu_button_W_EX(&top_right_bar , button_text , YELLOW , current_map_edit_type == button_index))
             {
+                last_clicked_box = 0;
                 current_map_edit_type = button_index;
             }
         }
         
-        if(draw_menu_button_W(&top_right_bar , L"添加參考坐標"))
+        if(current_map_edit_type == MET_box || current_map_edit_type == MET_camera_trigger)
         {
-            if(list_full(&reference_frame_list))
+            for(int button_index = 0 ; button_index < edit_count ; button_index++)
             {
-                reallocate_buffer(&reference_frame_buffer , AT_temp);
-                reallocate_list(&reference_frame_list , AT_temp);
+                wchar_t * name = 0;
+                switch(button_index)
+                {
+                    case edit_move: name = L"移动"; break;
+                    case edit_rotate: name = L"旋转"; break;
+                    case edit_stretch: name = L"拉伸"; break;
+                    case edit_drag_new_box: name = L"创建新盒子"; break;
+                    case edit_camera_offset: name = L"相机方向"; break;
+                }
+                
+                if(button_index == edit_camera_offset)
+                {
+                    if(current_map_edit_type != MET_camera_trigger) continue;
+                    if(!last_clicked_box) continue;
+                    
+                    draw_menu_button_W(&side_list_menu , 0);
+                    draw_menu_button_W(&side_list_menu , 0);
+                }
+                
+                if(draw_menu_button_W_EX(&side_list_menu , name , YELLOW ,  current_edit_type == button_index))
+                {
+                    current_edit_type = button_index;
+                }
+                
+                if(button_index == edit_camera_offset)
+                {
+                    
+                    if(last_clicked_box)
+                    {
+                        draw_menu_button_W(&side_list_menu , L"预设相机角度:");
+                        
+                        DrawingMenu camera_option_menu = side_list_menu;
+                        camera_option_menu.current_button_position.x += 20;
+                        
+                        int count = 0;
+                        Vector3 camera_offset[16] = {};
+                        camera_offset[count++] = (Vector3){GRID_SIZE * 8 , -GRID_SIZE * 10, -GRID_SIZE * 8 };
+                        camera_offset[count++] = (Vector3){0,-GRID_SIZE * 10 , GRID_SIZE * 8};
+                        camera_offset[count++] = (Vector3){-GRID_SIZE * 8 , -GRID_SIZE * 10,0};
+                        camera_offset[count++] = (Vector3){GRID_SIZE * 8 , -GRID_SIZE *10 ,0};
+                        
+                        for(int camera_option_index = 0 ; camera_option_index < count ; camera_option_index++)
+                        {
+                            Vector3 offset = camera_offset[camera_option_index];
+                            
+                            wchar_t option_string[64] = {};
+                            _swprintf(option_string , L"%.4f %.4f %.4f" , offset.x , offset.y , offset.z);
+                            
+                            if(draw_menu_button_W(&camera_option_menu , option_string))
+                            {
+                                int trigger_index = last_clicked_box - camera_zone_buffer.data;
+                                CameraTrigger * camera_trigger = camera_buffer.data + trigger_index;
+                                camera_trigger->camera_target_offset = camera_offset[camera_option_index];
+                            }
+                        }
+                    }
+                }
             }
-            
-            selected_reference_frame_index = add_to_list_tail_B(&reference_frame_list);
-            reference_frame_buffer.data[selected_reference_frame_index] = (Vector3){};
         }
         
-        if(selected_reference_frame_index != -1)
-        {
-            if(draw_menu_button_W(&top_right_bar , L"刪除參考坐標"))
-            {
-                if(!delete_from_list(selected_reference_frame_index , &reference_frame_list)) CATCH;
-                selected_reference_frame_index = -1;
-            }
-        }
-        
+#if 0
         if(draw_menu_button_W(&top_right_bar , L"生成导航网格"))
         {
             generate_nav_mesh();
         }
+#endif
         
-        if(draw_menu_button_W_EX(&side_list_menu , L"原點" , YELLOW , selected_reference_frame_index == -1))
+        local_persist bool show_frame_drop_down = false;
+        
+        if(draw_menu_button_W(&top_right_bar , store_multiple_frame_collision ? L"结束录制物理碰撞" : L"开始录制物理碰撞" ))
         {
-            selected_reference_frame_index = -1;
+            store_multiple_frame_collision = !store_multiple_frame_collision;
+            if(store_multiple_frame_collision)
+            {
+                show_frame_drop_down = false;
+                collision_visual_buffer.count = 0;
+                frame_collision_buffer.count = 0;
+            }
+            else
+            {
+                display_all_visual = true;
+                capture_collision_non_stop = false;
+            }
         }
         
-        list_foreach(reference_frame_index , &reference_frame_list)
+        if(!store_multiple_frame_collision)
         {
-            Vector3 reference_frame = reference_frame_buffer.data[reference_frame_index];
-            wchar_t temp[256] = {};
-            _swprintf(temp , L"%f %f %f" , reference_frame.x ,reference_frame.y , reference_frame.z);
-            if(draw_menu_button_W_EX(&side_list_menu , temp , YELLOW , reference_frame_index == selected_reference_frame_index))
+            if(draw_menu_button_W(&top_right_bar , capture_collision_non_stop ?  L"检视物理碰撞" : L"显示物理碰撞" ))
             {
-                selected_reference_frame_index = reference_frame_index;
+                capture_collision_non_stop = !capture_collision_non_stop;
+                frame_collision_buffer.count = 0;
+            }
+            
+            if(!capture_collision_non_stop)
+            {
+                if(draw_menu_button_W(&top_right_bar , L"保存物理碰撞"))
+                {
+                    capture_collision = true;
+                    collision_visual_buffer.count = 0;
+                    current_collision_visual_index = 0;
+                    collision_visual_offset = (Vector3){};
+                    frame_collision_buffer.count = 0;
+                }
+            }
+            
+            if(frame_collision_buffer.count > 0)
+            {
+                wchar_t frame_buffer_string[64] = {};
+                _swprintf(frame_buffer_string , L"帧：%d (%d)" , current_frame_collision_index , frame_collision_buffer.count);
+                
+                DrawingMenu frame_drop_down_menu = {};
+                frame_drop_down_menu = top_right_bar;
+                frame_drop_down_menu.menu_type = GMT_descend;
+                
+                draw_menu_button_W(&frame_drop_down_menu , 0);
+                
+                if(draw_menu_button_W(&top_right_bar , frame_buffer_string))
+                {
+                    show_frame_drop_down = !show_frame_drop_down;
+                }
+                
+                if(show_frame_drop_down)
+                {
+                    for(int frame_index = 0 ; frame_index < frame_collision_buffer.count ; frame_index++)
+                    {
+                        FrameCollision frame_collision = frame_collision_buffer.data[frame_index];
+                        if((frame_collision.slice_end - frame_collision.slice_start) > 0)
+                        {
+                            wchar_t frame_string[64] = {};
+                            _swprintf(frame_string , L"%d:(%d->%d)" , frame_index , frame_collision.slice_start , frame_collision.slice_end);
+                            
+                            if(draw_menu_button_W_EX(&frame_drop_down_menu , frame_string , YELLOW , current_frame_collision_index == frame_index))
+                            {
+                                current_frame_collision_index = frame_index;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if(collision_visual_buffer.count != 0)
+            {
+                if(draw_menu_button_W(&top_right_bar , display_all_visual ? L"显示单一迭代" : L"显示所有迭代" ))
+                {
+                    display_all_visual = !display_all_visual;
+                }
+                
+                wchar_t collision_string[128] = {};
+                
+                if(!display_all_visual)
+                {
+                    if(draw_menu_button_W(&top_right_bar , L"<"))
+                    {
+                        if((current_collision_visual_index - 1) >= 0) current_collision_visual_index--;
+                    }
+                    
+                    if(draw_menu_button_W(&top_right_bar , L">"))
+                    {
+                        if((current_collision_visual_index + 1) < collision_visual_buffer.count) current_collision_visual_index++;
+                    }
+                    
+                    _swprintf( collision_string , L"迭代次数:%d 当前迭代:%d" , collision_visual_buffer.count , current_collision_visual_index + 1);
+                }
+                else
+                {
+                    _swprintf( collision_string , L"迭代次数:%d" , collision_visual_buffer.count);
+                }
+                
+                draw_menu_button_W(&top_right_bar , collision_string);
+            }
+            
+        }
+        
+        if(current_map_edit_type == MET_none)
+        {
+            if(draw_menu_button_W(&top_right_bar , L"添加參考坐標"))
+            {
+                if(list_full(&reference_frame_list))
+                {
+                    reallocate_buffer(&reference_frame_buffer , AT_temp);
+                    reallocate_list(&reference_frame_list , AT_temp);
+                }
+                
+                selected_reference_frame_index = add_to_list_tail_B(&reference_frame_list);
+                reference_frame_buffer.data[selected_reference_frame_index] = (Vector3){};
+            }
+            
+            if(selected_reference_frame_index != -1)
+            {
+                if(draw_menu_button_W(&top_right_bar , L"刪除參考坐標"))
+                {
+                    if(!delete_from_list(selected_reference_frame_index , &reference_frame_list)) CATCH;
+                    selected_reference_frame_index = -1;
+                }
+            }
+            
+            if(draw_menu_button_W_EX(&side_list_menu , L"原點" , YELLOW , selected_reference_frame_index == -1))
+            {
+                selected_reference_frame_index = -1;
+            }
+            
+            list_foreach(reference_frame_index , &reference_frame_list)
+            {
+                Vector3 reference_frame = reference_frame_buffer.data[reference_frame_index];
+                wchar_t temp[256] = {};
+                _swprintf(temp , L"%f %f %f" , reference_frame.x ,reference_frame.y , reference_frame.z);
+                if(draw_menu_button_W_EX(&side_list_menu , temp , YELLOW , reference_frame_index == selected_reference_frame_index))
+                {
+                    selected_reference_frame_index = reference_frame_index;
+                }
             }
         }
     }
@@ -2056,11 +2295,11 @@ internal bool check_selected_bone_rotation( Bone * final_bone_array_copy, int si
     }
     
     local_persist Vector3 previous_drag_point = {};
-    local_persist int dragging_axis = R_None;
+    local_persist int dragging_axis = -1;
     
     if(mouse_pressed(MOUSE_BUTTON_LEFT))
     {
-        dragging_axis = R_None;
+        dragging_axis = -1;
     }
     
     RayCollision closest_collision = {};
@@ -2099,11 +2338,10 @@ internal bool check_selected_bone_rotation( Bone * final_bone_array_copy, int si
             draw_rect_line_E(rotation_rect[axis_index] , Fade(WHITE , 0.2 ) , 20);
         }
         
-        dragging_axis = R_None;
+        dragging_axis = -1;
     }
     else
     {
-        
         Vector3 hit_point = mouse_on_plane(selected_bone->position);
         
         Rect axis_rect = rotation_rect[dragging_axis];
@@ -2180,7 +2418,6 @@ internal bool check_selected_bone_rotation( Bone * final_bone_array_copy, int si
 //matrix did changed here
 internal void bone_selection_and_edit_bone_state( int current_frame_index)
 {
-    
     if(key_pressed(KEY_E))
     {
         editor->control_rig = !editor->control_rig;
@@ -2369,7 +2606,7 @@ internal void bone_selection_and_edit_bone_state( int current_frame_index)
             
         }
         
-        if(mouse_relased(MOUSE_BUTTON_LEFT))
+        if(mouse_released(MOUSE_BUTTON_LEFT))
         {
             modify_key_frame_position_only = false;
             
@@ -2389,8 +2626,6 @@ internal void bone_selection_and_edit_bone_state( int current_frame_index)
                 
                 if(mouse_pressed(MOUSE_BUTTON_LEFT))
                 {
-                    stop_mouse_input = true;
-                    
                     redrag_selection = false;
                     //DraggingPlanePoint = SelectedBezierKeyFrame->bone_state.local_position;
                     dragging_plane_point = Vector3Add( Vector3RotateByQuaternion(selected_bezier_key_frame->bone_state.local_position,selected_bezier_base_bone_rotation) , selected_bezier_base_bone_offset);
@@ -2441,7 +2676,6 @@ internal void bone_selection_and_edit_bone_state( int current_frame_index)
                 if(mouse_pressed(MOUSE_BUTTON_LEFT))
                 {
                     redrag_selection = false;
-                    stop_mouse_input = true;
                     
                     dragging_plane_point = bezier_end;
                     previous_dragging_point = bezier_end;
@@ -2486,7 +2720,7 @@ internal void bone_selection_and_edit_bone_state( int current_frame_index)
         dragging_bone_position = false;
     }
     
-    if(mouse_relased(MOUSE_BUTTON_LEFT))
+    if(mouse_released(MOUSE_BUTTON_LEFT))
     {
         dragging_bone_position = false;
     }
@@ -2781,7 +3015,7 @@ internal void bone_selection_and_edit_bone_state( int current_frame_index)
                     {
                         current_clipBone->hovered_bone[bone_index] = true;
                         
-                        if(mouse_relased(MOUSE_BUTTON_LEFT))
+                        if(mouse_released(MOUSE_BUTTON_LEFT))
                         {
                             if(!current_clipBone->selected_bone[bone_index])
                             {
@@ -2804,7 +3038,7 @@ internal void bone_selection_and_edit_bone_state( int current_frame_index)
     }
     
     
-    if(mouse_relased(MOUSE_BUTTON_LEFT))
+    if(mouse_released(MOUSE_BUTTON_LEFT))
     {
         dragging_selection = false;
     }
@@ -3100,221 +3334,159 @@ internal void bone_IK_update(Bone * bone_array , Bone * base_pose_bone_array , i
     
 }
 
-//TODO : bone go crazy with high iteration count(100) when it is out of reach of its target
-internal void _bone_IK_update( Bone * bone_array , Bone * target_bone , Bone * pole_bone , Bone * IK_bone , int iteration_count , int bone_chain_max_length)
+internal bool drag_to_rotate( Vector3 position , Quaternion * rotation_to_modifying , bool * hovering)
 {
+    local_persist float start_angle = 0;
+    local_persist Quaternion start_rotation = {};
+    local_persist int rotating_index = -1;
     
-    Bone * bone_stack[256] = {};
-    int bone_stack_count = 0;
+    Quaternion rotation = (*rotation_to_modifying);
     
-    Bone * bone_chain[256] = {};
-    int bone_chain_count = 0;
+    Rect rect[R_count] = {};
+    Color color[R_count] = {};
     
-    bone_stack[bone_stack_count++] = IK_bone;
-    bone_chain[bone_chain_count++] = IK_bone;
+    rect[R_X].rotation = QuaternionMultiply(rotation , QuaternionFromEuler(0,DEG2RAD * 90,0));
+    rect[R_Y].rotation = QuaternionMultiply(rotation , QuaternionFromEuler( -DEG2RAD * 90,0,0));
+    rect[R_Z].rotation = rotation;
     
-    int bone_chain_length = 0;
+    color[R_X] = RED;
+    color[R_Y] = GREEN;
+    color[R_Z] = BLUE;
     
-    for(;;)
+    int closest_axis_index = -1;
+    float closest_hit_time = FLT_MAX;
+    Vector2 angle_xy = {};
+    Vector3 mouse_ray_end = Vector3Add(mouse_ray_3D.position , mouse_ray_3D.direction);
+    local_persist Vector3 rotate_axis = {};
+    local_persist Quaternion previous_rotation = {};
+    
+    if(rotating_index != -1)
     {
-        
-        if(bone_stack_count <= 0) break;
-        if(bone_chain_length >= bone_chain_max_length) break;
-        bone_chain_length++;
-        
-        Bone * iterating_bone = bone_stack[--bone_stack_count];
-        int iterating_bone_index = iterating_bone->bone_index;
-        iterating_bone->state.local_position = (Vector3){};
-        
-        Bone * parent_bone = bone_array + iterating_bone->parent_bone_index;
-        
-        bone_chain[bone_chain_count++] = parent_bone;
-        bone_stack[bone_stack_count++] = parent_bone;
-        
+        if(mouse_released(MOUSE_BUTTON_LEFT)) rotating_index = -1;
     }
     
-    for(int iteration_index = 0 ; iteration_index < iteration_count ; iteration_index++)
+    for(int axis_index = 0 ; axis_index < R_count ; axis_index++)
     {
+        rect[axis_index].position = Vector3Add(rect[axis_index].position , position);
+        rect[axis_index].size = (Vector2){GRID_SIZE * 2.4f , GRID_SIZE * 2.4f};
         
-        Vector3 end_position = IK_bone->position;
-        end_position = Vector3Add(end_position , Vector3RotateByQuaternion(IK_bone->state.end_point_offset , IK_bone->rotation) );
-        //DrawQuadLine(GetBillboardQuad(Endposition , 0.1 , 0.1 ) ,WHITE);
+        Vector3 normal = Vector3RotateByQuaternion((Vector3){0,0,1} , rect[axis_index].rotation);
         
-        Bone * start_bone = bone_chain[bone_chain_count -1];
-        Vector3 start_position = start_bone->position;
-        //Startposition = Vector3Add(Startposition , StartBone->position);
+        if(rotating_index == axis_index) normal = rotate_axis;
         
-        for(int bone_chain_index = bone_chain_count - 1 ; bone_chain_index >= 0 ; bone_chain_index--)
+        float intersect_time = get_line_intersect_with_plane_time( mouse_ray_3D.position , mouse_ray_end , normal , position);
+        
+        Vector3 point = Vector3Lerp(mouse_ray_3D.position , mouse_ray_end , intersect_time);
+        point = Vector3Subtract(point , position);
+        
+        if(rotating_index == axis_index)
         {
+            point = Vector3RotateByQuaternion( point , QuaternionInvert(previous_rotation));
+            angle_xy.x = point.x;
+            angle_xy.y = point.y;
+        }
+        
+        if(rotating_index == -1)
+        {
+            point = Vector3RotateByQuaternion( point , QuaternionInvert(rect[axis_index].rotation));
             
-            Bone * parent_bone = bone_chain[bone_chain_index];
-            Bone * child_bone = bone_chain[bone_chain_index - 1];
-            
-            Vector3 direction_to_end_bone = Vector3Subtract(end_position ,parent_bone->position);
-            direction_to_end_bone = Vector3Normalize(direction_to_end_bone);
-            
-            Vector3 direction_to_target_bone = Vector3Subtract(target_bone->position ,parent_bone->position);
-            direction_to_target_bone = Vector3Normalize(direction_to_target_bone);
-            
-#if DEBUG_IK_DISPLAY
-            draw_arrow_ray(parent_bone->position, direction_to_end_bone , BLUE);
-            draw_arrow_ray(parent_bone->position, direction_to_target_bone , GREEN);
-#endif
-            
-            //printf("%f \n" , Vector3Angle(directionToEndBone , directionToTargetBone) * RAD2DEG);
-            
-            //TODO : try Fabrik?
-            Quaternion bone_rotation = QuaternionFromVector3ToVector3(direction_to_end_bone , direction_to_target_bone );
-            //Bonerotation = QuaternionMultiply( Bonerotation, QuaternionInvert(IteratingBone->rotation));
-            
-            parent_bone->rotation = QuaternionMultiply(bone_rotation , parent_bone->rotation);
-            
-            //IteratingBone->state.local_rotation = QuaternionIdentity();
-            
-            Vector3 parent_bone_end_offset = Vector3RotateByQuaternion( parent_bone->state.end_point_offset , parent_bone->rotation );
-            
-            if(bone_chain_index > 0)
+            if(fabs(point.x * 2.0) < rect[axis_index].size.x)
             {
-                child_bone->position = Vector3Add(parent_bone->position , parent_bone_end_offset);
+                if(fabs(point.y * 2.0) < rect[axis_index].size.y)
+                {
+                    if(closest_hit_time > intersect_time)
+                    {
+                        if(hovering) (*hovering) = true;
+                        closest_hit_time = intersect_time;
+                        closest_axis_index = axis_index;
+                        angle_xy.x = point.x;
+                        angle_xy.y = point.y;
+                        rotate_axis = normal;
+                        previous_rotation = rect[axis_index].rotation;
+                    }
+                }
+            }
+        }
+    }
+    
+    if(closest_axis_index != -1)
+    {
+        if(mouse_pressed(MOUSE_BUTTON_LEFT))
+        {
+            start_angle = atan2(angle_xy.y , angle_xy.x);
+            rotating_index = closest_axis_index;
+            start_rotation = rotation;
+        }
+    }
+    
+    if(rotating_index != -1)
+    {
+        float angle = atan2(angle_xy.y , angle_xy.x);
+        float delta_angle = angle - start_angle;
+        
+        Quaternion rotation_offset = QuaternionFromAxisAngle(rotate_axis , delta_angle);
+        (*rotation_to_modifying) = QuaternionMultiply(rotation_offset , start_rotation);
+    }
+    
+    for(int axis_index = 0 ; axis_index < R_count ; axis_index++)
+    {
+        Color rect_color = color[axis_index];
+        rect_color = Fade(rect_color , 0.4f);
+        
+        if(rotating_index == axis_index)
+        {
+            rect_color = Fade(rect_color , 1.0f);
+        }
+        else if(rotating_index == -1)
+        {
+            if(axis_index == closest_axis_index)
+            {
+                rect_color = Fade(rect_color , 0.8f);
             }
         }
         
+        draw_rect_line_E(rect[axis_index] , rect_color , 15);
     }
     
-    Vector3 end_position = IK_bone->position;
-    end_position = Vector3Add(end_position , Vector3RotateByQuaternion(IK_bone->state.end_point_offset , IK_bone->rotation) );
-    
-    Bone * start_bone = bone_chain[bone_chain_count -1];
-    
-    Vector3 start_position = start_bone->position;
-    
-    Vector3 bone_chain_direction = Vector3Subtract(end_position , start_position);
-    
-#if DEBUG_IK_POLE_DISPLAY
-    draw_arrow_ray(start_position , bone_chain_direction , Fade(WHITE,0.5f) );
-#endif
-    
-    Vector3 start_to_pole_direction = Vector3Subtract(pole_bone->position , start_position);
-    
-    Vector3 pole_project_point_on_bone_chain = Vector3Project(start_to_pole_direction , bone_chain_direction);
-    pole_project_point_on_bone_chain = Vector3Add(start_position , pole_project_point_on_bone_chain);
-    Vector3 pole_direction = Vector3Subtract(pole_bone->position , pole_project_point_on_bone_chain);
-    pole_direction = Vector3Normalize(pole_direction);
-    
-    Vector3 bone_chain_centre_point = Vector3Lerp(start_position , end_position , 0.5);
-    
-    Vector3 bone_direction_sum = {};
-    
-    Vector3 bone_chain_vertical_direction = {};
-    
-    for(int bone_chain_index = bone_chain_count - 1 ; bone_chain_index >= 1 ; bone_chain_index--)
-    {
-        Bone * current_bone = bone_chain[bone_chain_index];
-        
-        Vector3 bone_end_direction = Vector3RotateByQuaternion(current_bone->state.end_point_offset , current_bone->rotation);
-        
-        Vector3 bone_end = Vector3Add(current_bone->position , bone_end_direction);
-        
-        bone_direction_sum = Vector3Add(bone_end_direction , bone_direction_sum);
-        
-        Vector3 bone_end_direction_project = Vector3Project(bone_direction_sum , bone_chain_direction);
-        
-        Vector3 bone_chain_start_point_to_bone_end = Vector3Add(start_position , bone_end_direction_project);
-        Vector3 bone_vertical_direction_to_bone_chain = Vector3Subtract(bone_end , bone_chain_start_point_to_bone_end);
-        
-#if DEBUG_IK_POLE_DISPLAY
-        draw_arrow_ray(bone_chain_start_point_to_bone_end , bone_vertical_direction_to_bone_chain , Fade(GREEN , 0.5f) );
-#endif
-        
-#if 0
-        bone_vertical_direction_to_bone_chain = Vector3Normalize(bone_vertical_direction_to_bone_chain);
-        Quaternion rotate_toward_pole = QuaternionFromVector3ToVector3(bone_vertical_direction_to_bone_chain , pole_direction);
-        current_bone->rotation = QuaternionMultiply(rotate_toward_pole , current_bone->rotation );
-        if(bone_chain_index != 0)
-        {
-            Bone * child_bone = bone_chain[bone_chain_index -1];
-            
-            child_bone->position = Vector3RotateByQuaternion(current_bone->state.end_point_offset ,current_bone->rotation );
-            child_bone->position = Vector3Add(child_bone->position , current_bone->position);
-        }
-#endif
-        
-        bone_chain_vertical_direction = Vector3Add(bone_chain_vertical_direction , bone_vertical_direction_to_bone_chain);
-    }
-    
-    bone_chain_vertical_direction = Vector3Normalize(bone_chain_vertical_direction);
-    
-#if DEBUG_IK_POLE_DISPLAY
-    draw_arrow_ray(bone_chain_centre_point , bone_chain_vertical_direction , Fade(RED, 0.5) );
-    draw_arrow_ray(bone_chain_centre_point , pole_direction , Fade(PINK, 0.5) );
-#endif
-    
-    Quaternion bone_chain_to_pole_rotation = QuaternionFromVector3ToVector3(bone_chain_vertical_direction , pole_direction);
-    
-    for(int bone_chain_index = bone_chain_count - 1 ; bone_chain_index >= 0 ; bone_chain_index--)
-    {
-        Bone * current_bone = bone_chain[bone_chain_index];
-        
-#if 0
-        current_bone->rotation = QuaternionMultiply(bone_chain_to_pole_rotation , current_bone->rotation );
-        
-        Vector3 current_bone_to_pole = Vector3Subtract( pole_bone->position, current_bone->position );
-        
-        Vector3 current_bone_direction = Vector3RotateByQuaternion(current_bone->state.end_point_offset , current_bone->rotation);
-        Vector3 bone_right_direction = Vector3CrossProduct(current_bone_to_pole , current_bone_direction);
-        
-        Vector3 bone_forward_direction = Vector3CrossProduct(current_bone_direction , bone_right_direction);
-        Vector3 bone_current_foward_direction = Vector3RotateByQuaternion( (Vector3){0,0,1} ,current_bone->rotation);
-        
-        bone_current_foward_direction = Vector3Normalize(bone_current_foward_direction);
-        bone_forward_direction = Vector3Normalize(bone_forward_direction);
-        Quaternion forward_rotation= QuaternionFromVector3ToVector3(bone_current_foward_direction  , bone_forward_direction);
-        
-#if 0
-        draw_arrow_ray(current_bone->position , bone_forward_direction , Fade(RED , 0.5));
-        draw_arrow_ray(current_bone->position , bone_current_foward_direction , Fade(WHITE , 0.5));
-#endif
-        
-        current_bone->rotation = QuaternionMultiply( forward_rotation , current_bone->rotation);
-        
-        if(bone_chain_index != 0)
-        {
-            Bone * child_bone = bone_chain[bone_chain_index -1];
-            
-            child_bone->position = Vector3RotateByQuaternion(current_bone->state.end_point_offset ,current_bone->rotation );
-            child_bone->position = Vector3Add(child_bone->position , current_bone->position);
-        }
-#endif
-        
-    }
-    
-    iterate_bone_structure(bone_array , bone_chain[0]);
+    return (rotating_index != -1);
 }
 
-internal bool drag_to_move(Vector3 position , Vector3 * position_to_modify , bool * hovering)
+internal bool drag_to_move(Vector3 * position_to_modify , bool * hovering)
 {
+    Vector3 position = (*position_to_modify);
+    
     Box right_box = get_box();
     Box up_box = get_box();
     Box forward_box = get_box();
     
-    right_box.position = Vector3Lerp((Vector3){} , right_direction , 0.5f);
-    up_box.position = Vector3Lerp((Vector3){} , up_direction , 0.5f);
-    forward_box.position = Vector3Lerp((Vector3){} , forward_direction , 0.5f);
+    Vector3 box_right_direction = right_direction;
+    Vector3 box_up_direction = up_direction;
+    Vector3 box_forward_direction = forward_direction;
+    
+    Vector3 camera_to_position = Vector3Subtract(position , world_camera.position);
+    
+    if(Vector3DotProduct(camera_to_position , box_right_direction) > 0) box_right_direction = Vector3Negate(box_right_direction);
+    if(Vector3DotProduct(camera_to_position , box_up_direction) > 0) box_up_direction = Vector3Negate(box_up_direction);
+    if(Vector3DotProduct(camera_to_position , box_forward_direction) > 0) box_forward_direction = Vector3Negate(box_forward_direction);
+    
+    right_box.position = Vector3Lerp((Vector3){} , box_right_direction , 0.5f);
+    up_box.position = Vector3Lerp((Vector3){} , box_up_direction , 0.5f);
+    forward_box.position = Vector3Lerp((Vector3){} , box_forward_direction , 0.5f);
     
     right_box.position = Vector3Add(position , right_box.position);
     up_box.position = Vector3Add(position , up_box.position);
     forward_box.position = Vector3Add(position , forward_box.position);
     
-    right_box.size = Vector3Add(right_direction , (Vector3){UNIT_SIZE , UNIT_SIZE , UNIT_SIZE});
-    up_box.size = Vector3Add(up_direction , (Vector3){UNIT_SIZE , UNIT_SIZE , UNIT_SIZE});
-    forward_box.size = Vector3Add(forward_direction , (Vector3){UNIT_SIZE , UNIT_SIZE , UNIT_SIZE});
+    right_box.size = Vector3Add(box_right_direction , (Vector3){UNIT_SIZE , UNIT_SIZE , UNIT_SIZE});
+    up_box.size = Vector3Add(box_up_direction , (Vector3){UNIT_SIZE , UNIT_SIZE , UNIT_SIZE});
+    forward_box.size = Vector3Add(box_forward_direction , (Vector3){UNIT_SIZE , UNIT_SIZE , UNIT_SIZE});
     
-    Vector3 camera_direction = Vector3Subtract(game_camera.target , game_camera.position);
+    Vector3 camera_direction = Vector3Subtract(world_camera.target , world_camera.position);
     camera_direction = Vector3Negate(camera_direction);
     
-    Color right_color = Fade(RED , 0.2f);
-    Color up_color = Fade(GREEN , 0.2f);
-    Color forward_color = Fade(BLUE , 0.2f);
+    Color right_color = Fade(RED , 0.4f);
+    Color up_color = Fade(GREEN , 0.4f);
+    Color forward_color = Fade(BLUE , 0.4f);
     
     local_persist Vector3 origin_position = {};
     local_persist Vector3 previous_drag_point = {};
@@ -3336,45 +3508,53 @@ internal bool drag_to_move(Vector3 position , Vector3 * position_to_modify , boo
     Vector3 drag_offset = Vector3Subtract(current_drag_point , previous_drag_point);
     previous_drag_point = current_drag_point;
     
-    if(box_collision_ray(mouse_ray_3D.position , mouse_ray_3D.direction , right_box , 0 ,0)) 
-    {
-        if(mouse_pressed(MOUSE_BUTTON_LEFT))
-        {
-            dragging_origin = true;
-            drag_direction = right_direction;
-        }
-        
-        if(hovering) (*hovering) =true;
-        right_color = Fade(right_color , 1.0);
-    }
+    local_persist int selected_axis = -1;
     
-    if(box_collision_ray(mouse_ray_3D.position , mouse_ray_3D.direction , up_box , 0 , 0)) 
+    if(!dragging_origin)
     {
-        if(mouse_pressed(MOUSE_BUTTON_LEFT))
+        if(box_collision_ray(mouse_ray_3D.position , mouse_ray_3D.direction , right_box , 0 ,0)) 
         {
-            dragging_origin = true;
-            drag_direction = up_direction;
+            if(mouse_pressed(MOUSE_BUTTON_LEFT))
+            {
+                dragging_origin = true;
+                drag_direction = right_direction;
+                selected_axis = D_right;
+            }
+            
+            if(hovering) (*hovering) =true;
+            right_color = Fade(right_color , 0.8f);
         }
         
-        if(hovering) (*hovering) =true;
-        up_color = Fade(up_color , 1);
-    }
-    
-    if(box_collision_ray(mouse_ray_3D.position , mouse_ray_3D.direction , forward_box , 0 , 0)) 
-    {
-        if(mouse_pressed(MOUSE_BUTTON_LEFT))
+        if(box_collision_ray(mouse_ray_3D.position , mouse_ray_3D.direction , up_box , 0 , 0)) 
         {
-            dragging_origin = true;
-            drag_direction = forward_direction;
+            if(mouse_pressed(MOUSE_BUTTON_LEFT))
+            {
+                dragging_origin = true;
+                drag_direction = up_direction;
+                selected_axis = D_up;
+            }
+            
+            if(hovering) (*hovering) =true;
+            up_color = Fade(up_color , 0.8f);
         }
         
-        if(hovering) (*hovering) =true;
-        forward_color = Fade(forward_color , 1);
+        if(box_collision_ray(mouse_ray_3D.position , mouse_ray_3D.direction , forward_box , 0 , 0)) 
+        {
+            if(mouse_pressed(MOUSE_BUTTON_LEFT))
+            {
+                dragging_origin = true;
+                drag_direction = forward_direction;
+                selected_axis = D_forward;
+            }
+            
+            if(hovering) (*hovering) =true;
+            forward_color = Fade(forward_color , 0.8f);
+        }
     }
     
     if(dragging_origin)
     {
-        if(mouse_relased(MOUSE_BUTTON_LEFT))
+        if(mouse_released(MOUSE_BUTTON_LEFT))
         {
             dragging_origin = false;
         }
@@ -3385,18 +3565,365 @@ internal bool drag_to_move(Vector3 position , Vector3 * position_to_modify , boo
         Vector3 position_in_cell = position_to_grid(origin_position , UNIT_SIZE);
         
         (*position_to_modify) = position_in_cell;
+        
+        switch(selected_axis)
+        {
+            case D_right: right_color = RED; break;
+            case D_up: up_color = GREEN; break;
+            case D_forward: forward_color = BLUE; break;
+        }
     }
     
-    draw_arrow_ray(position , right_direction , right_color);
-    draw_arrow_ray(position , up_direction , up_color);
-    draw_arrow_ray(position , forward_direction , forward_color);
+    draw_arrow_ray(position , box_right_direction , right_color);
+    draw_arrow_ray(position , box_up_direction , up_color);
+    draw_arrow_ray(position , box_forward_direction , forward_color);
     
     return dragging_origin;
 }
 
+internal void edit_box(Vector3 origin , Vector3 grid_normal , Vector3 intersect_point)
+{
+    local_persist bool editing_box = false;
+    local_persist bool rotating = false;
+    
+    local_persist bool start_stretch_box = false;
+    local_persist bool stretching_box = false;
+    local_persist int box_face_index_to_stretch = 0;
+    
+    if(!editing_box)
+    {
+        if(last_clicked_box)
+        {
+            Box * box = last_clicked_box;
+            
+            bool hovering = false;
+            rotating = false;
+            
+            if(current_edit_type == edit_move)
+            {
+                if(drag_to_move(&box->position , &hovering))
+                {
+                    editing_box = true;
+                }
+            }
+            
+            if(current_edit_type == edit_rotate)
+            {
+                if(drag_to_rotate( box->position , &box->rotation , &hovering))
+                {
+                    editing_box = true;
+                    rotating = true;
+                }
+            }
+        }
+    }
+    else if(editing_box)
+    {
+        Box * box = last_clicked_box;
+        Vector3 box_centre = box->position;
+        
+        if(rotating)
+        {
+            if(!drag_to_rotate( box->position , &box->rotation , 0))
+            {
+                editing_box = false;
+            }
+        }
+        else
+        {
+            if(!drag_to_move(&box->position , 0))
+            {
+                editing_box = false;
+            }
+        }
+    }
+    
+    if(current_edit_type == edit_stretch)
+    {
+        if(last_clicked_box)
+        {
+            int box_face_index = 0;
+            float box_hit_time = 0;
+            
+            Box box = (*last_clicked_box);
+            
+            if(!stretching_box)
+            {
+                if(box_collision_ray(mouse_ray_3D.position , mouse_ray_3D.direction , box , &box_face_index , &box_hit_time))
+                {
+                    Vector3 face_offset = {};
+                    Vector3 face_direction = {};
+                    switch(box_face_index)
+                    {
+                        case face_right: face_offset.x += box.size.x * 0.5f; face_direction.x += 1; break;
+                        case face_left: face_offset.x -= box.size.x * 0.5f; face_direction.x -= 1; break;
+                        case face_top: face_offset.y += box.size.y * 0.5f; face_direction.y += 1; break;
+                        case face_bottom: face_offset.y -= box.size.y * 0.5f; face_direction.y -= 1; break;
+                        case face_front: face_offset.z += box.size.z * 0.5f; face_direction.z += 1; break;
+                        case face_back: face_offset.z -= box.size.z * 0.5f; face_direction.z -= 1; break;
+                        default: CATCH;
+                    }
+                    
+                    face_direction = Vector3Scale(face_direction , UNIT_SIZE * 4);
+                    face_direction = Vector3RotateByQuaternion(face_direction , box.rotation);
+                    face_offset = Vector3RotateByQuaternion(face_offset , box.rotation);
+                    Vector3 arrow_start = Vector3Add(face_offset , box.position);
+                    
+                    arrow_start = Vector3Add(mouse_ray_3D.position , Vector3Scale(mouse_ray_3D.direction , box_hit_time));
+                    
+                    draw_arrow_ray(arrow_start , face_direction , WHITE);
+                    
+                    if(mouse_pressed(MOUSE_BUTTON_LEFT))
+                    {
+                        stretching_box = true;
+                        start_stretch_box = false;
+                        box_face_index_to_stretch = box_face_index;
+                    }
+                }
+            }
+            
+            if(stretching_box)
+            {
+                Vector3 plane_normal = Vector3Subtract(world_camera.target , world_camera.position);
+                Vector3 line_start = mouse_ray_3D.position;
+                Vector3 line_end = Vector3Add(mouse_ray_3D.position , mouse_ray_3D.direction);
+                float plane_time = get_line_intersect_with_plane_time(line_start , line_end , plane_normal , box.position);
+                Vector3 mouse_on_plane = Vector3Lerp(line_start , line_end , plane_time);
+                
+                Vector3 pole = {};
+                
+                bool invert_face = false; 
+                switch(box_face_index_to_stretch)
+                {
+                    case face_left:
+                    case face_bottom:
+                    case face_back:
+                    {
+                        invert_face = true;
+                    }
+                    break;
+                }
+                
+                switch(box_face_index_to_stretch)
+                {
+                    case face_right:
+                    case face_left:
+                    {
+                        pole = right_direction;
+                    }
+                    break;
+                    
+                    case face_front:
+                    case face_back:
+                    {
+                        pole = forward_direction;
+                    }
+                    break;
+                    
+                    case face_top:
+                    case face_bottom:
+                    {
+                        pole = up_direction;
+                    }
+                    break;
+                }
+                
+                pole = Vector3RotateByQuaternion(pole , box.rotation);
+                
+                Vector3 mouse_relative_to_box = Vector3Subtract(mouse_on_plane , box.position);
+                local_persist Vector3 start_pole_position = {};
+                
+                Vector3 mouse_on_pole = Vector3Project( mouse_relative_to_box , pole);
+                if(!start_stretch_box)
+                {
+                    start_pole_position = mouse_on_pole;
+                    start_stretch_box = true;
+                }
+                
+                Vector3 absolute_drag_offset = Vector3Subtract(mouse_on_pole , start_pole_position);
+                
+                Vector3 drag_offset = Vector3RotateByQuaternion(absolute_drag_offset , QuaternionInvert(box.rotation));
+                drag_offset.x -= 0.001;
+                drag_offset.y -= 0.001;
+                drag_offset.z -= 0.001;
+                drag_offset = position_to_grid(drag_offset , GRID_SIZE);
+                absolute_drag_offset = Vector3RotateByQuaternion(drag_offset , box.rotation);
+                
+                //drag_offset = Vector3Project(drag_offset , pole);
+                
+                draw_arrow_ray(box.position , absolute_drag_offset , WHITE);
+                
+                if(invert_face)
+                {
+                    box.size = Vector3Subtract(box.size , drag_offset);
+                }
+                else
+                {
+                    box.size = Vector3Add(box.size , drag_offset);
+                }
+                
+                box.size.x = fabs(box.size.x);
+                box.size.y = fabs(box.size.y);
+                box.size.z = fabs(box.size.z);
+                
+                box.position = Vector3Add(box.position , Vector3Scale(absolute_drag_offset,0.5));
+                
+                draw_box_line(box , WHITE , 5);
+                
+                if(mouse_released(MOUSE_BUTTON_LEFT))
+                {
+                    stretching_box = false;
+                    (*last_clicked_box) = box;
+                }
+            }
+        }
+    }
+    
+    local_persist bool drag_and_make_box = false;
+    local_persist float drag_timer = 0;
+    local_persist Vector3 box_start_point = {};
+    
+    Array * current_box_array = 0;
+    BoxBuffer * current_box_buffer = 0;
+    
+    if(current_map_edit_type == MET_box)
+    {
+        current_box_array = &box_in_map_array;
+        current_box_buffer = &box_in_map_buffer;
+    }
+    
+    if(current_map_edit_type == MET_camera_trigger)
+    {
+        current_box_array = &camera_array;
+        current_box_buffer = &camera_zone_buffer;
+    }
+    
+    Vector3 grid_offset = Vector3Subtract((Vector3){1,1,1} , grid_normal);
+    
+    Vector3 mouse_on_grid = intersect_point;
+    mouse_on_grid = Vector3Subtract(mouse_on_grid , origin);
+    mouse_on_grid = Vector3Subtract(mouse_on_grid , Vector3Scale(grid_normal , 0.001f));
+    mouse_on_grid.x += GRID_SIZE * 0.5f * grid_offset.x;
+    mouse_on_grid.y += GRID_SIZE * 0.5f * grid_offset.y;
+    mouse_on_grid.z += GRID_SIZE * 0.5f * grid_offset.z;
+    
+    mouse_on_grid = position_to_grid(mouse_on_grid , GRID_SIZE);
+    
+    mouse_on_grid.x -= GRID_SIZE * grid_offset.x;
+    mouse_on_grid.y -= GRID_SIZE * grid_offset.y;
+    mouse_on_grid.z -= GRID_SIZE * grid_offset.z;
+    
+    mouse_on_grid = Vector3Add(mouse_on_grid , origin);
+    
+    //mouse_on_grid.x -= GRID_SIZE * 0.5f;
+    //mouse_on_grid.y -= GRID_SIZE * 0.5f;
+    //mouse_on_grid.z -= GRID_SIZE * 0.5f;
+    
+    if(drag_and_make_box)
+    {
+        drag_timer += DELTA_TIME;
+        
+        //i can make box to quad if it was flat
+        Box dragging_box = get_box();
+        
+        dragging_box.size = Vector3Subtract(mouse_on_grid , box_start_point);
+        dragging_box.size.x = fabs(dragging_box.size.x);
+        dragging_box.size.y = fabs(dragging_box.size.y);
+        dragging_box.size.z = fabs(dragging_box.size.z);
+        
+        //printf("%f %f %f\n" , dragging_box.size.x , dragging_box.size.y , dragging_box.size.z);
+        
+        dragging_box.position = Vector3Lerp(mouse_on_grid , box_start_point , 0.5f);
+        draw_box_line(dragging_box , Fade(WHITE , 0.4 ) , 10);
+        
+        if(mouse_pressed(MOUSE_BUTTON_RIGHT))
+        {
+            drag_and_make_box = false;
+        }
+        
+        if(mouse_released(MOUSE_BUTTON_LEFT))
+        {
+            if(drag_timer < 0.1) last_clicked_box = 0;
+            
+            drag_and_make_box = false;
+            int size_count = 0;
+            if(dragging_box.size.x > 0) size_count++;
+            if(dragging_box.size.y > 0) size_count++;
+            if(dragging_box.size.z > 0) size_count++;
+            
+            if(size_count >= 2)
+            {
+                if(array_full(current_box_array))
+                {
+                    reallocate_buffer(current_box_buffer ,  AT_temp);
+                    reallocate_array(current_box_array , AT_temp);
+                }
+                
+                int new_box_index = add_to_array(current_box_array);
+                Box * new_box = current_box_buffer->data + new_box_index;
+                (*new_box) = (Box){};
+                (*new_box) = dragging_box;
+                
+                if(current_map_edit_type == MET_camera_trigger)
+                {
+                    camera_buffer.data[new_box_index] = (CameraTrigger){};
+                }
+            }
+        }
+    }
+    
+    if(current_edit_type == edit_drag_new_box)
+    {
+        hovering_box = 0;
+        
+        bool box_collided = false;
+        float closest_box_hit_time = FLT_MAX;
+        Box * closest_box = 0;
+        int closest_box_face_index = -1;
+        
+        array_foreach(box_index , current_box_array)
+        {
+            Box * box = current_box_buffer->data + box_index;
+            
+            float box_hit_time = 0;
+            int box_face_index = 0;
+            if(box_collision_ray(mouse_ray_3D.position , mouse_ray_3D.direction , (*box) , &box_face_index , &box_hit_time))
+            {
+                box_collided = true;
+                if(closest_box_hit_time > box_hit_time)
+                {
+                    closest_box_hit_time = box_hit_time;
+                    closest_box = box;
+                    closest_box_face_index = box_face_index;
+                }
+            }
+        }
+        
+        if(box_collided)
+        {
+            if(mouse_pressed(MOUSE_BUTTON_LEFT))
+            {
+                last_clicked_box = closest_box;
+            }
+            
+            hovering_box = closest_box;
+        }
+        
+        if(mouse_pressed(MOUSE_BUTTON_LEFT))
+        {
+            if(!box_collided)
+            {
+                box_start_point = mouse_on_grid;
+                drag_and_make_box = true;
+                drag_timer = 0;
+            }
+        }
+    }
+}
+
 internal void edit_map(Vector3 origin)
 {
-    Vector3 camera_direction = Vector3Subtract(game_camera.target , game_camera.position);
+    Vector3 camera_direction = Vector3Subtract(world_camera.target , world_camera.position);
     
     Vector3 all_direction[3] = {up_direction  , right_direction , forward_direction};
     float dot_product = 0;
@@ -3446,321 +3973,86 @@ internal void edit_map(Vector3 origin)
         
         if(within_viewport)
         {
-            if(current_map_edit_type == MET_box)
+            if(current_edit_type == edit_camera_offset)
             {
-                local_persist bool moving_box = false;
-                local_persist int moving_box_index = -1;
-                
-                local_persist bool start_stretch_box = false;
-                local_persist bool stretching_box = false;
-                local_persist int box_index_to_stretch = 0;
-                local_persist int box_face_index_to_stretch = 0;
-                
-                if(moving_box)
+                if(edit_camera_offset)
                 {
-                    Box * box = box_in_map_buffer.data + moving_box_index;
-                    Vector3 box_centre = box->position;
-                    
-                    if(!drag_to_move(box_centre , &box->position , 0))
+                    if(last_clicked_box)
                     {
-                        moving_box = false;
-                    }
-                }
-                
-                if(stretching_box)
-                {
-                    Box box = box_in_map_buffer.data[box_index_to_stretch];
-                    
-                    Vector3 plane_normal = Vector3Subtract(game_camera.target , game_camera.position);
-                    Vector3 line_start = mouse_ray_3D.position;
-                    Vector3 line_end = Vector3Add(mouse_ray_3D.position , mouse_ray_3D.direction);
-                    float plane_time = get_line_intersect_with_plane_time(line_start , line_end , plane_normal , box.position);
-                    Vector3 mouse_on_plane = Vector3Lerp(line_start , line_end , plane_time);
-                    
-                    Vector3 pole = {};
-                    
-                    bool invert_face = false; 
-                    switch(box_face_index_to_stretch)
-                    {
-                        case face_left:
-                        case face_bottom:
-                        case face_back:
-                        {
-                            invert_face = true;
-                        }
-                        break;
-                    }
-                    
-                    switch(box_face_index_to_stretch)
-                    {
-                        case face_right:
-                        case face_left:
-                        {
-                            pole = right_direction;
-                        }
-                        break;
+                        int trigger_index = last_clicked_box - camera_zone_buffer.data;
+                        CameraTrigger * trigger = camera_buffer.data + trigger_index;
                         
-                        case face_front:
-                        case face_back:
-                        {
-                            pole = forward_direction;
-                        }
-                        break;
-                        
-                        case face_top:
-                        case face_bottom:
-                        {
-                            pole = up_direction;
-                        }
-                        break;
+                        Vector3 camera_position = Vector3Add(trigger->camera_target_offset , last_clicked_box->position);
+                        drag_to_move(&camera_position , 0);
+                        //printf("%f %f %f\n" , camera_position.x , camera_position.y , camera_position.z);
+                        trigger->camera_target_offset = Vector3Subtract(camera_position , last_clicked_box->position);
                     }
-                    
-                    Vector3 mouse_relative_to_box = Vector3Subtract(mouse_on_plane , box.position);
-                    local_persist Vector3 start_pole_psoition = {};
-                    
-                    Vector3 mouse_on_pole = Vector3Project( mouse_relative_to_box , pole);
-                    
-                    if(!start_stretch_box)
-                    {
-                        start_pole_psoition = mouse_on_pole;
-                        start_stretch_box = true;
-                    }
-                    
-                    Vector3 drag_offset = Vector3Subtract(mouse_on_pole , start_pole_psoition);
-                    drag_offset = position_to_grid(drag_offset , GRID_SIZE);
-                    
-                    draw_arrow_ray(box.position , drag_offset , WHITE);
-                    
-                    if(invert_face)
-                    {
-                        box.size = Vector3Subtract(box.size , drag_offset);
-                    }
-                    else
-                    {
-                        box.size = Vector3Add(box.size , drag_offset);
-                    }
-                    box.size.x = fabs(box.size.x);
-                    box.size.y = fabs(box.size.y);
-                    box.size.z = fabs(box.size.z);
-                    
-                    if(invert_face)
-                    {
-                        //box.position = Vector3Subtract(box.position , Vector3Scale(drag_offset,0.5));
-                    }
-                    else
-                    {
-                    }
-                    box.position = Vector3Add(box.position , Vector3Scale(drag_offset,0.5));
-                    
-                    draw_box_line(box , WHITE , 5);
-                    
-                    if(mouse_relased(MOUSE_BUTTON_LEFT))
-                    {
-                        stretching_box = false;
-                        box_in_map_buffer.data[box_index_to_stretch] = box;
-                    }
-                }
-                
-                local_persist bool drag_and_make_box = false;
-                local_persist Vector3 box_start_point = {};
-                
-                Vector3 grid_offset = Vector3Subtract((Vector3){1,1,1} , grid_normal);
-                
-                Vector3 mouse_on_grid = intersect_point;
-                mouse_on_grid = Vector3Subtract(mouse_on_grid , origin);
-                mouse_on_grid = Vector3Subtract(mouse_on_grid , Vector3Scale(grid_normal , 0.001f));
-                mouse_on_grid.x += GRID_SIZE * 0.5f * grid_offset.x;
-                mouse_on_grid.y += GRID_SIZE * 0.5f * grid_offset.y;
-                mouse_on_grid.z += GRID_SIZE * 0.5f * grid_offset.z;
-                
-                mouse_on_grid = position_to_grid(mouse_on_grid , GRID_SIZE);
-                
-                mouse_on_grid.x -= GRID_SIZE * grid_offset.x;
-                mouse_on_grid.y -= GRID_SIZE * grid_offset.y;
-                mouse_on_grid.z -= GRID_SIZE * grid_offset.z;
-                
-                mouse_on_grid = Vector3Add(mouse_on_grid , origin);
-                
-                //mouse_on_grid.x -= GRID_SIZE * 0.5f;
-                //mouse_on_grid.y -= GRID_SIZE * 0.5f;
-                //mouse_on_grid.z -= GRID_SIZE * 0.5f;
-                
-                if(drag_and_make_box)
-                {
-                    //i can make box to quad if it was flat
-                    Box dragging_box = get_box();
-                    
-                    dragging_box.size = Vector3Subtract(mouse_on_grid , box_start_point);
-                    dragging_box.size.x = fabs(dragging_box.size.x);
-                    dragging_box.size.y = fabs(dragging_box.size.y);
-                    dragging_box.size.z = fabs(dragging_box.size.z);
-                    
-                    //printf("%f %f %f\n" , dragging_box.size.x , dragging_box.size.y , dragging_box.size.z);
-                    
-                    dragging_box.position = Vector3Lerp(mouse_on_grid , box_start_point , 0.5f);
-                    draw_box_line(dragging_box , Fade(WHITE , 0.4 ) , 10);
-                    
-                    if(mouse_pressed(MOUSE_BUTTON_RIGHT))
-                    {
-                        drag_and_make_box = false;
-                    }
-                    
-                    if(mouse_relased(MOUSE_BUTTON_LEFT))
-                    {
-                        drag_and_make_box = false;
-                        int size_count = 0;
-                        if(dragging_box.size.x > 0) size_count++;
-                        if(dragging_box.size.y > 0) size_count++;
-                        if(dragging_box.size.z > 0) size_count++;
-                        
-                        if(size_count >= 2)
-                        {
-                            if(array_full(&box_in_map_array))
-                            {
-                                reallocate_buffer(&box_in_map_buffer ,  AT_temp);
-                                reallocate_array(&box_in_map_array , AT_temp);
-                            }
-                            
-                            Box * new_box = box_in_map_buffer.data + add_to_array(&box_in_map_array);
-                            (*new_box) = dragging_box;
-                        }
-                    }
-                }
-                
-                bool try_select_box = true;
-                
-                if(moving_box) try_select_box = false;
-                if(stretching_box) try_select_box = false;
-                if(drag_and_make_box) try_select_box = false;
-                
-                if(try_select_box)
-                {
-                    bool box_collided = false;
-                    bool try_stretch_box = false;
-                    float closest_box_hit_time = FLT_MAX;
-                    int closest_box_index = 0;
-                    int closest_box_face_index = -1;
-                    
-                    array_foreach(box_index , &box_in_map_array)
-                    {
-                        Box box = box_in_map_buffer.data[box_index];
-                        
-                        float box_hit_time = 0;
-                        int box_face_index = 0;
-                        if(box_collision_ray(mouse_ray_3D.position , mouse_ray_3D.direction , box , &box_face_index , &box_hit_time))
-                        {
-                            box_collided = true;
-                            try_stretch_box = true;
-                            if(closest_box_hit_time > box_hit_time)
-                            {
-                                closest_box_hit_time = box_hit_time;
-                                closest_box_index = box_index;
-                                closest_box_face_index = box_face_index;
-                            }
-                        }
-                    }
-                    
-                    if(box_collided)
-                    {
-                        Box * box = box_in_map_buffer.data + closest_box_index;
-                        Vector3 box_centre = box->position;
-                        bool hovering = false;
-                        
-                        if(drag_to_move(box_centre , &box->position , &hovering))
-                        {
-                            moving_box_index = closest_box_index;
-                            moving_box = true;
-                        }
-                        
-                        if(hovering) try_stretch_box = false;
-                    }
-                    
-                    if(try_stretch_box)
-                    {
-                        Box box = box_in_map_buffer.data[closest_box_index];
-                        
-                        Vector3 face_offset = {};
-                        Vector3 face_direction = {};
-                        switch(closest_box_face_index)
-                        {
-                            case face_right: face_offset.x += box.size.x * 0.5f; face_direction.x += 1; break;
-                            case face_left: face_offset.x -= box.size.x * 0.5f; face_direction.x -= 1; break;
-                            case face_top: face_offset.y += box.size.y * 0.5f; face_direction.y += 1; break;
-                            case face_bottom: face_offset.y -= box.size.y * 0.5f; face_direction.y -= 1; break;
-                            case face_front: face_offset.z += box.size.z * 0.5f; face_direction.z += 1; break;
-                            case face_back: face_offset.z -= box.size.z * 0.5f; face_direction.z -= 1; break;
-                            default: CATCH;
-                        }
-                        
-                        face_direction = Vector3Scale(face_direction , UNIT_SIZE * 4);
-                        face_direction = Vector3RotateByQuaternion(face_direction , box.rotation);
-                        face_offset = Vector3RotateByQuaternion(face_offset , box.rotation);
-                        Vector3 arrow_start = Vector3Add(face_offset , box.position);
-                        
-                        arrow_start = Vector3Add(mouse_ray_3D.position , Vector3Scale(mouse_ray_3D.direction , closest_box_hit_time));
-                        
-                        draw_arrow_ray(arrow_start , face_direction , WHITE);
-                        
-                        if(mouse_pressed(MOUSE_BUTTON_LEFT))
-                        {
-                            stretching_box = true;
-                            start_stretch_box = false;
-                            box_face_index_to_stretch = closest_box_face_index;
-                            box_index_to_stretch = closest_box_index;
-                        }
-                        
-                        if(mouse_pressed(MOUSE_BUTTON_RIGHT))
-                        {
-                            right_click_menu.box_index = closest_box_index;
-                            right_click_menu.on = true;
-                            right_click_menu.position = mouse_position;
-                        }
-                    }
-                    
-                    if(mouse_pressed(MOUSE_BUTTON_LEFT))
-                    {
-                        if(!box_collided)
-                        {
-                            box_start_point = mouse_on_grid;
-                            drag_and_make_box = true;
-                        }
-                    }
-                    
                 }
             }
-            else if(current_map_edit_type == MET_quad)
+            
+            bool enable_box_editing = false;
+            
+            if(current_map_edit_type == MET_box) enable_box_editing = true;
+            if(current_map_edit_type == MET_camera_trigger) enable_box_editing = true;
+            
+            if(enable_box_editing)
             {
-                bool collided = false;
-                
-                array_foreach(quad_index , &quad_in_map_array)
+                edit_box(origin , grid_normal , intersect_point);
+            }
+            
+            if(current_map_edit_type == MET_camera_trigger)
+            {
+                if(current_edit_type == edit_camera_offset)
                 {
-                    RayCollision collision = get_collision_quad_3D(quad_in_map_buffer.data[quad_index]);
-                    if(collision.hit)
+                    if(edit_camera_offset)
                     {
-                        collided = true;
-                        
-                        if(mouse_pressed(MOUSE_BUTTON_LEFT))
+                        if(last_clicked_box)
                         {
-                            if(!delete_from_array(&quad_in_map_array , quad_index)) CATCH;
+                            int trigger_index = last_clicked_box - camera_zone_buffer.data;
+                            CameraTrigger * trigger = camera_buffer.data + trigger_index;
+                            
+                            Vector3 camera_position = Vector3Add(trigger->camera_target_offset , last_clicked_box->position);
+                            drag_to_move(&camera_position , 0);
+                            //printf("%f %f %f\n" , camera_position.x , camera_position.y , camera_position.z);
+                            trigger->camera_target_offset = Vector3Subtract(camera_position , last_clicked_box->position);
                         }
-                        
-                        break;
                     }
                 }
-                
-                if(!collided)
+            }
+            
+        }
+        else if(current_map_edit_type == MET_quad)
+        {
+            bool collided = false;
+            
+            array_foreach(quad_index , &quad_in_map_array)
+            {
+                RayCollision collision = get_collision_quad_3D(quad_in_map_buffer.data[quad_index]);
+                if(collision.hit)
                 {
+                    collided = true;
+                    
                     if(mouse_pressed(MOUSE_BUTTON_LEFT))
                     {
-                        if(array_full(&quad_in_map_array))
-                        {
-                            reallocate_array(&quad_in_map_array , AT_temp);
-                            reallocate_buffer(&quad_in_map_buffer , AT_temp );
-                        }
-                        Quad * new_quad = quad_in_map_buffer.data + add_to_array(&quad_in_map_array);
-                        
-                        (*new_quad) = rect_to_quad(rect_in_cell);
+                        if(!delete_from_array(&quad_in_map_array , quad_index)) CATCH;
                     }
+                    
+                    break;
+                }
+            }
+            
+            if(!collided)
+            {
+                if(mouse_pressed(MOUSE_BUTTON_LEFT))
+                {
+                    if(array_full(&quad_in_map_array))
+                    {
+                        reallocate_array(&quad_in_map_array , AT_temp);
+                        reallocate_buffer(&quad_in_map_buffer , AT_temp );
+                    }
+                    Quad * new_quad = quad_in_map_buffer.data + add_to_array(&quad_in_map_array);
+                    
+                    (*new_quad) = rect_to_quad(rect_in_cell);
                 }
             }
         }
@@ -4101,6 +4393,22 @@ internal float get_corner_weight(float vertical , float horizontal)
 	return result;
 }
 
+internal void draw_collision_visual(CollisionVisual visual)
+{
+    draw_simplex_triangle( visual.a , visual.b , visual.c);
+    draw_arrow_line_B( visual.closest_point , visual.ray_end  , Fade(PINK , 0.5f));
+    if(visual.collided) draw_arrow_ray( visual.collision_point , visual.collision_normal , RED );
+    
+    ShapeUnion shape_a = visual.shape_a;
+    ShapeUnion shape_b = visual.shape_b;
+    
+    if(shape_a.type == ST_box) draw_box_line(shape_a.box , WHITE , 5);
+    if(shape_a.type == ST_quad) draw_quad_line(shape_a.quad , WHITE , 5);
+    
+    if(shape_b.type == ST_box) draw_box_line(shape_b.box , WHITE , 5);
+    if(shape_b.type == ST_quad) draw_quad_line(shape_b.quad , WHITE , 5);
+}
+
 internal void viewport_update()
 {
     //Vector3 ray_position = Vector3Add(mouse_ray_3D.position , mouse_ray_3D.direction);
@@ -4173,9 +4481,6 @@ internal void viewport_update()
     
     if(editor_type == edit_world || editor_type == demo)
     {
-        //draw_box(player.box , GOLD);
-        //draw_box_line(player.box , BLACK , 2);
-        
         D_game_draw();
         render_state.draw_flag = 1;
         
@@ -4197,27 +4502,34 @@ internal void viewport_update()
         //draw_box_line(nav_mesh_start_box , YELLOW , 5);
         //draw_box_line(nav_mesh_whole_box , YELLOW , 10);
         
-        //i forgot what this is
-        //i think i use this to draw and debug stuff
-        for(int cell_x = 0 , cell_y = 0 , cell_z = 0;;)
+        int visual_buffer_start = 0;
+        int visual_buffer_end = collision_visual_buffer.count;
+        
+        if(!store_multiple_frame_collision)
         {
-            int cell_index = cell_to_index((Int3){cell_x , cell_y , cell_z});
-            
-            cell_x++;
-            if(cell_x >= nav_mesh_size.x)
+            if(frame_collision_buffer.count > 0)
             {
-                cell_x = 0;
-                cell_y++;
+                FrameCollision frame_collision = frame_collision_buffer.data[current_frame_collision_index];
+                visual_buffer_start = frame_collision.slice_start;
+                visual_buffer_end = frame_collision.slice_end;
+                
+                if(visual_buffer_end - visual_buffer_start)
+                {
+                    draw_arrow_ray(frame_collision.start , frame_collision.velocity , YELLOW);
+                }
             }
-            if(cell_y >= nav_mesh_size.y)
+        }
+        
+        if(display_all_captured_collision)
+        {
+            for(int buffer_index = visual_buffer_start ; buffer_index < visual_buffer_end ; buffer_index++)
             {
-                cell_y = 0;
-                cell_z++;
+                draw_collision_visual(collision_visual_buffer.data[buffer_index]);
             }
-            if(cell_z >= nav_mesh_size.z)
-            {
-                break;
-            }
+        }
+        else
+        {
+            draw_collision_visual(collision_visual_buffer.data[current_collision_visual_index]);
         }
         
         BoundingBoxNode * node_stack[128] = {};
@@ -4247,13 +4559,31 @@ internal void viewport_update()
         }
 #endif
         
-        array_foreach(box_index , &box_in_map_array)
+        if(current_map_edit_type == MET_camera_trigger)
         {
-            Box box = box_in_map_buffer.data[box_index];
-            
-            if(box_collision_ray( mouse_ray_3D.position , mouse_ray_3D.direction, box , 0 , 0))
+            array_foreach(zone_index , &camera_array)
             {
-                draw_box_line(box , BLACK , 3);
+                Box zone = camera_zone_buffer.data[zone_index];
+                CameraTrigger trigger = camera_buffer.data[zone_index];
+                
+                draw_box_line(zone , Fade(WHITE , 0.2f) , 5);
+                draw_arrow_ray(zone.position , trigger.camera_target_offset , WHITE);
+            }
+        }
+        
+        if(current_map_edit_type == MET_box || current_map_edit_type == MET_camera_trigger)
+        {
+            if(last_clicked_box)
+            {
+                draw_box_line((*last_clicked_box) , WHITE , 5);
+            }
+            
+            if(hovering_box)
+            {
+                if(hovering_box != last_clicked_box)
+                {
+                    draw_box_line((*hovering_box) , Fade(WHITE , 0.5f) , 3);
+                }
             }
         }
         
@@ -4271,18 +4601,83 @@ internal void viewport_update()
         array_foreach(player_index , &player_array)
         {
             Player player = player_buffer.data[player_index];
-            Box player_box = get_box();
+            Box player_box = player.box;
             
-            player_box.position = player.position;
-            player_box.size = (Vector3){0.6, 1.0 , 0.6};
+            if(player.it_is_me)
+            {
+                BoundingBoxNode player_node = box_to_bound(player_box);
+                
+                array_foreach(array_index , &camera_array)
+                {
+                    Box zone = camera_zone_buffer.data[array_index];
+                    CameraTrigger * trigger = camera_buffer.data + array_index;
+                    
+                    if(trigger->player_within) continue;
+                    
+                    BoundingBoxNode zone_node = box_to_bound(zone);
+                    
+                    if(bounding_box_collided(zone_node , player_node))
+                    {
+                        if(check_shape((Vector3){} , box_to_point(player_box) , box_vertex_count , box_to_point(zone) , box_vertex_count))
+                        {
+                            trigger->player_within = true;
+                            add_to_list_head(array_index , &camera_within_list);
+                        }
+                    }
+                }
+                
+                list_foreach_EX(camera_index , N_node_head , node_index , &camera_within_list)
+                {
+                    Box zone = camera_zone_buffer.data[camera_index];
+                    CameraTrigger * trigger = camera_buffer.data + camera_index;
+                    
+                    if(editor_type == edit_world) 
+                    {
+                        if(current_map_edit_type == MET_camera_trigger)
+                        {
+                            draw_box_line(zone , YELLOW , 10);
+                        }
+                    }
+                    
+                    BoundingBoxNode zone_node = box_to_bound(zone);
+                    
+                    if(!check_shape((Vector3){} , box_to_point(player_box) , box_vertex_count , box_to_point(zone) , box_vertex_count))
+                    {
+                        trigger->player_within = false;
+                        delete_from_list(node_index , &camera_within_list);
+                    }
+                }
+                
+                draw_box(player_box , GOLD);
+            }
+            else
+            {
+                draw_box(player_box , GRAY);
+            }
             
-            draw_box(player_box , GOLD);
+            draw_arrow_ray(player.position , player.target_direction , WHITE);
+            draw_box( player.hammer_box , GRAY);
+            draw_box_line( player.hammer_box , BLACK , 5);
+            
+            //TODO: i should make a function that search by count
+            list_foreach( camera_index , &camera_within_list)
+            {
+                last_camera_offset = (camera_buffer.data[camera_index].camera_target_offset);
+                break;
+            }
+            
+            game_camera_position = Vector3Lerp(game_camera_position , player.position , 0.3);
+            game_camera_offset = Vector3Lerp(game_camera_offset , last_camera_offset , 0.1);
+            
             draw_box_line(player_box , BLACK , 5);
         }
     }
     
-    edit_map(grid_origin);
-    draw_origin_grid(grid_origin);
+    if(editor_type == edit_world) 
+    {
+        edit_map(grid_origin);
+        draw_origin_grid(grid_origin);
+    }
     
     if(bone_pose_to_draw_stack_count)
     {
@@ -4330,7 +4725,7 @@ internal void viewport_update()
             {
                 if(selected_reference_frame_index != -1)
                 {
-                    drag_to_move(grid_origin ,&reference_frame_buffer.data[selected_reference_frame_index] , 0);
+                    drag_to_move(&reference_frame_buffer.data[selected_reference_frame_index] , 0);
                 }
             }
         }
@@ -4342,6 +4737,7 @@ internal void viewport_update()
 
 internal void game_update()
 {
+    input_state = &client_input_state;
     
     bool window_size_changed = false;
 	local_persist Vector2 previous_windows_size = { -1 , -1};
@@ -4410,15 +4806,12 @@ internal void game_update()
     
 	app_data->mouse_position = mouse_position;
 	
-	if (!stop_mouse_input)
-	{
-		editor->target_camera_zoom -= app_data->mouse_scroll_delta * 0.5f;
-	}
+    editor->target_camera_zoom -= app_data->mouse_scroll_delta * 0.5f;
     
 	if (editor->target_camera_zoom < 0.01f) editor->target_camera_zoom = 0.01f;
 	if (editor->target_camera_zoom > 50.0f) editor->target_camera_zoom = 20.0f;
     
-	app_data->top = tan((game_camera.fovy * 0.5) * DEG2RAD);
+	app_data->top = tan((world_camera.fovy * 0.5) * DEG2RAD);
 	app_data->right = app_data->top * (app_data->window_size.x / app_data->window_size.y);
     full_screen_pixel_matrix = MatrixOrtho(0 , app_data->window_size.x , 0 , app_data->window_size.y , screen_near_clip , screen_far_clip);
     
@@ -4504,8 +4897,6 @@ internal void game_update()
     
     glViewport(0 , 0 ,app_data->window_size.x, app_data->window_size.y);
 	
-	stop_mouse_input = false;
-    
     editor_GUI();
     
 #if 1
@@ -4541,6 +4932,11 @@ internal void game_update()
     float vertical_split = 0.6;
     float horizontal_split = 0.5;
     
+    if(editor_type == demo)
+    {
+        vertical_split = 1.0;
+    }
+    
     R_Rectangle primary_viewport = {};
     R_Rectangle secondary_viewport = {};
     R_Rectangle tertiary_viewport = {};
@@ -4565,38 +4961,39 @@ internal void game_update()
     
     editor->current_camera_zoom = Lerp(editor->current_camera_zoom , editor->target_camera_zoom , 0.2f);
     
-#if 1
     SplitViewport * primary_split = all_viewport + viewport_count++;
     primary_split->viewport = primary_viewport;
-    primary_split->camera_euler = editor->editor_camera_euler;
-    primary_split->camera_offset = editor->editor_camera_offset;
-    primary_split->camera_zoom = editor->current_camera_zoom; 
     primary_split->camera_up = (Vector3){0,1,0};
     primary_split->ortho = false;
-#endif
+    primary_split->camera_euler = editor->editor_camera_euler;
+    primary_split->camera_offset = editor->editor_camera_offset;
+    primary_split->camera_zoom = editor->current_camera_zoom;//i don't need this right?? 
     
-    Vector3 primary_euler = editor->editor_camera_euler;
-    Quaternion primary_rotation = QuaternionFromEuler(primary_euler.x * DEG2RAD, primary_euler.y * DEG2RAD, primary_euler.z * DEG2RAD);
-    Vector3 primary_camera_forward = {0,0,-editor->current_camera_zoom};
-    primary_camera_forward = Vector3RotateByQuaternion(primary_camera_forward , primary_rotation);
-    
-    SplitViewport * secondary_spilt = all_viewport + viewport_count++;
-    secondary_spilt->viewport = secondary_viewport;
-    secondary_spilt->camera_euler = editor->editor_camera_euler;
-    secondary_spilt->camera_euler.y += 90;
-    secondary_spilt->camera_offset = editor->editor_camera_offset;
-    secondary_spilt->camera_zoom = editor->current_camera_zoom;
-    secondary_spilt->camera_up = (Vector3){0,1,0};
-    secondary_spilt->ortho = true;
-    
-    SplitViewport * tertiary_spilt = all_viewport + viewport_count++;
-    tertiary_spilt->viewport = tertiary_viewport;
-    tertiary_spilt->camera_euler = editor->editor_camera_euler;
-    tertiary_spilt->camera_euler.x += 90;
-    tertiary_spilt->camera_offset = editor->editor_camera_offset;
-    tertiary_spilt->camera_zoom = editor->current_camera_zoom;
-    tertiary_spilt->camera_up = Vector3Negate(Vector3Normalize(primary_camera_forward));
-    tertiary_spilt->ortho = true;
+    if(editor_type != demo)
+    {
+        Vector3 primary_euler = editor->editor_camera_euler;
+        Quaternion primary_rotation = QuaternionFromEuler(primary_euler.x * DEG2RAD, primary_euler.y * DEG2RAD, primary_euler.z * DEG2RAD);
+        Vector3 primary_camera_forward = {0,0,-editor->current_camera_zoom};
+        primary_camera_forward = Vector3RotateByQuaternion(primary_camera_forward , primary_rotation);
+        
+        SplitViewport * secondary_spilt = all_viewport + viewport_count++;
+        secondary_spilt->viewport = secondary_viewport;
+        secondary_spilt->camera_euler = editor->editor_camera_euler;
+        secondary_spilt->camera_euler.y += 90;
+        secondary_spilt->camera_offset = editor->editor_camera_offset;
+        secondary_spilt->camera_zoom = editor->current_camera_zoom;
+        secondary_spilt->camera_up = (Vector3){0,1,0};
+        secondary_spilt->ortho = true;
+        
+        SplitViewport * tertiary_spilt = all_viewport + viewport_count++;
+        tertiary_spilt->viewport = tertiary_viewport;
+        tertiary_spilt->camera_euler = editor->editor_camera_euler;
+        tertiary_spilt->camera_euler.x += 90;
+        tertiary_spilt->camera_offset = editor->editor_camera_offset;
+        tertiary_spilt->camera_zoom = editor->current_camera_zoom;
+        tertiary_spilt->camera_up = Vector3Negate(Vector3Normalize(primary_camera_forward));
+        tertiary_spilt->ortho = true;
+    }
     
     local_persist Vector2 last_mouse_position = {1,1};
     if(mouse_position.x > 0)
@@ -4642,7 +5039,6 @@ internal void game_update()
     
     for(int viewport_index = 0 ; viewport_index < viewport_count ; viewport_index++)
     {
-        
         SplitViewport current_split = all_viewport[viewport_index];
         current_viewport = current_split.viewport;
         
@@ -4650,18 +5046,29 @@ internal void game_update()
         float camera_zoom = current_split.camera_zoom;
         
         Vector3 camera_direction = Vector3RotateByQuaternion((Vector3){0,0,-camera_zoom} , camera_rotation);
-        game_camera.position = Vector3Add( camera_direction , current_split.camera_offset);
         
-        game_camera.target = current_split.camera_offset;
-        game_camera.up = current_split.camera_up;
+        if(editor_type == demo)
+        {
+            world_camera.position = Vector3Add(game_camera_position , Vector3Negate(game_camera_offset));
+            world_camera.target = game_camera_position;
+            world_camera.fovy = 45;
+        }
+        else
+        {
+            world_camera.target = current_split.camera_offset;
+            world_camera.position = Vector3Add(camera_direction , current_split.camera_offset);
+            world_camera.fovy = 90;
+        }
         
-        view_matrix = MatrixLookAt(game_camera.position, game_camera.target, game_camera.up);
+        world_camera.up = current_split.camera_up;
+        
+        view_matrix = MatrixLookAt(world_camera.position, world_camera.target, world_camera.up);
         double aspect = (double)current_viewport.width / (double)current_viewport.height;
         
         if(!current_split.ortho)
         {
-            project_matrix = MatrixPerspective(game_camera.fovy * DEG2RAD, aspect , 0.1, 200);
-            mouse_ray_3D = get_screen_to_world_ray_EX( (Vector2){mouse_x , mouse_y} ,  game_camera , current_viewport.x , current_viewport.y , current_viewport.width, current_viewport.height);
+            project_matrix = MatrixPerspective(world_camera.fovy * DEG2RAD, aspect , 0.1, 200);
+            mouse_ray_3D = get_screen_to_world_ray_EX( (Vector2){mouse_x , mouse_y} ,  world_camera , current_viewport.x , current_viewport.y , current_viewport.width, current_viewport.height);
         }
         else
         {
@@ -4931,7 +5338,7 @@ internal void game_update()
     
 	D_game_draw();
     
-	render_state.elapsed_time += DeltaTime;
+	render_state.elapsed_time += DELTA_TIME;
     
 }
 
@@ -4971,6 +5378,12 @@ internal GAME_LOOP(game_loop)
 		input_state->released_mouse_count = 0;
 		input_state->pressed_key_count = 0;
         input_state->released_key_count = 0;
+        
+        for(int key_index = 0 ; key_index < INPUT_MAX_KEY ; key_index++)
+        {
+            input_state->pressed_mouse_consumed[key_index] = false;
+            input_state->pressing_key_time[key_index] += DELTA_TIME;
+        }
         
         glfwPollEvents();
         
@@ -5075,6 +5488,9 @@ internal void save_game_state()
     
     write_data(current_map_edit_type , "map_edit_type" , int);
     
+    write_data(display_all_visual , "display_all_viusal" , bool);
+    write_data(capture_collision_non_stop , "capture_collision_non_stop" , bool);
+    
     int clip_count = 0;
     int key_frame_count = 0;
     for(int clip_index = 0 ; clip_index < MAX_CLIP; clip_index++) 
@@ -5169,17 +5585,9 @@ internal void save_map()
     current_save_memory_location = save_memory;
     current_data_header = data_header_array;
     
-    int quad_count = 0;
-    
-    array_foreach( quad_index , &quad_in_map_array )
-    {
-        quad_count++;
-    }
-    
+    int quad_count = quad_in_map_array.count;
     write_data(quad_count , "map_quad_count" , int);
-    
-    int quad_index = 0;
-    array_foreach( array_index , &quad_in_map_array )
+    array_foreach_B(array_index , quad_index , &quad_in_map_array )
     {
         Quad quad = quad_in_map_buffer.data[array_index];
         
@@ -5187,35 +5595,49 @@ internal void save_map()
         write_buffer(quad.vertex_position[vertex_top_right] , "map_quad_top_right_vertex" , Vector3 , quad_index , quad_count);
         write_buffer(quad.vertex_position[vertex_bottom_left] , "map_quad_bottom_left_vertex" , Vector3 , quad_index , quad_count);
         write_buffer(quad.vertex_position[vertex_bottom_right] , "map_quad_bottom_right_vertex" , Vector3 , quad_index , quad_count);
-        quad_index++;
     }
     
-    int box_count = 0;
-    array_foreach(box_index , &box_in_map_array)
-    {
-        box_count++;
-    }
+    int box_count = box_in_map_array.count;
     write_data(box_count , "map_box_count" , int);
-    int box_index = 0;
-    array_foreach(array_index , &box_in_map_array)
+    array_foreach_B(array_index , box_index , &box_in_map_array)
     {
         Box box = box_in_map_buffer.data[array_index];
         
         write_buffer(box.position , "map_box_position" , Vector3 , box_index , box_count);
         write_buffer(box.size , "map_box_size" , Vector3 , box_index , box_count);
         write_buffer(box.rotation , "map_box_rotation" , Quaternion , box_index , box_count);
-        box_index++;
+    }
+    
+    //clear_array(&camera_array);
+    
+    int entity_count = entity_layout_array.count;
+    write_data(entity_count , "entity_count" , int);
+    array_foreach_B(array_index , entity_index , &entity_layout_array)
+    {
+        Entity entity = entity_layout_buffer.data[array_index];
+        
+        write_buffer(entity.position , "entity_position" , Vector3 , entity_index , entity_count);
+    }
+    
+    int trigger_count = camera_array.count;
+    write_data(trigger_count , "camera_trigger_count" , int);
+    array_foreach_B(array_index , trigger_box_index , &camera_array)
+    {
+        CameraTrigger trigger = camera_buffer.data[array_index];
+        Box zone = camera_zone_buffer.data[array_index];
+        
+        write_buffer(zone.position , "camera_zone_position" , Vector3 , trigger_box_index , trigger_count);
+        write_buffer(zone.size , "camera_zone_size" , Vector3 , trigger_box_index , trigger_count);
+        write_buffer(zone.rotation , "camera_zone_rotation" , Quaternion , trigger_box_index , trigger_count);
+        write_buffer(trigger.camera_target_offset , "camera_zone_offset" , Vector3 , trigger_box_index ,  trigger_count);
     }
     
     write_data(selected_reference_frame_index , "selected reference frame" , int);
     
     int reference_frame_count = 0;
-    list_foreach(array_index , &reference_frame_list)
-    {
-        reference_frame_count++;
-    }
-    
+    list_foreach(array_index , &reference_frame_list) reference_frame_count++;
     write_data(reference_frame_count , "reference frame count" , int);
+    
     int reference_frame_index = 0;
     list_foreach(array_index , &reference_frame_list)
     {
@@ -5269,6 +5691,9 @@ internal void load_game_state()
     read_data(editor->current_camera_zoom , "editor_current_zoom" , float);
     
     read_data(current_map_edit_type , "map_edit_type" , int);
+    
+    read_data(display_all_visual , "display_all_viusal" , bool);
+    read_data(capture_collision_non_stop , "capture_collision_non_stop" , bool);
     
     int previous_key_frame_count = 0;
     read_data(previous_key_frame_count , "key_frame_count" , int);
@@ -5479,15 +5904,18 @@ internal void client_init()
     editor->assigning_parent_bone = false;
     
     editor->selected_bone_stack = allocate_temp(BoneSelection , 256);
+    
+    allocate_buffer(&collision_visual_buffer , CollisionVisual , 64 , AT_temp);
+    allocate_buffer(&frame_collision_buffer , FrameCollision , 64 , AT_temp);
 }
 
 internal void game_init()
 {
-    game_camera.target = (Vector3){};
-	game_camera.position = (Vector3){ 0,0,-1 };
-    game_camera.projection = CAMERA_PERSPECTIVE;
-	game_camera.up = (Vector3){ 0,1,0 };
-	game_camera.fovy = 90;
+    world_camera.target = (Vector3){};
+	world_camera.position = (Vector3){ 0,0,-1 };
+    world_camera.projection = CAMERA_PERSPECTIVE;
+	world_camera.up = (Vector3){ 0,1,0 };
+	world_camera.fovy = 90;
     
     timeBeginPeriod(1);
     
@@ -5504,7 +5932,7 @@ internal void game_init()
     
     if (shader_compile_failed) return;
     
-    glfwSetKeyCallback(app_data->current_window, key_callback);
+    glfwSetKeyCallback(app_data->current_window, key_call_back);
     glfwSetMouseButtonCallback(app_data->current_window, mouse_call_back);
     
     double game_load_time = time_stamp();
@@ -5512,7 +5940,8 @@ internal void game_init()
     load_map();
     printf("\nGame Load Time: %f\n" , (time_stamp() - game_load_time) / (1000.0 * 1000.0));
     
-    generate_nav_mesh();
+    clear_array(&quad_in_map_array);
+    //generate_nav_mesh();
     
     search_queue_capacity = 128;
     search_queue = allocate_temp( Int3 , search_queue_capacity);

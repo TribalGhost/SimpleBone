@@ -123,7 +123,8 @@ enum DrawFlag
 typedef struct RenderState RenderState;
 struct RenderState
 {
-	
+	bool same_brush;
+    
     unsigned int current_texture;
 	D_ShaderType previous_shader_input;
 	D_ShaderType current_shader_input;

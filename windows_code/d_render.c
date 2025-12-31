@@ -617,8 +617,8 @@ internal void D_game_draw()
         }
     }
     
-    Vector3 camera_position = game_camera.position;
-    Vector3 camera_direction = Vector3Subtract(game_camera.target , camera_position);
+    Vector3 camera_position = world_camera.position;
+    Vector3 camera_direction = Vector3Subtract(world_camera.target , camera_position);
     camera_direction = Vector3Normalize(camera_direction);
     
 	glUniform1i(current_shader_input->uniform_location[SU_texture_0], 0);    
@@ -902,9 +902,9 @@ internal void draw_triangle(Vector3* all_vertices ,Vector4 vertex_color)
     
 	Vector2 texture_coord[3] = {};
     
-    texture_coord[vertex_bottom_left] = (Vector2){ 0,1 };
-    texture_coord[vertex_top_left] = (Vector2){ 1,1 };
-    texture_coord[vertex_top_right] = (Vector2){ 1,0 };
+    texture_coord[0] = (Vector2){ 0,1 };
+    texture_coord[1] = (Vector2){ 1,1 };
+    texture_coord[2] = (Vector2){ 1,0 };
     
 	//i'm so confused with the vertics order     
 	vertex_index[0] = vertex_count;
@@ -1030,6 +1030,14 @@ internal void draw_quad_with_texture(Quad quad,int target_texture)
     Vector3 a_to_b = Vector3Subtract(all_vertices[0] , all_vertices[1]);
     Vector3 a_to_c = Vector3Subtract(all_vertices[0] , all_vertices[2]);
     Vector3 normal = Vector3Normalize(Vector3CrossProduct(a_to_b , a_to_c));
+    
+    Vector3 quad_centre = {};
+    for(int quad_vertex_index = 0 ; quad_vertex_index < quad_vertex_count ; quad_vertex_index++) quad_centre = Vector3Add(quad_centre , quad.vertex_position[quad_vertex_index]);
+    quad_centre.x /= quad_vertex_count;
+    quad_centre.y /= quad_vertex_count;
+    quad_centre.z /= quad_vertex_count;
+    
+    if(Vector3DotProduct(Vector3Subtract(world_camera.position , quad_centre) , normal) < 0) normal = Vector3Negate(normal);
     
 	//i'm so confused with the vertics order     
 	vertex_index[0] = vertex_count;
@@ -1384,7 +1392,7 @@ internal void draw_line_quad(Quad quad , Vector3 line_start , Vector3 line_end ,
 	int vertex_count = ShaderInput->vertices_count;    
 	ShaderInput->vertices_count+=4;
     
-	render_state.fake_depth += 0.001f;
+    if(!render_state.same_brush) render_state.fake_depth += 0.001f;
     
 	Vector3* all_vertices = quad.vertex_position;
 	Vector4* vertex_color = quad.vertex_color;
@@ -1653,8 +1661,8 @@ internal void draw_round_line(Vector3 start , Vector3 end , float size , Color s
     if(pruning_3D_line)
     {
         
-        Vector3 plane_origin = game_camera.position;
-        Vector3 plane_normal = Vector3Subtract(game_camera.target , game_camera.position);
+        Vector3 plane_origin = world_camera.position;
+        Vector3 plane_normal = Vector3Subtract(world_camera.target , world_camera.position);
         
         Vector3 origin_to_start_direction = Vector3Subtract(start , plane_origin );
         Vector3 origin_to_end_direction = Vector3Subtract(end , plane_origin );
@@ -1732,7 +1740,7 @@ internal void draw_round_line(Vector3 start , Vector3 end , float size , Color s
     
 	//this look kinda cool	
 #if 0
-	Vector3 StartCameraDirection = Vector3Subtract(app_data->game_camera.position , start);
+	Vector3 StartCameraDirection = Vector3Subtract(app_data->camera.position , start);
 	StartCameraDirection = Vector3Normalize(StartCameraDirection);
 	Quaternion Startrotation = QuaternionFromVector3ToVector3({0,0,-1}, StartCameraDirection);
 #endif
@@ -1879,11 +1887,14 @@ internal void draw_rect_line_C(Rect rect ,Vector4 line_color , float line_size)
     
 	Color color_bytes = linear_to_color(line_color);
     
+    render_state.same_brush = true;
+    
 	draw_round_line(rect_vertex[vertex_top_right] , rect_vertex[vertex_top_left] , line_size, color_bytes , color_bytes );
 	draw_round_line(rect_vertex[vertex_top_left] , rect_vertex[vertex_bottom_left] , line_size, color_bytes , color_bytes );
 	draw_round_line(rect_vertex[vertex_bottom_left] , rect_vertex[vertex_bottom_right] , line_size, color_bytes , color_bytes );
 	draw_round_line(rect_vertex[vertex_bottom_right] , rect_vertex[vertex_top_right] , line_size, color_bytes , color_bytes );
     
+    render_state.same_brush = false;
 }
 
 internal void draw_rect_line_D(Rect rect, Vector4 line_color)

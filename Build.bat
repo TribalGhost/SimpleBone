@@ -8,13 +8,13 @@ pushd CodeGenerationbuild
 
 set CodeGenBuildStartTime=%time%
 
-cl /w /Zi /FC /MD /Gm- ..\windows_code\d_codegeneration.c /link /INCREMENTAL:no /libpath:..\lib /out:CodeGeneration.exe /SUBSYSTEM:CONSOLE /ENTRY:mainCRTStartup
+::cl /w /Zi /FC /MD /Gm- ..\windows_code\d_codegeneration.c /link /INCREMENTAL:no /libpath:..\lib /out:CodeGeneration.exe /SUBSYSTEM:CONSOLE /ENTRY:mainCRTStartup
 
 set CodeGenBuildEndTime=%time%
 
 set CodeGenStartTime=%time%
 
-CodeGeneration.exe >NUL
+::CodeGeneration.exe >NUL
 
 set CodeGenEndTime=%time%
 

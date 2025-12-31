@@ -25,23 +25,21 @@ internal void APIENTRY DebugCallback(GLenum source, GLenum type, GLuint id, GLen
 {
     if(type != GL_DEBUG_TYPE_PERFORMANCE)
     {
-    }
-    
-    if (severity == GL_DEBUG_SEVERITY_HIGH || severity == GL_DEBUG_SEVERITY_MEDIUM)
-    {
-        printf(message);
-        printf("\n");
-        
-        if (IsDebuggerPresent())
+        if (severity == GL_DEBUG_SEVERITY_HIGH || severity == GL_DEBUG_SEVERITY_MEDIUM)
         {
-            printf("OpenGL error - check the callstack in debugger");
+            printf(message);
+            printf("\n");
+            
+            if (IsDebuggerPresent())
+            {
+                printf("OpenGL error - check the callstack in debugger");
+                CATCH;
+            }
+            
+            printf("OpenGL API usage error! Use debugger to examine call stack!");
             CATCH;
         }
-        
-        printf("OpenGL API usage error! Use debugger to examine call stack!");
-        CATCH;
     }
-    
 }
 
 internal bool compare_string( char * string_A, char * string_B)
@@ -94,6 +92,7 @@ int main(int parameter_count, char ** parameters)
         }
         else if(compare_string(parameter , "-client_local"))
         {
+            Sleep(1000);
             app_data->is_client = true;
             app_data->host_name = "127.0.0.1";
         }

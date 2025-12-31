@@ -75,8 +75,9 @@ struct Array
 {
 	bool * valid_array;
     
+    int count;
 	int capacity;
-	int count;
+	int upper_bound;
 	int lowest_index;
 };
 
@@ -184,48 +185,6 @@ struct Quad
 
 BUFFER(QuadBuffer , Quad);
 
-typedef struct ShapeImpactData ShapeImpactData;
-struct ShapeImpactData
-{
-    Vector3 * shape_a_vertices;
-    int shape_a_vertices_count;
-    Vector3 * shape_b_vertices;
-    int shape_b_vertices_count;
-    
-    Vector3 ray_direction;
-    bool stop_if_too_far;
-    
-    float time_of_impact;
-    Vector3 impact_point;
-    Vector3 impact_normal;
-};
-
-typedef struct GJK_State GJK_State;
-struct GJK_State
-{
-    Vector3 simplex[4];
-    int simplex_count;
-    Vector3 search_direction;
-    Vector3 origin;
-};
-
-typedef struct ConvexShape ConvexShape;
-struct ConvexShape
-{
-    Vector3 * vertices; 
-    int vertices_count; 
-    Vector3 velocity;
-    Vector3 position;
-};
-
-typedef struct RayCastResult RayCastResult;
-struct RayCastResult
-{
-    bool impacted;
-    Vector3 surface_normal;
-    float closest_hit_time;
-};
-
 typedef enum BoxFace BoxFace;
 enum BoxFace
 {
@@ -255,6 +214,15 @@ enum BoxVertex
 
 global Rect box_rect[face_count] = {};
 
+typedef enum D_Direction D_Direction;
+enum D_Direction
+{
+    D_right,
+    D_up,
+    D_forward,
+    D_count,
+};
+
 typedef struct Box Box;
 struct Box
 {
@@ -265,13 +233,87 @@ struct Box
 
 BUFFER(BoxBuffer , Box);
 
+typedef struct ShapeImpactData ShapeImpactData;
+struct ShapeImpactData
+{
+    Vector3 * shape_a_vertices;
+    int shape_a_vertices_count;
+    
+    Vector3 * shape_b_vertices;
+    int shape_b_vertices_count;
+    
+    Vector3 ray_direction;
+    bool stop_if_too_far;
+    
+    float time_of_impact;
+    Vector3 impact_point;
+    Vector3 impact_normal;
+};
+
+typedef struct GJK_State GJK_State;
+struct GJK_State
+{
+    Vector3 simplex[4];
+    int simplex_count;
+    Vector3 search_direction;
+    Vector3 origin;
+};
+
 typedef enum ShapeType ShapeType;
 enum ShapeType
 {
     ST_invalid,
     ST_quad,
     ST_box,
+    ST_capsule,
 };
+
+typedef struct ShapeUnion ShapeUnion;
+struct ShapeUnion
+{
+    ShapeType type;
+    union
+    {
+        Box box;
+        Quad quad;
+    };
+};
+
+BUFFER(ShapeUnionBuffer , ShapeUnion);
+
+typedef struct ConvexShape ConvexShape;
+struct ConvexShape
+{
+    //TODO: i don't think capsule's support function is correct
+    //if it is i don't know what to do
+    //try sphere?
+    
+    ShapeUnion shape;
+    Vector3 velocity;
+    Vector3 position;
+    
+    Vector3 * shape_vertices;
+    int shape_vertices_count;
+    
+    bool get_all;
+    bool capture_collision;
+};
+
+typedef struct RayCastResult RayCastResult;
+struct RayCastResult
+{
+    Vector3 surface_normal;
+    float hit_time;
+};
+
+typedef struct CollisionResult CollisionResult;
+struct CollisionResult
+{
+    Vector3 velocity;
+    Vector3 offset;
+};
+
+BUFFER(RayCastResultBuffer , RayCastResult);
 
 typedef struct Shape Shape;
 struct Shape
@@ -325,13 +367,23 @@ struct CellIterator
     int cell_forward;
 };
 
+typedef struct CameraTrigger CameraTrigger;
+struct CameraTrigger
+{
+    Vector3 camera_target_offset;
+    bool player_within;
+};
+
+BUFFER(CameraTriggerBuffer , CameraTrigger);
+
 #define INPUT_MAX_KEY 16
 
 typedef struct InputState InputState;
 struct InputState
 {
     int pressing_key[INPUT_MAX_KEY];
-	int pressing_key_count;
+    float pressing_key_time[INPUT_MAX_KEY];
+    int pressing_key_count;
     
 	int pressed_key[INPUT_MAX_KEY];
 	int pressed_key_count;
@@ -347,11 +399,15 @@ struct InputState
     
 	int pressed_mouse[INPUT_MAX_KEY];
 	int pressed_mouse_count;
+    
+    bool pressed_mouse_consumed[INPUT_MAX_KEY];
 };
 
 typedef struct Player Player;
 struct Player
 {
+    bool it_is_me;
+    
     Vector3 camera_target;
     Vector3 camera_position;
     
@@ -360,9 +416,36 @@ struct Player
     Box box;
     
     bool grounded;
+    
+    Vector3 target_direction;
+    Box hammer_box;
+    Vector3 previous_hammer_position;
+    
+    float hammer_angle;
+    bool wielding;
+    float wield_time;
+    float wield_cool_down;
+    
+    int first_pressed_key_index;
+    bool first_key_pressed;
+    bool second_key_pressed;
+    
+    bool jumped;
 };
 
 BUFFER(PlayerBuffer , Player);
+
+typedef struct Entity Entity;
+struct Entity
+{
+    int generation_index;
+    
+    Vector3 position;
+    Vector3 velocity;
+    Box box;
+};
+
+BUFFER(EntityBuffer , Entity);
 
 typedef struct Int3 Int3;
 struct Int3
@@ -391,6 +474,47 @@ struct PathResult
     Int3Buffer buffer;
 };
 
+typedef struct CollisionVisual CollisionVisual;
+struct CollisionVisual
+{
+    Vector3 a;
+    Vector3 b;
+    Vector3 c;
+    
+    Vector3 closest_point;
+    Vector3 ray_end;
+    
+    bool collided;
+    Vector3 collision_point;
+    Vector3 collision_normal;
+    
+    ShapeUnion shape_a;
+    ShapeUnion shape_b;
+};
+
+BUFFER(CollisionVisualBuffer , CollisionVisual);
+
+typedef enum CollisionType CollisionType;
+enum CollisionType
+{
+    CT_raycast,
+    CT_collision,
+};
+
+typedef struct FrameCollision FrameCollision;
+struct FrameCollision
+{
+    int collision_type;
+    Vector3 collision_visual_offset;
+    int slice_start;
+    int slice_end;
+    
+    Vector3 start;
+    Vector3 velocity;
+};
+
+BUFFER(FrameCollisionBuffer , FrameCollision);
+
 global long long previous_update_count = -1;
 global Box debug_box = {};
 
@@ -398,7 +522,7 @@ global Box debug_box = {};
 #define GRID_SIZE (1.0)
 #define UNIT_SIZE (GRID_SIZE / ((double)SUBDIVISION))
 
-global Camera3D game_camera = {};
+global Camera3D world_camera = {};
 
 global unsigned int search_index = 0;
 
@@ -423,9 +547,25 @@ global int convex_shape_a_vertices_count = 0;
 global Vector3 * convex_shape_b_vertices = 0; 
 global int convex_shape_b_vertices_count = 0;
 
+global bool store_multiple_frame_collision = false;
+global int current_frame_collision_index = 0;
+global FrameCollisionBuffer frame_collision_buffer = {};
+global FrameCollision * current_frame_collision = 0;
+
+global bool capture_collision = false;
+global bool capture_collision_non_stop = false;
+global bool display_all_visual = false;
+global bool display_all_captured_collision = false;
+global int current_collision_visual_index = 0;
+
+global Vector3 collision_visual_offset = {};
+global ShapeUnion shape_a_union;
+global ShapeUnion shape_b_union;
+
+global CollisionVisualBuffer collision_visual_buffer = {};
+
 //===game data===
 
-global bool stop_mouse_input = false;
 global InputState * input_state = 0;
 
 global long long game_update_count = 0;
@@ -433,14 +573,17 @@ global long long game_update_count = 0;
 global PlayerBuffer player_buffer = {};
 global Array player_array = {};
 
+global EntityBuffer entity_layout_buffer = {};
+global Array entity_layout_array = {};
+
+global EntityBuffer entity_active_buffer = {};
+global Array entity_active_array = {};
+
 global Array box_in_map_array = {};
 global BoxBuffer box_in_map_buffer = {};
 
 global Array quad_in_map_array = {};
 global QuadBuffer quad_in_map_buffer = {};
-
-global Vector3Buffer reference_frame_buffer = {};
-global List reference_frame_list = {};
 
 //===network===
 
@@ -457,6 +600,7 @@ enum DataFlag
     DF_released_mouse_count,
     
     DF_pressing_key,
+    DF_pressing_key_time,
     DF_pressed_key,
     DF_released_key,
     DF_pressing_mouse,
@@ -467,9 +611,11 @@ enum DataFlag
     DF_camera_position,
     
     DF_player_count,
-    DF_player_position,
-    DF_player_velocity,
-    DF_player_grounded,
+    //DF_player_position,
+    //DF_player_velocity,
+    //DF_player_grounded,
+    DF_whole_player,
+    DF_player_owned,
 };
 
 typedef enum ReceiveOrder ReceiveOrder;

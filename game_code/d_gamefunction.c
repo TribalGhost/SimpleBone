@@ -208,6 +208,18 @@ internal Vector4 quaternion_to_vector4(Quaternion _Quaternion)
 	return result;
 }
 
+internal Vector3 project_on_plane(Vector3 direction , Vector3 normal)
+{
+    Vector3 right_axis = Vector3CrossProduct(direction , normal);
+    if(Vector3LengthSqr(right_axis) > 0.0000001f)
+    {
+        Vector3 forward_axis = Vector3CrossProduct(normal , right_axis);
+        direction = Vector3Project(direction , forward_axis);
+    }
+    
+    return direction;
+}
+
 internal float cubic_bezier(float x1 , float x2 , float x3 ,float x4, float t)
 {
     float xa = Lerp( x1 , x2 , t );
@@ -325,6 +337,16 @@ internal bool key_pressing(int key)
     return false;
 }
 
+internal float key_pressing_time(int key)
+{
+    for (int i = 0; i < input_state->pressing_key_count; i++)
+	{
+		if (input_state->pressing_key[i] == key) return input_state->pressing_key_time[i];
+	}
+    
+    return 0;
+}
+
 internal bool key_pressed(int key)
 {
 	for (int i = 0; i < input_state->pressed_key_count; i++)
@@ -345,7 +367,7 @@ internal bool key_released(int key)
 	return false;
 }
 
-internal bool mouse_pressing_no_check(int button)
+internal bool mouse_pressing(int button)
 {
     for(int mouse_index = 0; mouse_index < input_state->pressing_mouse_count; mouse_index++)
     {
@@ -355,19 +377,11 @@ internal bool mouse_pressing_no_check(int button)
     return false;
 }
 
-internal bool mouse_pressing(int Button)
-{
-    if(stop_mouse_input) return false;
-    
-    return mouse_pressing_no_check(Button);
-}
-
-
 internal bool mouse_pressed_no_check(int button)
 {
 	for (int i = 0; i < input_state->pressed_mouse_count; i++)
 	{
-		if (input_state->pressed_mouse[i] == button)return true;
+		if (input_state->pressed_mouse[i] == button) return true;
 	}
     
 	return false;
@@ -375,14 +389,28 @@ internal bool mouse_pressed_no_check(int button)
 
 internal bool mouse_pressed(int button)
 {
-    if(stop_mouse_input) return false;
+    for (int i = 0; i < input_state->pressed_mouse_count; i++)
+	{
+		if (input_state->pressed_mouse[i] == button) 
+        {
+            if(input_state->pressed_mouse_consumed[i])
+            {
+                return false;
+            }
+            else
+            {
+                input_state->pressed_mouse_consumed[i] = true;
+                return true;
+            }
+        }
+	}
     
-    return mouse_pressed_no_check(button);
+    return false;
 }
 
-internal bool mouse_released_no_check(int button)
+internal bool mouse_released(int button)
 {
-	for (int i = 0; i < input_state->released_mouse_count; i++)
+    for (int i = 0; i < input_state->released_mouse_count; i++)
 	{
 		if (input_state->released_mouse[i] == button) return true;
 	}
@@ -390,17 +418,12 @@ internal bool mouse_released_no_check(int button)
 	return false;
 }
 
-internal bool mouse_relased(int button)
-{
-    if(stop_mouse_input) return false;
-    
-    return mouse_released_no_check(button);
-}
-
 #define allocate_temp( type , count) (type*)allocate_temp_(sizeof(type)*(count))
 
 internal unsigned char* allocate_temp_(int size)
 {
+    if(size < 0) CATCH;
+    
 	if (size == 0)
 	{
 		return 0;
@@ -422,6 +445,8 @@ internal unsigned char* allocate_temp_(int size)
 
 internal unsigned char * allocate_frame_(int size)
 {
+    if(size < 0) CATCH;
+    
     if (size == 0)
 	{
 		return 0;
@@ -934,8 +959,9 @@ internal void reallocate_array(Array * array , int allocate_type)
         new_array.valid_array[index] = array->valid_array[index];
     }
     new_array.capacity = new_capacity;
-    new_array.count = array->count;
+    new_array.upper_bound = array->upper_bound;
     new_array.lowest_index = array->lowest_index;
+    new_array.count = array->count;
     
     (*array) = new_array;
 }
@@ -1545,26 +1571,30 @@ internal bool delete_from_list(int node_index_to_delete , List * list)
 
 internal void clear_array(Array * array)
 {
-	for (int array_index = 0; array_index < array->count; array_index++)
+	for (int array_index = 0; array_index < array->upper_bound; array_index++)
 	{
 		array->valid_array[array_index] = false;
 	}
     
-	array->count = 0;
+    array->count = 0;
+	array->upper_bound = 0;
 	array->lowest_index = 0;
 }
 
 internal void recheck_array(Array * array)
 {
 	array->lowest_index = 0;
+	array->upper_bound = 0;
 	array->count = 0;
-	for( ; array->valid_array[array->lowest_index] ;array->lowest_index++);
+    
+    for( ; array->valid_array[array->lowest_index] ;array->lowest_index++);
     
 	for (int i = 0; i < array->capacity; i++)
 	{
 		if (array->valid_array[i])
 		{
-			array->count = i + 1;
+			array->count++;
+            array->upper_bound = i + 1;
 		}
 	}
 }
@@ -1579,8 +1609,9 @@ internal int add_to_array(Array * array)
     
 	array->valid_array[array->lowest_index] = true;
     int data_index = array->lowest_index;
+    array->count++;
     
-	for (; ; )
+	for (;;)
     {
         if(array->lowest_index >= array->capacity)
         {
@@ -1596,10 +1627,10 @@ internal int add_to_array(Array * array)
         array->lowest_index++;
     }
     
-	if (array->count < array->lowest_index)
-		array->count = array->lowest_index;
+	if (array->upper_bound < array->lowest_index)
+		array->upper_bound = array->lowest_index;
     
-	if (array->count > array->capacity) CATCH;
+	if (array->upper_bound > array->capacity) CATCH;
     
 	return data_index;
 }
@@ -1609,7 +1640,7 @@ internal bool delete_from_array(Array * array , int data_index)
 	if (data_index == -1)
 		return false;
     
-    if(data_index >= array->count) CATCH;
+    if(data_index >= array->upper_bound) CATCH;
     
 	array->valid_array[data_index] = false;
     
@@ -1620,8 +1651,9 @@ internal bool delete_from_array(Array * array , int data_index)
 	for( ; array->valid_array[test_index] ;test_index++);
 	if (test_index != array->lowest_index) CATCH;
 	
-	for ( ; (!array->valid_array[array->count - 1] ) && (array->count  > 0 );array->count--);
+	for ( ; (!array->valid_array[array->upper_bound - 1] ) && (array->upper_bound  > 0 );array->upper_bound--);
     
+    array->count--;
 	return true;
 }
 
@@ -1632,19 +1664,21 @@ internal bool array_full(Array * array)
 
 internal bool iterate_array(int * data_index , Array * array)
 {
-    if((*data_index) >= array->count) return false;
+    if((*data_index) >= array->upper_bound) return false;
     
     for(;;)
     {
         if(array->valid_array[(*data_index)]) return true;
         
         (*data_index)++;
-        if((*data_index) >= array->count) return false;
+        if((*data_index) >= array->upper_bound) return false;
     }
 }
 
 //this is much better
 #define array_foreach(data_index , array) for(int data_index = 0 ; iterate_array(&data_index , (array)) ; data_index++)
+
+#define array_foreach_B(data_index , iterate_index , array) for(int data_index = 0 , iterate_index = 0; iterate_array(&data_index , (array)) ; data_index++ , iterate_index++)
 
 internal Box get_box()
 {
@@ -1664,8 +1698,19 @@ internal void create_a_whole_new_world()
     allocate_buffer(&box_in_map_buffer , Box , 16 , AT_temp);
     box_in_map_array = allocate_array(16 , AT_temp);
     
+    allocate_buffer(&camera_buffer , CameraTrigger , 16 , AT_temp);
+    allocate_buffer(&camera_zone_buffer , Box , 16 , AT_temp);
+    camera_array = allocate_array(16 , AT_temp);
+    camera_within_list = allocate_list(16 , AT_temp);
+    
     allocate_buffer(&player_buffer , Player , 16 , AT_temp);
     player_array = allocate_array(16 , AT_temp);
+    
+    allocate_buffer(&entity_layout_buffer , Entity , 16 , AT_temp);
+    entity_layout_array = allocate_array(16 , AT_temp);
+    
+    allocate_buffer(&entity_active_buffer , Entity , 16 , AT_temp);
+    entity_active_array = allocate_array(16 , AT_temp);
 }
 
 internal Vector3 * box_to_point(Box box)
@@ -1814,7 +1859,6 @@ internal Vector3 position_to_grid(Vector3 position , float size)
 
 internal Vector3 get_farest_point_by_direction( Vector3 direction , Vector3 * points , int point_count)
 {
-    
     Vector3 furthest_point = {};
     float furthest_distance = -FLT_MAX;
     
@@ -1833,6 +1877,29 @@ internal Vector3 get_farest_point_by_direction( Vector3 direction , Vector3 * po
 
 internal Vector3 get_support_point(Vector3 direction)
 {
+#if 0
+    Vector3 farest_direction_a = {};
+    if(convex_shape_a_is_capsule)
+    {
+        Vector3 capsule_direction = {0,fabs(convex_shape_a_capsule_box.size.y * 0.5f),0};
+        capsule_direction = Vector3RotateByQuaternion(capsule_direction , convex_shape_a_capsule_box.rotation);
+        
+        if(Vector3DotProduct(capsule_direction , direction) < 0)
+        {
+            capsule_direction = Vector3Negate(capsule_direction);
+        }
+        
+        Vector3 sphere_offset =Vector3Scale(Vector3Normalize(direction) , convex_shape_a_capsule_box.size.x * 0.5f);
+        
+        farest_direction_a = Vector3Add(sphere_offset , capsule_direction);
+        farest_direction_a = Vector3Add(farest_direction_a , convex_shape_a_capsule_box.position);
+    }
+    else
+    {
+        farest_direction_a = get_farest_point_by_direction( Vector3Negate(direction) , convex_shape_a_vertices , convex_shape_a_vertices_count);
+    }
+#endif
+    
     Vector3 farest_direction_a = get_farest_point_by_direction( Vector3Negate(direction) , convex_shape_a_vertices , convex_shape_a_vertices_count);
     Vector3 farest_direction_b = get_farest_point_by_direction(direction , convex_shape_b_vertices , convex_shape_b_vertices_count);
     
@@ -2125,12 +2192,13 @@ internal bool check_shape(Vector3 origin , Vector3 * vertices_a , int vertices_a
     
     for(;;)
     {
-        if(iterate_count > 20)
+        if(iterate_count > 50)
         {
             printf("too much %d %lld\n" , iterate_count , game_update_count);
-            CATCH;
+            //CATCH;
             break;
         }
+        
         iterate_count++;
         
         Vector3 new_support_point = get_support_point(state.search_direction);
@@ -2151,9 +2219,7 @@ internal bool check_shape(Vector3 origin , Vector3 * vertices_a , int vertices_a
         }
     }
     
-#if 1
     //draw_simplex(&state);
-#endif
     
     return result;
 }
@@ -2326,7 +2392,7 @@ internal bool check_shape_impact(ShapeImpactData * data)
             
             simplex_iterate_count++;
             total_simplex_iterate_count++;
-            if(total_simplex_iterate_count > 50)
+            if(total_simplex_iterate_count > 30)
             {
                 printf("ray iterate too many %lld\n" , game_update_count);
                 break;
@@ -2390,8 +2456,6 @@ internal bool check_shape_impact(ShapeImpactData * data)
                 
                 closest_point = current_closest_point;
                 
-                //simplex[vertex_to_replace] = new_support_point;
-                
                 Vector3 a_to_b = Vector3Subtract(b , a);
                 Vector3 b_to_c = Vector3Subtract(c , b);
                 Vector3 c_to_a = Vector3Subtract(a , c);
@@ -2432,17 +2496,34 @@ internal bool check_shape_impact(ShapeImpactData * data)
                                 //ray_end = hit_point;
                                 result = true;
                             }
-                            
                         }
                     }
                 }
                 
-                //draw_simplex_triangle(a , b, c);
-                //draw_arrow_line_B( closest_point , ray_end  , Fade(PINK , 0.5f));
+                if(capture_collision)
+                {
+                    if(buffer_full(collision_visual_buffer))
+                    {
+                        reallocate_buffer(&collision_visual_buffer , AT_temp);
+                    }
+                    
+                    CollisionVisual * collision_visual = collision_visual_buffer.data + collision_visual_buffer.count++;
+                    (*collision_visual) = (CollisionVisual){}; 
+                    
+                    collision_visual->a = Vector3Add(a , collision_visual_offset);
+                    collision_visual->b = Vector3Add(b , collision_visual_offset);
+                    collision_visual->c = Vector3Add(c , collision_visual_offset);
+                    collision_visual->closest_point = Vector3Add(closest_point , collision_visual_offset);
+                    collision_visual->ray_end = Vector3Add( ray_end , collision_visual_offset);
+                    
+                    collision_visual->shape_a = shape_a_union;
+                    collision_visual->shape_b = shape_b_union;
+                }
+                
                 break;
             }
             
-            if(vertex_to_replace == -1) break;
+            if(vertex_to_replace == -1) CATCH;
             
             simplex[vertex_to_replace] = new_support_point;
         }
@@ -2461,7 +2542,12 @@ internal bool check_shape_impact(ShapeImpactData * data)
         }
 #endif
         
-        if(total_simplex_iterate_count > 50) break;
+        if(total_simplex_iterate_count > 50) 
+        {
+            printf("too many iteration %lld\n" , game_update_count);
+            break;
+        }
+        
         if(result) break;
         
         Vector3 surface_normal = Vector3Subtract(ray_end , closest_point);
@@ -2472,9 +2558,18 @@ internal bool check_shape_impact(ShapeImpactData * data)
             {
                 if(Vector3DistanceSqr(ray_end , closest_point) < small_number * small_number)
                 {
+                    Vector3 a = simplex[0];
+                    Vector3 b = simplex[1];
+                    Vector3 c = simplex[2];
+                    
+                    Vector3 a_to_b = Vector3Subtract(b , a);
+                    Vector3 b_to_c = Vector3Subtract(c , b);
+                    Vector3 c_to_a = Vector3Subtract(a , c);
+                    Vector3 simplex_normal = Vector3CrossProduct(a_to_b , c_to_a);
+                    
                     data->impact_point = ray_end;
                     data->time_of_impact = ray_time;
-                    data->impact_normal = surface_normal;
+                    data->impact_normal = simplex_normal;
                     result = true;
                 }
             }
@@ -2505,7 +2600,6 @@ internal bool check_shape_impact(ShapeImpactData * data)
         
         ray_end = Vector3Scale(data->ray_direction , ray_time);
         ray_end = Vector3Add( (Vector3){} , ray_end);
-        
     }
     
     //printf("total iterate count : %d\n", total_simplex_iterate_count);
@@ -2524,6 +2618,16 @@ internal void get_bound(Vector3 * vertices , int vertices_count , Vector3 * righ
         if(left_bottom_backward->y > vertex.y) left_bottom_backward->y = vertex.y;
         if(left_bottom_backward->z > vertex.z) left_bottom_backward->z = vertex.z;
     }
+}
+
+internal BoundingBoxNode box_to_bound(Box box)
+{
+    BoundingBoxNode node = {};
+    node.right_top_forward = (Vector3){-FLT_MAX , -FLT_MAX , -FLT_MAX};
+    node.left_bottom_backward = (Vector3){FLT_MAX , FLT_MAX , FLT_MAX};
+    
+    get_bound(box_to_point(box) , box_vertex_count , &node.right_top_forward , &node.left_bottom_backward);
+    return node;
 }
 
 internal bool bounding_box_collided(BoundingBoxNode box_a , BoundingBoxNode box_b)
@@ -2598,25 +2702,81 @@ internal bool bounding_box_collided(BoundingBoxNode box_a , BoundingBoxNode box_
     return false;
 }
 
-internal ShapeBuffer get_collided_bounding_box(ConvexShape convex_shape)
+internal void shape_union_to_vertices(ShapeUnion shape_union , Vector3 ** vertices , int * vertices_count)
+{
+    if(shape_union.type == ST_box)
+    {
+        (*vertices) = box_to_point(shape_union.box);
+        (*vertices_count) = box_vertex_count;
+    }
+    else if(shape_union.type == ST_quad)
+    {
+        (*vertices) = shape_union.quad.vertex_position;
+        (*vertices_count) = quad_vertex_count;
+    }
+    else 
+    {
+        CATCH;
+    }
+}
+
+internal void shape_to_vertices(Shape shape , Vector3 ** vertices , int * vertices_count)
+{
+    ShapeUnion shape_union = {};
+    shape_union.type = shape.type;
+    
+    if(shape.type == ST_box)
+    {
+        shape_union.box = box_in_map_buffer.data[shape.index];
+    }
+    else if(shape.type == ST_quad)
+    {
+        shape_union.quad = quad_in_map_buffer.data[shape.index];
+    }
+    else 
+    {
+        CATCH;
+    }
+    
+    shape_union_to_vertices(shape_union , vertices , vertices_count);
+}
+
+internal ShapeUnionBuffer get_collided_bounding_box(ConvexShape convex_shape)
 {
     double tree_walk_time = time_stamp();
     
-    Vector3 * all_vertices = allocate_frame(Vector3 , convex_shape.vertices_count * 2);
-    for(int vertex_index = 0 ; vertex_index < convex_shape.vertices_count ; vertex_index++)
+    shape_union_to_vertices(convex_shape.shape , &convex_shape.shape_vertices , &convex_shape.shape_vertices_count);
+    
+    if(convex_shape.shape.type == ST_quad)
     {
-        all_vertices[vertex_index] = convex_shape.vertices[vertex_index];
+        convex_shape.shape_vertices = convex_shape.shape.quad.vertex_position;
+        convex_shape.shape_vertices_count = quad_vertex_count;
+    }
+    else if(convex_shape.shape.type == ST_box)
+    {
+        convex_shape.shape_vertices = box_to_point(convex_shape.shape.box);
+        convex_shape.shape_vertices_count = box_vertex_count;
+    }
+    else
+    {
+        CATCH;
     }
     
-    for(int vertex_index = 0 ; vertex_index < convex_shape.vertices_count ; vertex_index++)
+    Vector3 * all_vertices = allocate_frame(Vector3 , convex_shape.shape_vertices_count * 2);
+    for(int vertex_index = 0 ; vertex_index < convex_shape.shape_vertices_count ; vertex_index++)
     {
-        all_vertices[vertex_index + convex_shape.vertices_count] = Vector3Add(convex_shape.vertices[vertex_index] , convex_shape.velocity);
+        all_vertices[vertex_index] = convex_shape.shape_vertices[vertex_index];
+    }
+    
+    for(int vertex_index = 0 ; vertex_index < convex_shape.shape_vertices_count ; vertex_index++)
+    {
+        all_vertices[vertex_index + convex_shape.shape_vertices_count] = Vector3Add(convex_shape.shape_vertices[vertex_index] , convex_shape.velocity);
     }
     
     BoundingBoxNode convex_shape_bounding_box = {};
     convex_shape_bounding_box.right_top_forward = (Vector3){-FLT_MAX , -FLT_MAX , -FLT_MAX};
     convex_shape_bounding_box.left_bottom_backward = (Vector3){FLT_MAX , FLT_MAX , FLT_MAX};
-    get_bound(all_vertices , convex_shape.vertices_count * 2 , &convex_shape_bounding_box.right_top_forward , &convex_shape_bounding_box.left_bottom_backward );
+    get_bound(all_vertices , convex_shape.shape_vertices_count * 2 , &convex_shape_bounding_box.right_top_forward , &convex_shape_bounding_box.left_bottom_backward );
     
     convex_shape_bounding_box.right_top_forward.x += UNIT_SIZE * 0.5f;
     convex_shape_bounding_box.right_top_forward.y += UNIT_SIZE * 0.5f;
@@ -2638,8 +2798,8 @@ internal ShapeBuffer get_collided_bounding_box(ConvexShape convex_shape)
         debug_box.size.z = fabs(debug_box.size.z);
     }
     
-    ShapeBuffer shape_buffer = {};
-    allocate_buffer( &shape_buffer , Shape , 16 , AT_frame);
+    ShapeUnionBuffer shape_union_buffer = {};
+    allocate_buffer( &shape_union_buffer , ShapeUnion , 16 , AT_frame);
     
     if(bounding_box_root)
     {
@@ -2657,44 +2817,101 @@ internal ShapeBuffer get_collided_bounding_box(ConvexShape convex_shape)
             if(node->left) node_stack[node_stack_count++] = node->left;
             if(node->right) node_stack[node_stack_count++] = node->right;
             
-            if(node->shape.type != ST_invalid)
+            //why there is invalid node?
+            if(node->shape.type == ST_invalid) continue;
+            
+            if(bounding_box_collided((*node) , convex_shape_bounding_box))
             {
-                if(bounding_box_collided((*node) , convex_shape_bounding_box))
+                if(buffer_full(shape_union_buffer))
                 {
-                    if(buffer_full(shape_buffer))
-                    {
-                        reallocate_buffer(&shape_buffer , AT_frame);
-                    }
-                    Shape * new_shape = shape_buffer.data + shape_buffer.count++;
-                    (*new_shape) = node->shape;
+                    reallocate_buffer(&shape_union_buffer , AT_frame);
                 }
+                
+                ShapeUnion * new_shape = shape_union_buffer.data + shape_union_buffer.count++;
+                new_shape->type = node->shape.type;
+                
+                if(node->shape.type == ST_box)
+                {
+                    new_shape->box = box_in_map_buffer.data[node->shape.index];
+                }
+                else if(node->shape.type == ST_quad)
+                {
+                    new_shape->quad = quad_in_map_buffer.data[node->shape.index];
+                }
+                
             }
         }
     }
     
     tree_walk_time = (time_stamp() - tree_walk_time) / (1000.0);
     
-    return shape_buffer;
+    return shape_union_buffer;
 }
 
-internal Vector3 update_convex_collision(ConvexShape convex_shape)
+internal void start_record_collision(int type , ConvexShape convex_shape)
 {
-    ShapeBuffer shape_buffer = get_collided_bounding_box(convex_shape);
+    if(capture_collision) 
+    {
+        collision_visual_offset = convex_shape.position;
+    }
+    
+    if(store_multiple_frame_collision)
+    {
+        if(buffer_full(frame_collision_buffer))
+        {
+            reallocate_buffer(&frame_collision_buffer, AT_temp);
+        }
+        
+        current_frame_collision = frame_collision_buffer.data + frame_collision_buffer.count++;
+        current_frame_collision->collision_type = type;
+        current_frame_collision->collision_visual_offset = convex_shape.position;
+        current_frame_collision->slice_start = collision_visual_buffer.count;
+        current_frame_collision->start = convex_shape.position;
+        current_frame_collision->velocity = convex_shape.velocity;
+    }
+}
+
+internal void end_record_collision()
+{
+    if(store_multiple_frame_collision)
+    {
+        current_frame_collision->slice_end = collision_visual_buffer.count;
+    }
+}
+
+internal CollisionResult update_convex_collision(ConvexShape convex_shape)
+{
+    bool skip_this = capture_collision;
+    if(!convex_shape.capture_collision) capture_collision = false;
+    start_record_collision(CT_collision , convex_shape);
+    
+    ShapeUnionBuffer shape_buffer = get_collided_bounding_box(convex_shape);
+    
+    shape_a_union = convex_shape.shape;
+    shape_union_to_vertices(convex_shape.shape , &convex_shape.shape_vertices , &convex_shape.shape_vertices_count);
     
     double shape_impact_check_time = time_stamp();
     
     int check_count = 0;
     Vector3 previous_position = convex_shape.position;
     
+    Vector3 shape_offset = {};
+    Vector3 shape_velocity = convex_shape.velocity;
+    
+    int surface_normal_count = 0;
+    Vector3 total_surface_normal = {};
+    Vector3 average_surface_normal = {};
     Vector3 surface_normal = {};
     bool impacted = false;
     
     for(;;)
     {
         check_count++;
-        if(check_count > 5) 
+        if(check_count > 5)
         {
-            convex_shape.velocity = (Vector3){};
+            shape_velocity = (Vector3){};
+            shape_offset = (Vector3){};
+            //printf("too many contact %lld\n" , game_update_count);
             break;
         }
         
@@ -2704,29 +2921,24 @@ internal Vector3 update_convex_collision(ConvexShape convex_shape)
         
         for(int shape_index = 0 ; shape_index < shape_buffer.count ; shape_index++)
         {
-            Shape * shape = shape_buffer.data + shape_index;
+            ShapeUnion shape = shape_buffer.data[shape_index];
+            
+            if(capture_collision)
+            {
+                shape_b_union = shape;
+            }
             
             Vector3 * shape_vertices = 0;
             int shape_vertices_count = 0;
             
-            if(shape->type == ST_box)
-            {
-                shape_vertices = box_to_point(box_in_map_buffer.data[shape->index]);
-                shape_vertices_count = box_vertex_count;
-            }
-            else if(shape->type == ST_quad)
-            {
-                shape_vertices = quad_in_map_buffer.data[shape->index].vertex_position;
-                shape_vertices_count = quad_vertex_count;
-            }
-            
-            if(!shape_vertices) CATCH;
+            shape_union_to_vertices(shape , &shape_vertices , &shape_vertices_count);
             
             ShapeImpactData impact_data = {};
             impact_data.shape_b_vertices = shape_vertices;
             impact_data.shape_b_vertices_count = shape_vertices_count;
-            impact_data.shape_a_vertices = convex_shape.vertices;
-            impact_data.shape_a_vertices_count = convex_shape.vertices_count;
+            
+            impact_data.shape_a_vertices = convex_shape.shape_vertices;
+            impact_data.shape_a_vertices_count = convex_shape.shape_vertices_count;
             impact_data.ray_direction = convex_shape.velocity;
             impact_data.stop_if_too_far = true;
             
@@ -2749,7 +2961,7 @@ internal Vector3 update_convex_collision(ConvexShape convex_shape)
             }
         }
         
-        bool iterate_collided = false;
+        bool collided_in_this_iteration = false;
         
         if(impacted)
         {
@@ -2757,7 +2969,7 @@ internal Vector3 update_convex_collision(ConvexShape convex_shape)
             {
                 if(closest_hit_time < 1.0)
                 {
-                    iterate_collided = true;
+                    collided_in_this_iteration = true;
                 }
             }
         }
@@ -2766,10 +2978,25 @@ internal Vector3 update_convex_collision(ConvexShape convex_shape)
         Vector3 direction_to_point = Vector3Subtract(impact_point , convex_shape.position);
         if(Vector3DotProduct(direction_to_point , surface_normal) > 0) surface_normal = Vector3Negate(surface_normal);
         
-        //draw_arrow_ray( Vector3Add(convex_shape.position , Vector3Scale(convex_shape.velocity , closest_hit_time)) , surface_normal , RED );
-        
-        if(iterate_collided)
+        if(collided_in_this_iteration)
         {
+            surface_normal = Vector3Normalize(surface_normal);
+            surface_normal_count++;
+            total_surface_normal = Vector3Add(total_surface_normal , surface_normal);
+            average_surface_normal = Vector3Scale(total_surface_normal , 1.0 / surface_normal_count);
+            
+            Vector3 collision_point = Vector3Add(convex_shape.position , Vector3Scale(convex_shape.velocity , closest_hit_time));
+            
+            if(capture_collision)
+            {
+                if(!collision_visual_buffer.count) CATCH;
+                
+                CollisionVisual * visual = collision_visual_buffer.data + (collision_visual_buffer.count - 1);
+                visual->collided =true;
+                visual->collision_point = collision_point;
+                visual->collision_normal = surface_normal;
+            }
+            
             Vector3 project_velocity = (Vector3){};
             Vector3 right_axis = Vector3CrossProduct(convex_shape.velocity , surface_normal);
             if(Vector3LengthSqr(right_axis) < 0.0000001f)
@@ -2781,14 +3008,16 @@ internal Vector3 update_convex_collision(ConvexShape convex_shape)
             } 
             else
             {
-                if(Vector3DotProduct(convex_shape.velocity , surface_normal) < 0)
+                float dot_product = Vector3DotProduct(convex_shape.velocity , surface_normal);
+                if(dot_product < 0)
                 {
                     Vector3 forward_axis = Vector3CrossProduct(surface_normal , right_axis);
                     project_velocity = Vector3Project(convex_shape.velocity , forward_axis);
+                    project_velocity = project_on_plane(project_velocity , average_surface_normal);
                 }
                 else
                 {
-                    CATCH;
+                    //CATCH;
                     project_velocity = convex_shape.velocity;
                 }
             }
@@ -2796,71 +3025,88 @@ internal Vector3 update_convex_collision(ConvexShape convex_shape)
             //detect invalid value
             if(project_velocity.x != project_velocity.x) CATCH;
             
-            //draw_arrow_ray( convex_shape.position , project_velocity , YELLOW );
+            shape_velocity = project_velocity;
             
-            //printf("%f %f %f\n" , surface_normal.x , surface_normal.y , surface_normal.z);
-            //printf("velocity %f %f %f -> %f %f %f\n" , convex_shape.velocity.x , convex_shape.velocity.y , convex_shape.velocity.z , project_velocity.x , project_velocity.y , project_velocity.z);
+            float gap = 0.001f;
+            Vector3 offset = Vector3Subtract( convex_shape.position , collision_point);
+            offset = Vector3Project(offset , surface_normal);
+            offset = Vector3Project(offset , average_surface_normal);
+            float distance_to_collision = Vector3Length(offset);
+            shape_offset = Vector3Scale(surface_normal , gap - distance_to_collision);
             
-            convex_shape.velocity = project_velocity;
-            if(Vector3LengthSqr(convex_shape.velocity) < 0.000001f) break;
+            convex_shape.velocity = Vector3Add(shape_velocity , shape_offset);
         }
         else
         {
+            //printf("couldn't hit anything %lld\n" , game_update_count);
             break;
         }
     }
     
+    end_record_collision();
+    
+    capture_collision = skip_this;
+    
+    //printf( "check : %f\n", (time_stamp() - shape_impact_check_time) / (1000 ));
     //printf( "making tree : %f , walk in tree : %f , check : %f count : %d\n", shape_tree_time , tree_walk_time , (time_stamp() - shape_impact_check_time) / 1000 , shape_buffer_count);
-    return convex_shape.velocity;
+    CollisionResult result = {};
+    result.velocity = shape_velocity;
+    result.offset = shape_offset;
+    return result;
 }
 
-internal RayCastResult convex_shape_ray_cast(ConvexShape convex_shape)
+internal RayCastResultBuffer convex_shape_ray_cast(ConvexShape convex_shape)
 {
-    ShapeBuffer shape_buffer = get_collided_bounding_box(convex_shape);
+    bool skip_this = capture_collision;
+    if(!convex_shape.capture_collision) capture_collision = false;
+    start_record_collision(CT_raycast , convex_shape);
     
-    RayCastResult result = {};
+    double check_time = time_stamp();
     
-    result.impacted = false;
-    result.surface_normal = (Vector3){};
+    ShapeUnionBuffer shape_buffer = get_collided_bounding_box(convex_shape);
+    
+    shape_a_union = convex_shape.shape;
+    shape_union_to_vertices(convex_shape.shape , &convex_shape.shape_vertices , &convex_shape.shape_vertices_count);
+    
+    RayCastResultBuffer result_buffer = {};
+    allocate_buffer(&result_buffer , RayCastResult , 4 , AT_frame);
     
     for(int shape_index = 0; shape_index < shape_buffer.count ; shape_index++)
     {
-        Shape * shape = shape_buffer.data + shape_index;
+        ShapeUnion shape = shape_buffer.data[shape_index];
+        
+        if(capture_collision)
+        {
+            shape_b_union = shape;
+        }
         
         Vector3 * shape_vertices = 0;
         int shape_vertices_count = 0;
         
-        if(shape->type == ST_box)
-        {
-            shape_vertices = box_to_point(box_in_map_buffer.data[shape->index]);
-            shape_vertices_count = box_vertex_count;
-        }
-        else if(shape->type == ST_quad)
-        {
-            shape_vertices = quad_in_map_buffer.data[shape->index].vertex_position;
-            shape_vertices_count = quad_vertex_count;
-        }
-        
-        if(!shape_vertices) CATCH;
+        shape_union_to_vertices(shape , &shape_vertices , &shape_vertices_count);
         
         ShapeImpactData impact_data = {};
         impact_data.shape_b_vertices = shape_vertices;
         impact_data.shape_b_vertices_count = shape_vertices_count;
-        impact_data.shape_a_vertices = convex_shape.vertices;
-        impact_data.shape_a_vertices_count = convex_shape.vertices_count;
+        impact_data.shape_a_vertices = convex_shape.shape_vertices;
+        impact_data.shape_a_vertices_count = convex_shape.shape_vertices_count;
         impact_data.ray_direction = convex_shape.velocity;
-        impact_data.stop_if_too_far = true;
+        impact_data.stop_if_too_far = !convex_shape.get_all;
         
         if(check_shape_impact(&impact_data))
         {
-            if(impact_data.time_of_impact > 0)
+            if(impact_data.time_of_impact >= 0)
             {
-                result.impacted = true;
-                if(result.closest_hit_time > impact_data.time_of_impact)
+                if(buffer_full(result_buffer))
                 {
-                    result.closest_hit_time = impact_data.time_of_impact;
-                    result.surface_normal = impact_data.impact_normal;
+                    reallocate_buffer(&result_buffer , AT_frame);
                 }
+                
+                if(Vector3DotProduct(convex_shape.velocity , impact_data.impact_normal) > 0) impact_data.impact_normal = Vector3Negate(impact_data.impact_normal);
+                
+                RayCastResult * result = result_buffer.data + result_buffer.count++;
+                result->hit_time = impact_data.time_of_impact;
+                result->surface_normal = impact_data.impact_normal;
             }
             
             //draw_quad_D(quad , MAROON);
@@ -2872,7 +3118,43 @@ internal RayCastResult convex_shape_ray_cast(ConvexShape convex_shape)
         
     }
     
-    return result;
+    capture_collision = skip_this;
+    //printf( "ray cast time %f\n" , (time_stamp() - check_time) / (1000.0 ));
+    end_record_collision();
+    
+    return result_buffer;
+}
+
+internal ShapeUnionBuffer convex_shape_overlap(ConvexShape convex_shape)
+{
+    ShapeUnionBuffer buffer = get_collided_bounding_box(convex_shape);
+    
+    shape_union_to_vertices(convex_shape.shape , &convex_shape.shape_vertices , &convex_shape.shape_vertices_count);
+    
+    ShapeUnionBuffer collided_buffer = {};
+    allocate_buffer(&collided_buffer , ShapeUnion , 8 , AT_frame);
+    
+    for(int shape_index = 0 ; shape_index < buffer.count ; shape_index++)
+    {
+        ShapeUnion shape = buffer.data[shape_index];
+        Vector3 * shape_vertices = 0;
+        int shape_vertices_count = 0;
+        
+        shape_union_to_vertices(shape , &shape_vertices , &shape_vertices_count);
+        
+        if(check_shape((Vector3){} , convex_shape.shape_vertices , convex_shape.shape_vertices_count , shape_vertices , shape_vertices_count))
+        {
+            if(buffer_full(collided_buffer))
+            {
+                reallocate_buffer(&collided_buffer , AT_frame);
+            }
+            
+            ShapeUnion * collided_shape = collided_buffer.data + collided_buffer.count++;
+            (*collided_shape) = shape;
+        }
+    }
+    
+    return collided_buffer;
 }
 
 internal int shape_cell_hash(int x , int y , int z)
@@ -3036,8 +3318,16 @@ internal BoundingBoxNode * split_bounding_box(BoundingBoxNode * buffer , int buf
     }
     else
     {
-        root_node->right = split_bounding_box(right_buffer , right_buffer_count - 1 , split_type , 0);
-        root_node->left = split_bounding_box(right_buffer + right_buffer_count - 1 , 1 , split_type , 0);
+        if(right_buffer_count > 0)
+        {
+            root_node->right = split_bounding_box(right_buffer , right_buffer_count - 1 , split_type , 0);
+            root_node->left = split_bounding_box(right_buffer + right_buffer_count - 1 , 1 , split_type , 0);
+        }
+        else
+        {
+            root_node->right = split_bounding_box(left_buffer , left_buffer_count - 1 , split_type , 0);
+            root_node->left = split_bounding_box(left_buffer + left_buffer_count - 1 , 1 , split_type , 0);
+        }
     }
     
     return root_node;
@@ -3501,7 +3791,42 @@ internal bool load_map()
         read_buffer(box->rotation , "map_box_rotation" , Quaternion , box_index);
     }
     
+    
+    int entity_count = 0;
+    int entity_capacity = 1;
+    read_data(entity_count , "entity_count" , int);
+    for(;entity_capacity < entity_count; entity_capacity *= 2);
+    entity_layout_array = allocate_array(entity_capacity , AT_temp);
+    allocate_buffer(&entity_layout_buffer , Entity , entity_capacity , AT_temp);
+    
+    for(int entity_index = 0; entity_index < entity_count ; entity_index++)
+    {
+        Entity * entity = entity_layout_buffer.data + add_to_array(&entity_layout_array);
+        
+        read_buffer(entity->position , "entity_position" , Vector3 , entity_index);
+    }
+    
 #ifdef BUILD_D_WINDOWS
+    int trigger_box_count = 0;
+    int trigger_box_capacity = 1;
+    read_data(trigger_box_count , "camera_trigger_count" , int);
+    for(;trigger_box_capacity < trigger_box_count ; trigger_box_capacity*=2);
+    camera_array = allocate_array(trigger_box_capacity , AT_temp);
+    allocate_buffer(&camera_buffer , CameraTrigger , trigger_box_capacity , AT_temp);
+    allocate_buffer(&camera_zone_buffer , Box , trigger_box_capacity , AT_temp);
+    
+    for(int trigger_box_index = 0 ; trigger_box_index < trigger_box_count ; trigger_box_index++)
+    {
+        int new_camera_index = add_to_array(&camera_array);
+        Box * zone = camera_zone_buffer.data + new_camera_index;
+        CameraTrigger * trigger = camera_buffer.data + new_camera_index;
+        
+        read_buffer(zone->position , "camera_zone_position" , Vector3 , trigger_box_index);
+        read_buffer(zone->size , "camera_zone_size" , Vector3 , trigger_box_index);
+        read_buffer(zone->rotation , "camera_zone_rotation" , Quaternion , trigger_box_index);
+        read_buffer(trigger->camera_target_offset , "camera_zone_offset" , Vector3 , trigger_box_index);
+    }
+    
     read_data(selected_reference_frame_index , "selected reference frame" , int);
     
     int reference_frame_count = 0;
@@ -3528,6 +3853,60 @@ internal bool load_map()
     return true;
 }
 
+internal void build_tree_from_box(BoundingBoxNodeBuffer * bounding_box_buffer , Array * box_array , BoxBuffer * box_buffer)
+{
+    array_foreach( box_index , box_array)
+    {
+        Box box = box_buffer->data[box_index];
+        
+        Vector3 * box_vertices = box_to_point(box);
+        
+        Vector3 right_top_forward = {-FLT_MAX , -FLT_MAX , -FLT_MAX};
+        Vector3 left_bottom_backward = {FLT_MAX , FLT_MAX , FLT_MAX};
+        
+        get_bound(box_vertices , box_vertex_count , &right_top_forward , &left_bottom_backward);
+        
+        if(buffer_full(*bounding_box_buffer))
+        {
+            reallocate_buffer(bounding_box_buffer , AT_frame);
+        }
+        
+        BoundingBoxNode * new_bounding_box = bounding_box_buffer->data + bounding_box_buffer->count++;
+        new_bounding_box->right_top_forward = right_top_forward;
+        new_bounding_box->left_bottom_backward = left_bottom_backward;
+        new_bounding_box->shape.type = ST_box;
+        new_bounding_box->shape.index = box_index;
+        new_bounding_box->left = 0;
+        new_bounding_box->right = 0;
+    }
+}
+
+internal float snap_to_fixed_angle(float x)
+{
+    float a[5] = {};
+    
+    a[0] = -1.0; 
+    a[1] = -0.70710678118; 
+    a[2] = 0.0; 
+    a[3] = 0.70710678118; 
+    a[4] = 1.0;
+    
+    int closest_index = 0;
+    float closest = FLT_MAX;
+    for(int i = 0 ; i < 5 ; i++)
+    {
+        float distance = fabs(x - a[i]);
+        
+        if(closest > distance) 
+        {
+            closest = distance;
+            closest_index = i;
+        }
+    }
+    
+    return a[closest_index];
+}
+
 internal void world_update()
 {
 #ifdef BUILD_D_WINDOWS
@@ -3547,16 +3926,17 @@ internal void world_update()
     BoundingBoxNodeBuffer bounding_box_buffer = {};
     allocate_buffer( &bounding_box_buffer , BoundingBoxNode , 128 , AT_frame);;
     
-    array_foreach( box_index , &box_in_map_array)
+    build_tree_from_box(&bounding_box_buffer , &box_in_map_array , &box_in_map_buffer);
+    
+    //TODO: quads are missing???
+    array_foreach(quad_index , &quad_in_map_array)
     {
-        Box box = box_in_map_buffer.data[box_index];
-        
-        Vector3 * box_vertices = box_to_point(box);
+        Quad quad = quad_in_map_buffer.data[quad_index];
         
         Vector3 right_top_forward = {-FLT_MAX , -FLT_MAX , -FLT_MAX};
         Vector3 left_bottom_backward = {FLT_MAX , FLT_MAX , FLT_MAX};
         
-        get_bound(box_vertices , box_vertex_count , &right_top_forward , &left_bottom_backward);
+        get_bound(quad.vertex_position , quad_vertex_count , &right_top_forward , &left_bottom_backward);
         
         if(buffer_full(bounding_box_buffer))
         {
@@ -3566,8 +3946,8 @@ internal void world_update()
         BoundingBoxNode * new_bounding_box = bounding_box_buffer.data + bounding_box_buffer.count++;
         new_bounding_box->right_top_forward = right_top_forward;
         new_bounding_box->left_bottom_backward = left_bottom_backward;
-        new_bounding_box->shape.type = ST_box;
-        new_bounding_box->shape.index = box_index;
+        new_bounding_box->shape.type = ST_quad;
+        new_bounding_box->shape.index = quad_index;
         new_bounding_box->left = 0;
         new_bounding_box->right = 0;
     }
@@ -3585,17 +3965,14 @@ internal void world_update()
         
         player->box = get_box();
         player->box.position = player->position;
-        player->box.size = (Vector3){0.6, 1.0 , 0.6};
+        player->box.size = (Vector3){0.6, 0.6 , 0.6};
         //player->box.rotation = QuaternionFromVector3ToVector3( (Vector3){0,1,0} , Vector3Normalize( (Vector3){0.5,1,2.63}) );
-        Vector3 * player_box_vertices = box_to_point(player->box);
-        
-        player->velocity = Vector3Add(player->velocity , (Vector3){0,-UNIT_SIZE * 0.1f,0});
         
         float player_forward = 0;
         float player_right = 0;
         
         //this feel too clear
-        //hope this never change
+        //hope i won't regret it
         if(key_pressing(KEY_W)) player_forward += 1;
         if(key_pressing(KEY_S)) player_forward -= 1;
         if(key_pressing(KEY_D)) player_right += 1;
@@ -3611,25 +3988,261 @@ internal void world_update()
         player_forward_direction = Vector3Normalize(player_forward_direction);
         player_right_direction = Vector3Normalize(player_right_direction);
         
-        player->velocity = Vector3Add(player->velocity , Vector3Scale(player_forward_direction , player_forward));
-        player->velocity = Vector3Add(player->velocity , Vector3Scale(player_right_direction , player_right));
+        //player_hammer
+#if 0
+        if((fabs(player_forward) + fabs(player_right)) > 0)
+        {
+            Vector3 target_direction = Vector3Add(Vector3Scale(player_forward_direction , player_forward) , Vector3Scale(player_right_direction , player_right));
+            target_direction = Vector3Normalize(target_direction);
+            
+            player->target_direction = Vector3Lerp(player->target_direction , target_direction , 0.2f);
+        }
+        else
+        {
+            Vector3 target_direction = {};
+            target_direction.x = snap_to_fixed_angle(player->target_direction.x);
+            target_direction.z = snap_to_fixed_angle(player->target_direction.z);
+            
+            player->target_direction = Vector3Lerp(player->target_direction , target_direction , 0.2f);
+        }
+#endif
         
-        ConvexShape ray_cast_shape = {};
-        ray_cast_shape.vertices = player_box_vertices;
-        ray_cast_shape.vertices_count = box_vertex_count;
-        ray_cast_shape.velocity = player->velocity;
-        ray_cast_shape.velocity.x = 0;
-        ray_cast_shape.velocity.z = 0;
-        ray_cast_shape.position = player->position;
+        int direction_key[4] = {KEY_I , KEY_K , KEY_L , KEY_J};
+        Vector2 direction_key_scaler[4] = {{0,1} , {0,-1} , {1,0} ,{-1,0}};
+        int opposite_direction_key[4] = {KEY_K , KEY_I , KEY_J , KEY_L};
         
-        RayCastResult result = convex_shape_ray_cast(ray_cast_shape);
-        player->grounded = result.impacted;
+        float wield_cool_down = 0.4f;
+        float hit_angle = 90;
+        float rest_angle = -30;
+        
+        float hammer_time = 0.1;
+        
+        if(!player->wielding)
+        {
+            player->wield_cool_down += DELTA_TIME;
+            float cool_down_percent = player->wield_cool_down / wield_cool_down;
+            if(cool_down_percent > 1) cool_down_percent = 1;
+            player->hammer_angle = Lerp(hit_angle , rest_angle , ease_out_back(cool_down_percent , 2));
+            
+            if(player->wield_cool_down > wield_cool_down)
+            {
+                if(!player->first_key_pressed)
+                {
+                    for(int key_index = 0 ; key_index < 4 ; key_index++)
+                    {
+                        if(key_pressed(direction_key[key_index])) 
+                        {
+                            player->first_key_pressed = true;
+                            player->first_pressed_key_index = key_index;
+                            
+                            Vector2 scaler = direction_key_scaler[key_index];
+                            
+                            Vector3 hammer_forward = Vector3Scale(player_forward_direction , scaler.y);
+                            Vector3 hammer_right = Vector3Scale(player_right_direction , scaler.x);
+                            
+                            player->target_direction = Vector3Add(hammer_forward , hammer_right);
+                            
+                            break;
+                        }
+                    }
+                    
+                    if(player->first_key_pressed)
+                    {
+                        player->previous_hammer_position = player->hammer_box.position;
+                        player->wield_time = 0;
+                        player->wielding = true;
+                    }
+                }
+            }
+        }
+        
+        if(player->first_key_pressed)
+        {
+            if(!player->second_key_pressed)
+            {
+                if(key_pressing_time(player->first_pressed_key_index) < 0.4)
+                {
+                    for(int key_index = 0 ; key_index < 4 ; key_index++)
+                    {
+                        if(key_index == player->first_pressed_key_index) continue;
+                        if(key_index == opposite_direction_key[player->first_pressed_key_index]) continue;
+                        
+                        if(key_pressed(direction_key[key_index]))
+                        {
+                            Vector2 scaler = direction_key_scaler[key_index];
+                            
+                            Vector3 hammer_forward = Vector3Scale(player_forward_direction , scaler.y);
+                            Vector3 hammer_right = Vector3Scale(player_right_direction , scaler.x);
+                            
+                            player->target_direction = Vector3Add(player->target_direction , Vector3Add(hammer_forward , hammer_right));
+                            player->target_direction = Vector3Normalize(player->target_direction);
+                            
+                            player->second_key_pressed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        Vector3 hammer_up = {0 , 1 , 0};
+        Vector3 hammer_plane = project_on_plane(player->target_direction, hammer_up);
+        float rotate_angle = atan2( hammer_plane.x , hammer_plane.z);;
+        Quaternion hammer_plane_rotation = QuaternionFromAxisAngle((Vector3){0,1,0}, rotate_angle);
+        
+        if(player->wielding)
+        {
+            player->wield_time += DELTA_TIME;
+            player->hammer_angle = Lerp(rest_angle , hit_angle , player->wield_time/hammer_time);
+        }
+        
+        Vector3 hammer_position = {0,GRID_SIZE * 1.2,0};
+        Quaternion hammer_rotation = QuaternionFromEuler( player->hammer_angle * DEG2RAD,0,0);
+        hammer_position = Vector3RotateByQuaternion(hammer_position , hammer_plane_rotation);
+        hammer_rotation = QuaternionMultiply(hammer_plane_rotation , hammer_rotation);
+        
+        hammer_position = Vector3RotateByQuaternion(hammer_position , hammer_rotation);
+        hammer_position = Vector3Add(hammer_position , player->position);
+        hammer_position = Vector3Add(hammer_position , (Vector3){0,GRID_SIZE * 0.5,0});
+        
+        player->previous_hammer_position = player->hammer_box.position;
+        player->hammer_box.position = hammer_position;
+        player->hammer_box.rotation = QuaternionIdentity();
+        player->hammer_box.size = (Vector3){GRID_SIZE * 0.5 , GRID_SIZE * 0.5 , GRID_SIZE * 0.5};
+        
+        if(player->wielding)
+        {
+            ConvexShape hammer_shape = {};
+            hammer_shape.shape.box = player->hammer_box;
+            hammer_shape.shape.box.position = player->previous_hammer_position;
+            hammer_shape.shape.type = ST_box;
+            hammer_shape.velocity = Vector3Subtract(player->hammer_box.position , player->previous_hammer_position);
+            hammer_shape.position = player->previous_hammer_position;
+            hammer_shape.capture_collision = true;
+            RayCastResultBuffer buffer = convex_shape_ray_cast(hammer_shape);
+            
+            if(buffer.count)
+            {
+                float closest_hit_time = FLT_MAX;
+                Vector3 surface_normal = {};
+                for(int buffer_index = 0 ; buffer_index < buffer.count ; buffer_index++)
+                {
+                    RayCastResult result = buffer.data[buffer_index];
+                    if(closest_hit_time > result.hit_time)
+                    {
+                        closest_hit_time = result.hit_time;
+                        surface_normal = result.surface_normal;
+                    }
+                }
+                
+                //printf("hit  %lld %f\n" , game_update_count , closest_hit_time );
+                
+                surface_normal = Vector3Normalize(surface_normal);
+                
+                float current_angle = Lerp(rest_angle , hit_angle , (player->wield_time / hammer_time));
+                
+                player->wield_cool_down = Remap(current_angle , hit_angle , rest_angle , 0 , 1);
+                player->wield_cool_down -= 0.2;
+                if(player->wield_cool_down < 0) player->wield_cool_down = 0;
+                player->wield_cool_down *= wield_cool_down;
+                
+                player->wielding = false;
+                player->grounded = false;
+                player->jumped = true;
+                player->velocity = project_on_plane(player->velocity , surface_normal);
+                player->velocity = Vector3Add(player->velocity , Vector3Scale(surface_normal , UNIT_SIZE * 1.8));
+            }
+            else if(player->wield_time > hammer_time) 
+            {
+                player->wielding = false;
+                player->wield_cool_down = 0;
+            }
+            
+            if(!player->wielding)
+            {
+                player->first_key_pressed = false;
+                player->second_key_pressed = false;
+            }
+        }
+        
+        player->grounded = false;
+        Vector3 ground_normal = {0,1,0};
+        
+        if(player->velocity.y < 0)
+        {
+            player->jumped = false;
+        }
+        
+        if(!player->jumped)
+        {
+            float player_down_y = -UNIT_SIZE * 4;
+            
+            ConvexShape ray_cast_shape = {};
+            ray_cast_shape.shape.box = player->box;
+            ray_cast_shape.shape.type = ST_box;
+            ray_cast_shape.velocity.y = player_down_y;
+            ray_cast_shape.velocity.x = 0;
+            ray_cast_shape.velocity.z = 0;
+            ray_cast_shape.position = player->position;
+            //ray_cast_shape.capture_collision = true;
+            
+            RayCastResultBuffer ray_cast_result_buffer = convex_shape_ray_cast(ray_cast_shape);
+            
+            float closest_ground_hit_time = FLT_MAX;
+            
+            for(int buffer_index = 0 ; buffer_index < ray_cast_result_buffer.count ; buffer_index++)
+            {
+                RayCastResult result = ray_cast_result_buffer.data[buffer_index];
+                
+                Vector3 surface_normal = Vector3Normalize(result.surface_normal);
+                float ground_angle = Vector3Angle((Vector3){0,1,0} , surface_normal) * RAD2DEG;
+                
+                if(closest_ground_hit_time > result.hit_time)
+                {
+                    if(ground_angle < 45)
+                    {
+                        player->grounded = true;
+                        
+                        closest_ground_hit_time = result.hit_time;
+                        ground_normal = surface_normal;
+                    }
+                }
+            }
+            
+            if(player->grounded)
+            {
+                float spring = player_down_y * (closest_ground_hit_time - 0.6) + player->velocity.y;
+                spring *= 0.5f;
+                player->velocity.y = spring;
+            }
+        }
+        
+        if(!player->grounded)
+        {
+            player->velocity = Vector3Add(player->velocity , (Vector3){0,-UNIT_SIZE * 0.1f,0});
+        }
+        
+        Vector3 walk_velocity = {};
+        
+        walk_velocity = Vector3Add(walk_velocity , Vector3Scale(player_forward_direction , player_forward));
+        walk_velocity = Vector3Add(walk_velocity , Vector3Scale(player_right_direction , player_right));
+        
+        walk_velocity = project_on_plane(walk_velocity , ground_normal);
+        walk_velocity = Vector3Scale(walk_velocity , 0.6f);
+        
+        player->velocity = Vector3Add(player->velocity , walk_velocity);
+        
+        //draw_arrow_ray(player->position , Vector3Scale(ground_normal , 50) , YELLOW);
+        //draw_arrow_ray(player->position , Vector3Scale(walk_velocity , 80) , GREEN);
+        //draw_arrow_ray(player->position , Vector3Scale(player->velocity , 100) , SKYBLUE);
         
         if(player->grounded)
         {
             if(key_pressed(KEY_SPACE))
             {
-                player->velocity = Vector3Add(player->velocity , (Vector3){0,UNIT_SIZE * 3.0f,0});
+                player->velocity.y = UNIT_SIZE * 2.0f;
+                player->grounded = false;
+                player->jumped = true;
             }
         }
         
@@ -3643,25 +4256,31 @@ internal void world_update()
             }
         }
         
+        float drag = 0.96f;
+        
         if(player_try_to_stand_still)
         {
             //printf("standing here %lld\n" , game_update_count);
-            player->velocity = Vector3Scale(player->velocity , 0.6f);
+            drag = 0.85f;
         }
-        else
-        {
-            player->velocity = Vector3Scale(player->velocity , 0.94f);
-        }
+        
+        player->velocity.x *= drag;
+        player->velocity.z *= drag;
+        //player->velocity.y *= drag;
         
         ConvexShape player_shape = {};
-        player_shape.vertices = player_box_vertices;
-        player_shape.vertices_count = box_vertex_count;
+        
+        player_shape.shape.box = player->box;
+        player_shape.shape.type = ST_box;
         player_shape.velocity = player->velocity;
         player_shape.position = player->position;
+        player_shape.capture_collision = true;
         
-        player->velocity = update_convex_collision(player_shape);
+        CollisionResult collision_result = update_convex_collision(player_shape);
+        player->position = Vector3Add( player->position , collision_result.offset);
+        player->velocity = collision_result.velocity;
+        
         player->position = Vector3Add(player->position , player->velocity);
-        
     }
 }
 
@@ -3992,7 +4611,12 @@ internal void server_update()
         
         int new_player_index = add_to_array(&player_array);
         
-        player_buffer.data[new_player_index] = (Player){};
+        Player * new_player = player_buffer.data + new_player_index;
+        (*new_player) = (Player){};
+        new_player->box = get_box();
+        new_player->hammer_box = get_box();
+        new_player->hammer_angle = -30;
+        
         PlayerConnection * new_connection = player_connection_buffer.data + new_player_index;
         
         new_connection->connection_socket = connection_socket;
@@ -4012,6 +4636,10 @@ internal void server_update()
         PlayerConnection * player_connection = player_connection_buffer.data + player_index;
         
         input_state = &player_connection->input_state;
+        for(int key_index = 0 ; key_index < INPUT_MAX_KEY ; key_index++)
+        {
+            input_state->pressed_mouse_consumed[key_index] = false;
+        }
         
         update_receive_state(&player_connection->receive_state);
         
@@ -4032,6 +4660,7 @@ internal void server_update()
         data_unpack(DF_released_mouse_count , &input_state->released_mouse_count , 1 , int);
         
         data_unpack(DF_pressing_key , input_state->pressing_key , input_state->pressing_key_count , int);
+        data_unpack(DF_pressing_key_time , input_state->pressing_key_time , input_state->pressing_key_count , float);
         data_unpack(DF_pressed_key , input_state->pressed_key , input_state->pressed_key_count , int);
         data_unpack(DF_released_key , input_state->released_key , input_state->released_key_count , int);
         data_unpack(DF_pressing_mouse , input_state->pressing_mouse , input_state->pressing_mouse_count , int);
@@ -4047,24 +4676,30 @@ internal void server_update()
     net_state.send_buffer.count = 0;
     net_state.header_buffer.count = 0;
     
-    int player_count = 0;
-    array_foreach(player_index , &player_array) player_count++;
-    
+    int  player_count = player_array.count;
     data_pack(DF_player_count , &player_count , 1 , int );
     
-    int player_index = 0;
-    array_foreach(array_index , &player_array)
+    array_foreach_B(array_index , player_index , &player_array)
     {
         Player * player = player_buffer.data + array_index;
         
-        buffer_pack(DF_player_position , player->position , player_index , player_count , Vector3);
-        buffer_pack(DF_player_velocity , player->velocity , player_index , player_count , Vector3 );
-        buffer_pack(DF_player_grounded , player->grounded , player_index , player_count , bool);
-        player_index++;
+        buffer_pack(DF_whole_player , (*player) , player_index , player_count , Player);
+        
+        //buffer_pack(DF_player_position , player->position , player_index , player_count , Vector3);
+        //buffer_pack(DF_player_velocity , player->velocity , player_index , player_count , Vector3);
+        //buffer_pack(DF_player_grounded , player->grounded , player_index , player_count , bool);
     }
     
-    array_foreach(array_index , &player_array)
+    bool * player_owned_array = buffer_pack_EX(DF_player_owned , player_count * sizeof(bool));
+    
+    array_foreach_B(array_index , player_index , &player_array)
     {
+        for(int owner_index = 0; owner_index < player_count ; owner_index++)
+        {
+            player_owned_array[owner_index] = false;
+            if(player_index == owner_index) player_owned_array[owner_index] = true;
+        }
+        
         PlayerConnection * player_connection = player_connection_buffer.data + array_index;
         send_pack(player_connection->connection_socket , &net_state.header_buffer , &net_state.send_buffer);
     }
@@ -4152,14 +4787,15 @@ internal void client_update()
         data_pack(DF_released_mouse_count , &input_state->released_mouse_count , 1 ,int);
         
         data_pack(DF_pressing_key, input_state->pressing_key , input_state->pressing_key_count , int);
+        data_pack(DF_pressing_key_time , input_state->pressing_key_time , input_state->pressing_key_count , float);
         data_pack(DF_pressed_key, input_state->pressed_key , input_state->pressed_key_count , int);
         data_pack(DF_released_key, input_state->released_key , input_state->released_key_count , int);
         data_pack(DF_pressing_mouse, input_state->pressing_mouse , input_state->pressing_mouse_count , int);
         data_pack(DF_pressed_mouse, input_state->pressed_mouse , input_state->pressed_mouse_count , int);
         data_pack(DF_released_mouse, input_state->released_mouse , input_state->released_mouse_count , int);
         
-        data_pack(DF_camera_target , &game_camera.target , 1 , Vector3);
-        data_pack(DF_camera_position , &game_camera.position , 1 , Vector3);
+        data_pack(DF_camera_target , &world_camera.target , 1 , Vector3);
+        data_pack(DF_camera_position , &world_camera.position , 1 , Vector3);
         
         send_pack(net_state.client_to_server_socket , &net_state.header_buffer , &net_state.send_buffer);
         
@@ -4175,18 +4811,17 @@ internal void client_update()
             reallocate_buffer(&player_buffer , AT_temp);
         }
         
-        Vector3 * all_position = 0;
-        get_data_from_pack(DF_player_position , 0 , (void **)&all_position);
-        
         for(int player_index = 0 ; player_index < player_count ; player_index++)
         {
             int new_player_index = add_to_array(&player_array);
             Player * player = player_buffer.data + new_player_index;
             PlayerConnection * player_connection = player_connection_buffer.data + new_player_index;
             
-            buffer_unpack( DF_player_position , &player->position , player_index , Vector3 );
-            buffer_unpack( DF_player_velocity , &player->velocity , player_index , Vector3 );
-            buffer_unpack( DF_player_grounded , &player->grounded , player_index , bool );
+            buffer_unpack(DF_whole_player , player , player_index , Player);
+            //buffer_unpack(DF_player_position , &player->position , player_index , Vector3);
+            //buffer_unpack(DF_player_velocity , &player->velocity , player_index , Vector3);
+            //buffer_unpack(DF_player_grounded , &player->grounded , player_index , bool);
+            buffer_unpack(DF_player_owned , &player->it_is_me , player_index , bool);
         }
     }
 }
