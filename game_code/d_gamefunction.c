@@ -1,12 +1,12 @@
 #ifdef BUILD_D_WINDOWS
-internal long long counter_stamp()
+internal long long function counter_stamp()
 {
 	LARGE_INTEGER time = {};
 	QueryPerformanceCounter(&time);
 	return time.QuadPart;
 }
 
-internal double time_stamp()
+internal double function time_stamp()
 {
     LARGE_INTEGER frequency = {};
 	LARGE_INTEGER end_time = {};
@@ -15,10 +15,18 @@ internal double time_stamp()
     
 	return (double)(end_time.QuadPart) * 1e6 / (double)frequency.QuadPart;
 }
+
+internal void function draw_triangle_line(Vector3 a , Vector3 b , Vector3 c , Color color);
+internal void function draw_triangle(Vector3* all_vertices ,Vector4 vertex_color);
+internal void function draw_box_line(Box box , Color line_color , float line_size);
+internal void function draw_arrow_ray(Vector3 start_position , Vector3 direction  , Color line_color);
+internal void function draw_simplex_triangle(Vector3 a , Vector3 b , Vector3 c);
+internal void function draw_quad_line(Quad quad , Color line_color , float line_size);
+internal void function draw_arrow_line(Vector3 start_position , Vector3 end_position , Color line_color);
 #endif
 
 #ifdef BUILD_D_LINUX
-internal double time_stamp()
+double teteted time_stamp()
 {
     struct timespec now = {};
     clock_gettime(CLOCK_MONOTONIC_RAW , &now);
@@ -28,7 +36,7 @@ internal double time_stamp()
 }
 #endif
 
-internal Vector4 color_to_linear(Color color)
+internal Vector4 function color_to_linear(Color color)
 {
     Vector4 result = {};
     result.x = ((float)color.r) / 255.0f;
@@ -39,7 +47,7 @@ internal Vector4 color_to_linear(Color color)
     return result;
 }
 
-internal Color linear_to_color(Vector4 color)
+internal Color function linear_to_color(Vector4 color)
 {
 	Color result = {};
     result.r = (unsigned char)(color.x * 255.0f);
@@ -50,14 +58,14 @@ internal Color linear_to_color(Vector4 color)
     return result;
 }
 
-internal Vector4 linear_fade(Vector4 linear_color ,float mul)
+internal Vector4 function linear_fade(Vector4 linear_color ,float mul)
 {
     linear_color.w *= mul;
     return linear_color;
 }
 
 //TODO : make blend function?
-internal Color color_multiply_B(Color base , float value)
+internal Color function color_multiply_B(Color base , float value)
 {
 	if (value >= 1) value = 1;
     
@@ -68,7 +76,7 @@ internal Color color_multiply_B(Color base , float value)
 	return base;
 }
 
-internal Color color_invert(Color base)
+internal Color function color_invert(Color base)
 {
 	base.r = 255 - base.r;
 	base.g = 255 - base.g;
@@ -77,7 +85,7 @@ internal Color color_invert(Color base)
 	return base;
 }
 
-internal Color color_lerp(Color a , Color b , float t)
+internal Color function color_lerp(Color a , Color b , float t)
 {
 	Color new_color = {0,0,0,255};
 	new_color.r = (unsigned char)Lerp((float)a.r , (float)b.r , t);
@@ -88,7 +96,7 @@ internal Color color_lerp(Color a , Color b , float t)
 	return new_color;
 }
 
-internal Color color_screen(Color base_color ,Color layer_color , float blend)
+internal Color function color_screen(Color base_color ,Color layer_color , float blend)
 {
 	Vector3 base = {((float)base_color.r)/255.0f , ((float)base_color.g)/255.0f ,((float)base_color.b)/255.0f };
 	Vector3 layer = {((float)layer_color.r)/255.0f ,((float)layer_color.g)/255.0f ,((float)layer_color.b)/255.0f };
@@ -113,9 +121,8 @@ internal Color color_screen(Color base_color ,Color layer_color , float blend)
     return result;
 }
 
-internal Color color_multiply(Color base , Color layer , float blend)
+internal Color function color_multiply(Color base , Color layer , float blend)
 {
-    
 	Color new_color = base;
     
 	new_color.r *= layer.r;
@@ -127,7 +134,7 @@ internal Color color_multiply(Color base , Color layer , float blend)
 	return base;
 }
 
-internal Vector4 vector4_lerp(Vector4 v1, Vector4 v2, float amount)
+internal Vector4 function vector4_lerp(Vector4 v1, Vector4 v2, float amount)
 {
 	Vector4 result = { 0 };
     
@@ -139,7 +146,7 @@ internal Vector4 vector4_lerp(Vector4 v1, Vector4 v2, float amount)
 	return result;
 }
 
-internal void color_quad(Vector4* quad_color , Vector4 target_color)
+internal void function color_quad(Vector4* quad_color , Vector4 target_color)
 {   
 	for (int i = 0; i < 4; i++)
 	{
@@ -152,7 +159,7 @@ internal void color_quad(Vector4* quad_color , Vector4 target_color)
 	}
 }
 
-internal Vector4 random_linear_color()
+internal Vector4 function random_linear_color()
 {
     Vector4 result = {};
 	result.x = (float)rand() / (float)(RAND_MAX / 1);
@@ -160,12 +167,11 @@ internal Vector4 random_linear_color()
 	result.z = (float)rand() / (float)(RAND_MAX / 1);
 	result.w = 1;
 	
-    
     return result;
 }
 
 //TODO : don't use these
-internal float noise(float seed)
+internal float function noise(float seed)
 {
 	int n;
     
@@ -182,7 +188,7 @@ internal float noise(float seed)
 #define RandomIntRange(Min,Max,Seed) Min+RandomInt(Seed)%(Max-Min)
 
 //stolen
-internal unsigned int string_to_hash(const char * s)
+internal unsigned int function string_to_hash(const char * s)
 {
     unsigned int hash = 0;
     
@@ -202,13 +208,13 @@ internal unsigned int string_to_hash(const char * s)
 
 #define malloc_and_memset(type,count) (type*)memset(malloc(sizeof(type)*count),0,sizeof(type)*count)
 
-internal Vector4 quaternion_to_vector4(Quaternion _Quaternion)
+internal Vector4 function quaternion_to_vector4(Quaternion _Quaternion)
 {
     Vector4 result = {_Quaternion.x ,_Quaternion.y , _Quaternion.z, _Quaternion.w};
 	return result;
 }
 
-internal Vector3 project_on_plane(Vector3 direction , Vector3 normal)
+internal Vector3 function project_on_plane(Vector3 direction , Vector3 normal)
 {
     Vector3 right_axis = Vector3CrossProduct(direction , normal);
     if(Vector3LengthSqr(right_axis) > 0.0000001f)
@@ -220,7 +226,7 @@ internal Vector3 project_on_plane(Vector3 direction , Vector3 normal)
     return direction;
 }
 
-internal float cubic_bezier(float x1 , float x2 , float x3 ,float x4, float t)
+internal float function cubic_bezier(float x1 , float x2 , float x3 ,float x4, float t)
 {
     float xa = Lerp( x1 , x2 , t );
     float xb = Lerp( x2 , x3 , t );
@@ -234,7 +240,7 @@ internal float cubic_bezier(float x1 , float x2 , float x3 ,float x4, float t)
     return Lerp( xe , xf , t );
 }
 
-internal Vector3 vector3_cubic_bezier(Vector3 p1 , Vector3 p2 , Vector3 p3 , Vector3 p4  , float t)
+internal Vector3 function vector3_cubic_bezier(Vector3 p1 , Vector3 p2 , Vector3 p3 , Vector3 p4  , float t)
 {
     Vector3 result = {};
     
@@ -245,36 +251,36 @@ internal Vector3 vector3_cubic_bezier(Vector3 p1 , Vector3 p2 , Vector3 p3 , Vec
     return result;
 }
 
-internal float ease_in_out_sine(float x)
+internal float function ease_in_out_sine(float x)
 {
 	return -(cos(PI * x) - 1.0) / 2.0;
 }
 
-internal float ease_in_out_cubic(float x)
+internal float function ease_in_out_cubic(float x)
 {
 	return x < 0.5 ? 4.0 * x * x * x : 1.0 - pow(-2.0 * x + 2.0 , 3.0 ) / 2.0;
 }
 
-internal float ease_out_quint(float x )
+internal float function ease_out_quint(float x )
 {
 	return 1.0 - pow(1.0 - x, 5.0);
 }
 
-internal float ease_in_back(float x , float c1)
+internal float function ease_in_back(float x , float c1)
 {
 	float c3 = c1 + 1;
     
 	return c3 * x * x * x - c1 * x * x;
 }
 
-internal float ease_out_back(float x  , float c1)
+internal float function ease_out_back(float x  , float c1)
 {
 	float c3 = c1 + 1;
     
 	return 1 + c3 * pow(x - 1, 3) + c1 * pow(x - 1, 2);
 }
 
-internal bool compare_string_C(char * string_A, char * string_B , int count)
+internal bool function compare_string_C(char * string_A, char * string_B , int count)
 {
     for(int char_index = 0 ; char_index < count ; char_index++)
     {
@@ -287,7 +293,7 @@ internal bool compare_string_C(char * string_A, char * string_B , int count)
     return true;
 }
 
-internal bool compare_string_W( wchar_t * string_A , wchar_t * string_B)
+internal bool function compare_string_W( wchar_t * string_A , wchar_t * string_B)
 {
     int string_B_length = 0;
     for(int char_index = 0 ; string_B[char_index] != '\0' ; char_index++ ,string_B_length++);
@@ -327,79 +333,19 @@ static int hash_array[] = { 208,34,231,213,32,248,233,56,161,78,24,140,71,48,140
 
 #define SmoothInter(x, y, s) PLinInter(x, y, s * s * (3 - 2 * s))
 
-internal bool key_pressing(int key)
+internal bool function check_and_comsumed_input(int code , InputArray * input)
 {
-    for (int i = 0; i < input_state->pressing_key_count; i++)
+    for (int i = 0; i < input->count; i++)
 	{
-		if (input_state->pressing_key[i] == key) return true;
-	}
-    
-    return false;
-}
-
-internal float key_pressing_time(int key)
-{
-    for (int i = 0; i < input_state->pressing_key_count; i++)
-	{
-		if (input_state->pressing_key[i] == key) return input_state->pressing_key_time[i];
-	}
-    
-    return 0;
-}
-
-internal bool key_pressed(int key)
-{
-	for (int i = 0; i < input_state->pressed_key_count; i++)
-	{
-		if (input_state->pressed_key[i] == key) return true;
-	}
-    
-	return false;
-}
-
-internal bool key_released(int key)
-{
-    for (int i = 0; i < input_state->released_key_count; i++)
-	{
-		if (input_state->released_key[i] == key)return true;
-	}
-    
-	return false;
-}
-
-internal bool mouse_pressing(int button)
-{
-    for(int mouse_index = 0; mouse_index < input_state->pressing_mouse_count; mouse_index++)
-    {
-        if(input_state->pressing_mouse[mouse_index] == button) return true;
-    }
-    
-    return false;
-}
-
-internal bool mouse_pressed_no_check(int button)
-{
-	for (int i = 0; i < input_state->pressed_mouse_count; i++)
-	{
-		if (input_state->pressed_mouse[i] == button) return true;
-	}
-    
-	return false;
-}
-
-internal bool mouse_pressed(int button)
-{
-    for (int i = 0; i < input_state->pressed_mouse_count; i++)
-	{
-		if (input_state->pressed_mouse[i] == button) 
+		if (input->array[i] == code) 
         {
-            if(input_state->pressed_mouse_consumed[i])
+            if(input->consumed_array[i])
             {
                 return false;
             }
             else
             {
-                input_state->pressed_mouse_consumed[i] = true;
+                input->consumed_array[i] = true;
                 return true;
             }
         }
@@ -408,178 +354,80 @@ internal bool mouse_pressed(int button)
     return false;
 }
 
-internal bool mouse_released(int button)
+internal bool function check_input(int code , InputArray * input)
 {
-    for (int i = 0; i < input_state->released_mouse_count; i++)
+    for (int i = 0; i < input->count; i++)
 	{
-		if (input_state->released_mouse[i] == button) return true;
-	}
-    
-	return false;
-}
-
-#define allocate_temp( type , count) (type*)allocate_temp_(sizeof(type)*(count))
-
-internal unsigned char* allocate_temp_(int size)
-{
-    if(size < 0) CATCH;
-    
-	if (size == 0)
-	{
-		return 0;
-	}
-    
-	unsigned char* start = run_time_memory.current_memory;
-	run_time_memory.current_memory += size;
-	if (run_time_memory.current_memory >= run_time_memory.start_memory + run_time_memory.size)
-	{
-		CATCH;
-	}
-    
-	memset(start, 0, size);
-    
-	return start;
-}
-
-#define allocate_frame(Type,Size) (Type*)allocate_frame_(sizeof(Type)*(Size))
-
-internal unsigned char * allocate_frame_(int size)
-{
-    if(size < 0) CATCH;
-    
-    if (size == 0)
-	{
-		return 0;
-	}
-    
-	unsigned char* start = frame_time_memory.current_memory;
-	frame_time_memory.current_memory += size;
-	if (frame_time_memory.current_memory >= frame_time_memory.start_memory + frame_time_memory.size)
-	{
-		CATCH;
-	}
-    
-	memset(start, 0, size);
-    
-	return start;
-}
-
-internal void * allocate_memory(int size , int allocate_type)
-{
-    unsigned char * memory = 0;
-    
-    switch(allocate_type)
-    {
-        case AT_temp:
+		if (input->array[i] == code) 
         {
-            memory = allocate_temp_(size);
+            return true;
         }
-        break;
-        
-        case AT_frame:
-        {
-            memory = allocate_frame_(size);
-        }
-        break;
-        
-        default: CATCH; break;
-    }
+	}
     
-    return memory;
+    return false;
 }
 
-internal bool compare_string( char * string_A, char * string_B)
+internal bool function key_pressing(int key) 
 {
-    int string_B_length = 0;
-    for(int char_index = 0 ; string_B[char_index] != '\0' ; char_index++ ,string_B_length++);
-    
-    int name_length = 0;
-    for(int char_index = 0 ; string_A[char_index] != '\0' ; char_index++ , name_length++);
-    
-    if(name_length != string_B_length) return false;
-    
-    for(int char_index = 0 ; char_index < name_length ; char_index++)
-    {
-        if(string_A[char_index] != string_B[char_index])
-        {
-            return false;
-        }
-    }
-    
-    return true;
+    return check_and_comsumed_input(key , input_state->input_array + IA_pressing_key);
 }
 
-internal wchar_t * combine_string_W(wchar_t * string_a , wchar_t * string_b)
+internal bool function key_pressed(int key)
 {
-    int string_size= wcslen(string_a) + wcslen(string_b) + 2;//adding 2 just to be save
-    wchar_t * temp_string = allocate_frame(wchar_t , string_size);
-    
-	wcscpy(temp_string , string_a);
-	wcscat(temp_string , string_b);
-    
-	return temp_string;
+    return check_and_comsumed_input(key , input_state->input_array + IA_pressed_key);
 }
 
-#define read_buffer(data_to_assign , name , type , index) \
-{\
-local_persist bool initialized = false;\
-local_persist type * buffer = 0;\
-if(!initialized) {initialized = true; buffer = (type *)get_data_buffer_by_name(name);}\
-if(buffer) (data_to_assign) = buffer[index];\
-}
-
-#define read_data(data , name , type) { type * data_pointer = (type *)get_data_buffer_by_name(name) ; if(data_pointer) data = (*data_pointer); }
-
-internal unsigned char * get_data_buffer_by_name(char * name)
+internal bool function key_released(int key)
 {
-    for(int header_index = 0 ; header_index < save_header_count ; header_index++)
-    {
-        DataHeader * current_header = data_header_array + header_index;
-        
-        if(compare_string(current_header->name.string , name))
-        {
-            return save_memory + current_header->data_offset;
-        }
-        
-    }
-    
-    return 0;
+    return check_and_comsumed_input(key , input_state->input_array + IA_released_key);
 }
 
-//this is kinda dumb
-internal void combine_file_path(const char* file_name,char * result_path)
+internal bool function mouse_pressing(int button)
 {
-	strcat(result_path, app_data->application_path);
-	strcat(result_path, file_name);
+    return check_and_comsumed_input(button , input_state->input_array + IA_pressing_mouse);
 }
 
-internal char * combine_string(char * string_a , char * string_b)
+internal bool function mouse_pressed(int button)
 {
-	int string_size= strlen(string_a) + strlen(string_b) + 2;//adding 2 just to be save
-	char * temp_string = allocate_frame(char , string_size);
-    
-	strcpy(temp_string , string_a);
-	strcat(temp_string , string_b);
-    
-	return temp_string;
+    return check_and_comsumed_input(button , input_state->input_array + IA_pressed_mouse);
 }
 
-internal char * get_app_file_path(const char* file_name)
+internal bool function mouse_released(int button)
 {
-	return combine_string(app_data->application_path , (char*) file_name);
+    return check_and_comsumed_input(button , input_state->input_array + IA_released_mouse);
 }
 
-internal char * get_level_file_path(const char * level_name)
+internal bool function mouse_pressing_no_check(int button)
 {
-	return combine_string(combine_string(app_data->application_path , "GameLevel\\") , (char*)level_name);
+    return check_input(button , input_state->input_array + IA_pressing_mouse);
 }
 
-internal char * get_level_file_path_B()
+internal bool function mouse_pressed_no_check(int button)
 {
-	return combine_string(app_data->application_path , "GameLevel\\");
+    return check_input(button , input_state->input_array + IA_pressed_mouse);
 }
 
-internal Quad resize_block(Quad quad,float size)
+internal bool function mouse_released_no_check(int button)
+{
+    return check_input(button , input_state->input_array + IA_released_mouse);
+}
+
+internal bool function key_pressing_no_check(int button)
+{
+    return check_input(button , input_state->input_array + IA_pressing_key);
+}
+
+internal bool function key_pressed_no_check(int button)
+{
+    return check_input(button , input_state->input_array + IA_pressed_key);
+}
+
+internal bool function key_released_no_check(int button)
+{
+    return check_input(button , input_state->input_array + IA_released_key);
+}
+
+internal Quad function resize_block(Quad quad,float size)
 {
     Vector3 centre = {};
     
@@ -631,13 +479,13 @@ internal Quad resize_block(Quad quad,float size)
     return quad;
 }
 
-internal Quad resize_block_B(Quad * quad, float size)
+internal Quad function resize_block_B(Quad * quad, float size)
 {
     return resize_block(*quad, size);
 }
 
 //beware the normal isn't normalized
-internal RayCollision get_ray_collision_triangle(Ray ray, Vector3 p1, Vector3 p2, Vector3 p3)
+internal RayCollision function get_ray_collision_triangle(Ray ray, Vector3 p1, Vector3 p2, Vector3 p3)
 {
 	RayCollision collision = { 0 };
 	Vector3 edge1 = { 0 };
@@ -692,7 +540,7 @@ internal RayCollision get_ray_collision_triangle(Ray ray, Vector3 p1, Vector3 p2
 	return collision;
 }
 
-internal Vector3 get_edge_direction(Vector3 start,Vector3 end , Vector3 point)
+internal Vector3 function get_edge_direction(Vector3 start,Vector3 end , Vector3 point)
 {
     Vector3 edge = Vector3Subtract(end, start);
     
@@ -708,7 +556,7 @@ internal Vector3 get_edge_direction(Vector3 start,Vector3 end , Vector3 point)
     return edge_normal_inside;
 }
 
-internal bool check_collision_quad_point(Quad quad, Vector3 point)
+internal bool function check_collision_quad_point(Quad quad, Vector3 point)
 {
     enum
     {
@@ -741,7 +589,7 @@ internal bool check_collision_quad_point(Quad quad, Vector3 point)
 }
 
 //TODO : this is bad
-internal bool check_collision_quad_to_rect(Quad quad , Rect rect)
+internal bool function check_collision_quad_to_rect(Quad quad , Rect rect)
 {
     Vector3 rect_vertices[quad_vertex_count] = {};
     
@@ -773,7 +621,7 @@ internal bool check_collision_quad_to_rect(Quad quad , Rect rect)
     return false;
 }
 
-internal Vector4 selection_from_start_to_end_to_rect(Vector2 start_position, Vector2 end)
+internal Vector4 function selection_from_start_to_end_to_rect(Vector2 start_position, Vector2 end)
 {
     Vector2 drag_centre = {};
     drag_centre.x = (start_position.x + end.x) / 2;
@@ -793,7 +641,7 @@ internal Vector4 selection_from_start_to_end_to_rect(Vector2 start_position, Vec
 }
 
 //why are you broken??
-internal bool ray_line_segment_intersection_example(Vector3 o, Vector3 d, Vector3 a, Vector3 b)
+internal bool function ray_line_segment_intersection_example(Vector3 o, Vector3 d, Vector3 a, Vector3 b)
 {
     Vector3 ortho = { -d.y, d.x };
     Vector3 aToO = Vector3Subtract(o , a);
@@ -812,7 +660,7 @@ internal bool ray_line_segment_intersection_example(Vector3 o, Vector3 d, Vector
 }
 
 //this is how normal people solve it
-internal Vector2 ray_line_segment_intersection(Vector3 o, Vector3 d, Vector3 a, Vector3 b)
+internal Vector2 function ray_line_segment_intersection(Vector3 o, Vector3 d, Vector3 a, Vector3 b)
 {
     float t1 = (o.x - a.x) * (b.y - a.y) - (o.y - a.y) * (b.x - a.x);
     t1 /= (d.y * (b.x - a.x) - d.x * (b.y - a.y));
@@ -824,7 +672,7 @@ internal Vector2 ray_line_segment_intersection(Vector3 o, Vector3 d, Vector3 a, 
 }
 
 //this is how 200+ iq people solve it :)
-internal Vector2 ray_line_segment_intersection_(Vector3 o, Vector3 d, Vector3 a, Vector3 b)
+internal Vector2 function ray_line_segment_intersection_(Vector3 o, Vector3 d, Vector3 a, Vector3 b)
 {
     Vector3 n1 = Vector3Subtract(b, a);
     n1 = (Vector3){ -n1.y , n1.x };
@@ -855,6 +703,7 @@ internal Vector2 ray_line_segment_intersection_(Vector3 o, Vector3 d, Vector3 a,
         t2 /= t2Bottom;
     }
     
+    //this is pretty old
 #if 0
     wchar_t DebugString[128] = {};
     swprintf(DebugString, L"t1:%.2f | t2:%.2f | rate: %.2f", t1 , t2 , 1.0 / (float)D_UPDATE_RATE);
@@ -864,13 +713,27 @@ internal Vector2 ray_line_segment_intersection_(Vector3 o, Vector3 d, Vector3 a,
     return (Vector2){ t1 , t2 };
 }
 
+//every allocation in pool require calling this first
+//too much?
+internal void function set_pool(ChunkPool * pool , int * chunk_index)
+{
+    current_pool_to_allocate = pool;
+    current_chunk_index = chunk_index;
+}
+
+internal void * allocate_memory(int size , int allocate_type);
+
+#define allocate_memory_type(type , size , allocate_type) (type*)allocate_memory(sizeof(type)*(size) , allocate_type)
+
 #define buffer_full(buffer) ((buffer).count == (buffer).capacity)
 
+#define allocate_buffer_EX( buffer_pointer , buffer_data_size , new_capacity , allocate_type) \
+allocate_buffer_raw( (void**)&((buffer_pointer)->data) , &((buffer_pointer)->data_size) , &((buffer_pointer)->count) , &((buffer_pointer)->capacity) , buffer_data_size , new_capacity , allocate_type);
+
 #define allocate_buffer( buffer_pointer , data_type , new_capacity , allocate_type) \
-{data_type * type_check = (buffer_pointer)->data;} allocate_buffer_( (void**)&((buffer_pointer)->data) , &((buffer_pointer)->data_size) , &((buffer_pointer)->count) , &((buffer_pointer)->capacity) , sizeof(data_type) , new_capacity , allocate_type);
+{data_type * type_check = (buffer_pointer)->data;} allocate_buffer_EX(buffer_pointer , sizeof(data_type) , new_capacity , allocate_type);
 
-
-internal void allocate_buffer_( void ** buffer_data, int * buffer_data_size , int * buffer_count , int * buffer_capacity ,  int  data_size , int capacity , int allocate_type)
+internal void function allocate_buffer_raw( void ** buffer_data, int * buffer_data_size , int * buffer_count , int * buffer_capacity ,  int  data_size , int capacity , int  allocate_type)
 {
     (*buffer_data_size) = data_size;
     (*buffer_count) = 0;
@@ -878,22 +741,29 @@ internal void allocate_buffer_( void ** buffer_data, int * buffer_data_size , in
     (*buffer_data) = allocate_memory(data_size * capacity , allocate_type);
 }
 
-#define reallocate_buffer(buffer_pointer , allocate_type) reallocate_buffer_( (void **)&((buffer_pointer)->data) , &((buffer_pointer)->capacity) , (buffer_pointer)->data_size  , allocate_type);
+#define reallocate_buffer_EX(buffer_pointer , new_capacity , allocate_type) _reallocate_buffer_EX( (void **)&((buffer_pointer)->data) , new_capacity , &((buffer_pointer)->capacity) , (buffer_pointer)->data_size , allocate_type);
 
-internal void reallocate_buffer_( void ** data , int * buffer_capacity , int buffer_data_size  , int allocate_type)
+internal void function _reallocate_buffer_EX(void ** data , int new_capacity , int * buffer_capacity , int buffer_data_size , int allocate_type)
 {
-    int new_capacity = (*buffer_capacity) * 2;
-    if(new_capacity == 0) CATCH;
-    
-    unsigned char * new_buffer = allocate_memory( buffer_data_size * new_capacity , allocate_type  );
+    unsigned char * new_buffer = allocate_memory( buffer_data_size * new_capacity , allocate_type);
     memcpy( new_buffer, (*data) , (*buffer_capacity) * buffer_data_size );
     (*buffer_capacity) = new_capacity;
     (*data)= new_buffer;
 }
 
-internal List allocate_list(int capacity , int allocate_type)
+#define reallocate_buffer(buffer_pointer , allocate_type) _reallocate_buffer( (void **)&((buffer_pointer)->data) , &((buffer_pointer)->capacity) , (buffer_pointer)->data_size , allocate_type);
+
+internal void function _reallocate_buffer( void ** data , int * buffer_capacity , int buffer_data_size , int allocate_type)
 {
-    ListNode * all_node = (ListNode *)allocate_memory(sizeof(ListNode) * (capacity + DUMMY_NODE_COUNT) , allocate_type );
+    int new_capacity = (*buffer_capacity) * 2;
+    if(new_capacity == 0) CATCH;
+    
+    _reallocate_buffer_EX(data , new_capacity , buffer_capacity , buffer_data_size , allocate_type);
+}
+
+internal List function allocate_list(int capacity , int allocate_type)
+{
+    ListNode * all_node = (ListNode *)allocate_memory(sizeof(ListNode) * (capacity + DUMMY_NODE_COUNT) , allocate_type);
     ListNode * node_array = all_node + DUMMY_NODE_COUNT;
     
     List list = {};
@@ -922,7 +792,7 @@ internal List allocate_list(int capacity , int allocate_type)
     return list;
 }
 
-internal void reallocate_list(List * list , int allocate_type)
+internal void function reallocate_list(List * list , int allocate_type)
 {
     int new_capacity = list->capacity * 2;
     if(new_capacity == 0) CATCH;
@@ -940,7 +810,7 @@ internal void reallocate_list(List * list , int allocate_type)
     (*list) = new_list;
 }
 
-internal Array allocate_array(int capacity , int allocate_type)
+internal Array function allocate_array(int capacity , int allocate_type)
 {
     Array array = {};
     array.valid_array = allocate_memory(capacity , allocate_type);
@@ -949,10 +819,8 @@ internal Array allocate_array(int capacity , int allocate_type)
     return array;
 }
 
-internal void reallocate_array(Array * array , int allocate_type)
+internal void function reallocate_array_EX(Array * array , int new_capacity , int allocate_type)
 {
-    int new_capacity = array->capacity * 2;
-    if(new_capacity == 0) CATCH;
     Array new_array = allocate_array(new_capacity , allocate_type);
     for(int index = 0 ; index < array->capacity ; index++)
     {
@@ -966,8 +834,16 @@ internal void reallocate_array(Array * array , int allocate_type)
     (*array) = new_array;
 }
 
+internal void function reallocate_array(Array * array , int allocate_type)
+{
+    int new_capacity = array->capacity * 2;
+    if(new_capacity == 0) CATCH;
+    
+    reallocate_array_EX(array , new_capacity , allocate_type);
+}
+
 //steal from somewhere
-internal unsigned int string_to_hash_W(wchar_t *s)
+internal unsigned int function string_to_hash_W(wchar_t *s)
 {
     unsigned int hash_value = 0;
     
@@ -986,7 +862,7 @@ internal unsigned int string_to_hash_W(wchar_t *s)
 }
 
 //steal from somewhere
-internal int hash_int(int key)
+internal int function hash_int(int key)
 {
     key = ~key + (key << 15); // key = (key << 15) - key - 1;
     key = key ^ (key >> 12);
@@ -1000,9 +876,8 @@ internal int hash_int(int key)
 #define SlotToData(Slot , HashTable) (HashTable.DataArray + (Slot - HashTable.HashSlotArray))
 #define DataToSlot(Data , HashTable) ( HashTable.HashSlotArray (Data - HashTable.DataArray))
 
-internal HashTable allocate_hash_table(int capacity, int allocate_type)
+internal HashTable function allocate_hash_table(int capacity , int allocate_type)
 {
-    
     HashTable hash_table = {};
     hash_table.entry_array = (HashTableEntry *)allocate_memory(sizeof(HashTableEntry) * capacity , allocate_type);
     hash_table.slot_array = (HashTableSlot *)allocate_memory(sizeof(HashTableSlot) * capacity , allocate_type);
@@ -1018,10 +893,101 @@ internal HashTable allocate_hash_table(int capacity, int allocate_type)
     
 }
 
+internal bool function compare_string( char * string_A, char * string_B)
+{
+    int string_B_length = 0;
+    for(int char_index = 0 ; string_B[char_index] != '\0' ; char_index++ ,string_B_length++);
+    
+    int name_length = 0;
+    for(int char_index = 0 ; string_A[char_index] != '\0' ; char_index++ , name_length++);
+    
+    if(name_length != string_B_length) return false;
+    
+    for(int char_index = 0 ; char_index < name_length ; char_index++)
+    {
+        if(string_A[char_index] != string_B[char_index])
+        {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+internal wchar_t * function combine_string_W(wchar_t * string_a , wchar_t * string_b)
+{
+    int string_size= wcslen(string_a) + wcslen(string_b) + 2;//adding 2 just to be save
+    wchar_t * temp_string = allocate_memory_type(wchar_t , string_size , AT_frame);
+    
+	wcscpy(temp_string , string_a);
+	wcscat(temp_string , string_b);
+    
+	return temp_string;
+}
+
+#define READ_BUFFER(data_to_assign , name , type , index) \
+{\
+local_persist bool initialized = false;\
+local_persist type * buffer = 0;\
+if(!initialized) {initialized = true; buffer = (type *)get_data_buffer_by_name(name);}\
+if(buffer) (data_to_assign) = buffer[index];\
+}
+
+#define READ_DATA(data , name , type) { type * data_pointer = (type *)get_data_buffer_by_name(name) ; if(data_pointer) data = (*data_pointer); }
+
+internal unsigned char * function get_data_buffer_by_name(char * name)
+{
+    for(int header_index = 0 ; header_index < save_header_count ; header_index++)
+    {
+        DataHeader * current_header = data_header_array + header_index;
+        
+        if(compare_string(current_header->name.string , name))
+        {
+            return save_memory + current_header->data_offset;
+        }
+        
+    }
+    
+    return 0;
+}
+
+//this is kinda dumb
+internal void function combine_file_path(const char* file_name,char * result_path)
+{
+	strcat(result_path, app_data->application_path);
+	strcat(result_path, file_name);
+}
+
+internal char * function combine_string(char * string_a , char * string_b)
+{
+	int string_size= strlen(string_a) + strlen(string_b) + 2;//adding 2 just to be save
+	char * temp_string = allocate_memory_type(char , string_size , AT_frame);
+    
+	strcpy(temp_string , string_a);
+	strcat(temp_string , string_b);
+    
+	return temp_string;
+}
+
+internal char * function get_app_file_path(const char* file_name)
+{
+	return combine_string(app_data->application_path , (char*) file_name);
+}
+
+internal char * function get_level_file_path(const char * level_name)
+{
+	return combine_string(combine_string(app_data->application_path , "GameLevel\\") , (char*)level_name);
+}
+
+internal char * function get_level_file_path_B()
+{
+	return combine_string(app_data->application_path , "GameLevel\\");
+}
+
 //this look bad
 //this is really really bad
 
-internal int get_emty_slot_index_from_hash_table(int hash_value , HashTable * hash_table)
+internal int function get_emty_slot_index_from_hash_table(int hash_value , HashTable * hash_table)
 {
     
     HashTableSlot * slot_array = hash_table->slot_array;
@@ -1069,7 +1035,7 @@ internal int get_emty_slot_index_from_hash_table(int hash_value , HashTable * ha
     return emty_slot_index;
 }
 
-internal int get_hash_table_head_slot_index(int hash_value ,  HashTable * hash_table)
+internal int function get_hash_table_head_slot_index(int hash_value ,  HashTable * hash_table)
 {
     HashTableEntry * entry_array = hash_table->entry_array;
     
@@ -1077,12 +1043,12 @@ internal int get_hash_table_head_slot_index(int hash_value ,  HashTable * hash_t
     return entry->head_index;
 }
 
-internal int get_data_index_from_slot_index(int slot_index , HashTable * hash_table)
+internal int function get_data_index_from_slot_index(int slot_index , HashTable * hash_table)
 {
     return hash_table->slot_array[slot_index].data_index;
 }
 
-internal int insert_to_hash_table(int slot_index_to_insert_after , int hash_value , int data_index , HashTable * hash_table)
+internal int function insert_to_hash_table(int slot_index_to_insert_after , int hash_value , int data_index , HashTable * hash_table)
 {
     
     HashTableSlot * slot_array = ( HashTableSlot *)hash_table->slot_array;
@@ -1129,7 +1095,7 @@ internal int insert_to_hash_table(int slot_index_to_insert_after , int hash_valu
     return emty_slot_index;
 }
 
-internal int add_to_hash_table(int hash_value , int data_index , HashTable * hash_table)
+internal int function add_to_hash_table(int hash_value , int data_index , HashTable * hash_table)
 {
     
     HashTableSlot * slot_array = hash_table->slot_array;
@@ -1163,7 +1129,7 @@ internal int add_to_hash_table(int hash_value , int data_index , HashTable * has
     return emty_slot_index;
 }
 
-internal void clear_hash_table(HashTable * hash_table)
+internal void function clear_hash_table(HashTable * hash_table)
 {
     HashTableEntry * entry_array = hash_table->entry_array;
     HashTableSlot * slot_array = hash_table->slot_array;
@@ -1184,7 +1150,7 @@ internal void clear_hash_table(HashTable * hash_table)
     
 }
 
-internal bool delete_from_hash_table_by_slot_index(int slot_index , int hash_value , HashTable * hash_table)
+internal bool function delete_from_hash_table_by_slot_index(int slot_index , int hash_value , HashTable * hash_table)
 {
     int slot_value = (hash_value % hash_table->capacity);
     
@@ -1229,7 +1195,7 @@ internal bool delete_from_hash_table_by_slot_index(int slot_index , int hash_val
 }
 
 //insane shit
-internal bool delete_from_hash_table(int hash_value , int data_index , HashTable * hash_table)
+internal bool function delete_from_hash_table(int hash_value , int data_index , HashTable * hash_table)
 {
     HashTableSlot * slot_array = hash_table->slot_array;
     HashTableSlot * slot_chain = slot_array + (hash_value % hash_table->capacity);
@@ -1253,7 +1219,7 @@ internal bool delete_from_hash_table(int hash_value , int data_index , HashTable
     return false;
 }
 
-internal int get_hash_table_tail_data_index(int hash_value , HashTable * hash_table)
+internal int function get_hash_table_tail_data_index(int hash_value , HashTable * hash_table)
 {
     int tail_slot_index = hash_table->entry_array[hash_value % hash_table->capacity].tail_index;
     
@@ -1272,7 +1238,7 @@ _iterate_hash_table((HashValue),  &SlotIndex , &DataIndex , hash_tableVar) ,Slot
 
 #define HASH_DEBUG 0
 
-internal void _iterate_hash_table( int hash_value , int * slot_index , int * data_index, HashTable * hash_table)
+internal void function _iterate_hash_table( int hash_value , int * slot_index , int * data_index, HashTable * hash_table)
 {
     
 #if HASH_DEBUG
@@ -1309,7 +1275,7 @@ _iterate_hash_table_reverse((HashValue),  &SlotIndex , &DataIndex , hash_tableVa
 
 #define hash_table_iterate_reverse(DataIndex , HashValue , hash_tableVar) hash_table_iterate_reverse_ex(DataIndex , SlotIndex , -1 , HashValue , hash_tableVar)
 
-internal void _iterate_hash_table_reverse( int hash_value , int * slot_index , int * data_index, HashTable * hash_table)
+internal void function _iterate_hash_table_reverse( int hash_value , int * slot_index , int * data_index, HashTable * hash_table)
 {
     
 #if HASH_DEBUG
@@ -1362,7 +1328,7 @@ node_index = (List)->node_array[node_index].next , DataIndexVar = (List)->node_a
 
 #define list_foreach(DataIndex , List) list_foreach_EX(DataIndex ,N_node_head , node_index , List)
 
-internal void clear_list(List * list)
+internal void function clear_list(List * list)
 {
     
     list->unuse_index = 0;
@@ -1376,7 +1342,7 @@ internal void clear_list(List * list)
 //TODO: this doesn't feel good to use
 //i can try a worse version, turn all these function into macro and see how it goes
 //there is one i found online with 1000 lines of code, seem bad as well
-internal bool list_full(List * list)
+internal bool function list_full(List * list)
 {
     ListNode * node_array = list->node_array;
     int recycled_node_index = node_array[N_recycled_node_head].next;
@@ -1390,9 +1356,8 @@ internal bool list_full(List * list)
     return false;
 }
 
-internal int create_new_node( List * list)
+internal int function create_new_node( List * list)
 {
-    
     int new_node_index = invalid_node;
     ListNode * node_array = list->node_array;
     
@@ -1418,7 +1383,7 @@ internal int create_new_node( List * list)
     return new_node_index;
 }
 
-internal int get_next_node_index(int node_index , List * list)
+internal int function get_next_node_index(int node_index , List * list)
 {
     int result =list->node_array[node_index].next;
     
@@ -1427,17 +1392,17 @@ internal int get_next_node_index(int node_index , List * list)
     return result;
 }
 
-internal int get_head_node_index(List * list)
+internal int function get_head_node_index(List * list)
 {
     return list->node_array[N_node_head].next;
 }
 
-internal int get_tail_node_index(List * list)
+internal int function get_tail_node_index(List * list)
 {
     return list->node_array[N_node_tail].next;
 }
 
-internal int get_previous_node_index(int node_index , List * list)
+internal int function get_previous_node_index(int node_index , List * list)
 {
     int result = list->node_array[node_index].previous;
     
@@ -1446,30 +1411,23 @@ internal int get_previous_node_index(int node_index , List * list)
     return result;
 }
 
-internal int get_data_index_from_node_index(int node_index , List * list)
+internal int function get_data_index_from_node_index(int node_index , List * list)
 {
     if(node_index == invalid_node ) return -1;
     return list->node_array[node_index].data_index;
 }
 
-internal int get_previous_data_index_from_node_index(int node_index , List * list)
+internal int function get_previous_data_index_from_node_index(int node_index , List * list)
 {
     return get_data_index_from_node_index(get_previous_node_index(node_index, list) , list);
 }
 
-internal int get_next_data_index_from_node_index(int node_index , List * list)
+internal int function get_next_data_index_from_node_index(int node_index , List * list)
 {
     return get_data_index_from_node_index(get_next_node_index(node_index, list) , list);
 }
 
-internal void insert_to_list
-(
- bool connect_before_node , 
- int node_to_connect_index , 
- int node_index , 
- int data_index , 
- List * list
- )
+internal void function insert_to_list(bool connect_before_node , int node_to_connect_index , int node_index , int data_index , List * list)
 {
     if(node_index == invalid_node) return;
     
@@ -1505,9 +1463,8 @@ internal void insert_to_list
     }
 }
 
-internal int get_emty_node_from_list( List * list)
+internal int function get_emty_node_from_list( List * list)
 {
-    
     int new_node_index = invalid_node;
     ListNode * node_array = list->node_array;
     
@@ -1527,7 +1484,7 @@ internal int get_emty_node_from_list( List * list)
     return new_node_index;
 }
 
-internal int create_and_insert_to_list(bool connect_before_node , int node_to_connect_index , int data_index , List * list)
+internal int function create_and_insert_to_list(bool connect_before_node , int node_to_connect_index , int data_index , List * list)
 {
     int new_node_index = create_new_node(list);
     if(new_node_index == -1) CATCH;
@@ -1536,23 +1493,23 @@ internal int create_and_insert_to_list(bool connect_before_node , int node_to_co
     return new_node_index;
 }
 
-internal int add_to_list_head(int data_index , List * list)
+internal int function add_to_list_head(int data_index , List * list)
 {
     return create_and_insert_to_list(false , N_node_head , data_index , list);
 }
 
-internal int add_to_list_tail( int data_index , List * list)
+internal int function add_to_list_tail( int data_index , List * list)
 {
     return create_and_insert_to_list(true , N_node_tail , data_index , list);
 }
 
 //feel really weird
-internal int add_to_list_tail_B(List * list)
+internal int function add_to_list_tail_B(List * list)
 {
     return add_to_list_tail(get_emty_node_from_list(list) , list);
 }
 
-internal bool delete_from_list(int node_index_to_delete , List * list)
+internal bool function delete_from_list(int node_index_to_delete , List * list)
 {
     if(node_index_to_delete == invalid_node) return false;
     
@@ -1569,7 +1526,7 @@ internal bool delete_from_list(int node_index_to_delete , List * list)
     return true;
 }
 
-internal void clear_array(Array * array)
+internal void function clear_array(Array * array)
 {
 	for (int array_index = 0; array_index < array->upper_bound; array_index++)
 	{
@@ -1581,7 +1538,7 @@ internal void clear_array(Array * array)
 	array->lowest_index = 0;
 }
 
-internal void recheck_array(Array * array)
+internal void function recheck_array(Array * array)
 {
 	array->lowest_index = 0;
 	array->upper_bound = 0;
@@ -1599,7 +1556,7 @@ internal void recheck_array(Array * array)
 	}
 }
 
-internal int add_to_array(Array * array)
+internal int function add_to_array(Array * array)
 {
     if(array->lowest_index >= array->capacity)
     {
@@ -1635,7 +1592,7 @@ internal int add_to_array(Array * array)
 	return data_index;
 }
 
-internal bool delete_from_array(Array * array , int data_index)
+internal bool function delete_from_array(Array * array , int data_index)
 {
 	if (data_index == -1)
 		return false;
@@ -1657,12 +1614,12 @@ internal bool delete_from_array(Array * array , int data_index)
 	return true;
 }
 
-internal bool array_full(Array * array)
+internal bool function array_full(Array * array)
 {
     return (array->lowest_index == array->capacity);
 }
 
-internal bool iterate_array(int * data_index , Array * array)
+internal bool function iterate_array(int * data_index , Array * array)
 {
     if((*data_index) >= array->upper_bound) return false;
     
@@ -1680,14 +1637,145 @@ internal bool iterate_array(int * data_index , Array * array)
 
 #define array_foreach_B(data_index , iterate_index , array) for(int data_index = 0 , iterate_index = 0; iterate_array(&data_index , (array)) ; data_index++ , iterate_index++)
 
-internal Box get_box()
+internal void function allocate_chunk_pool(ChunkPool * pool , int pool_size , int chunk_size , int allocate_type)
+{
+    //you can detele this line if you implmented reallocation of pool
+    //but you shouldn't allocate pool from pool at the begining
+    if(allocate_type == AT_pool) CATCH;
+    pool->chunk_size = chunk_size;
+    pool->pool_size = pool_size;
+    allocate_buffer(&pool->buffer , Chunk , pool_size , allocate_type);
+    pool->array = allocate_array(pool_size , allocate_type);
+    pool->memory_start = allocate_memory(pool_size * chunk_size , allocate_type);
+    pool->allocate_type = allocate_type;
+}
+
+internal void * function allocate_memory(int size , int allocate_type)
+{
+    unsigned char * memory = 0;
+    
+    if(allocate_type == AT_pool)
+    {
+        if(!current_pool_to_allocate) CATCH;
+        Chunk * chunk = current_pool_to_allocate->buffer.data + (*current_chunk_index);
+        ChunkPool * pool = current_pool_to_allocate;
+        
+        bool need_new_chunk = false;
+        if(chunk->allocated_size + size > chunk->chunk_count * pool->chunk_size) need_new_chunk = true;
+        if((*current_chunk_index) == -1) need_new_chunk = true;
+        
+        if(need_new_chunk)
+        {
+            int previous_chunk_index = (*current_chunk_index);
+            if(previous_chunk_index >= pool->buffer.capacity) CATCH;
+            if(previous_chunk_index < -1) CATCH;
+            
+            int require_chunk_count = 1;
+            for(; require_chunk_count * pool->chunk_size < size; require_chunk_count++);
+            
+            bool space_found = false;
+            bool head_found = false;
+            int new_chunk_index = 0;
+            
+            for(;;)
+            {
+                bool * valid_array = pool->array.valid_array;
+                for(int array_index = pool->array.lowest_index; array_index < pool->array.capacity; array_index++)
+                {
+                    if(valid_array[array_index])
+                    {
+                        head_found = false;
+                    }
+                    else
+                    {
+                        if(!head_found)
+                        {
+                            new_chunk_index = array_index;
+                            head_found = true;
+                        }
+                        
+                        if((new_chunk_index - array_index + 1) == require_chunk_count)
+                        {
+                            space_found = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if(space_found)
+                {
+                    for(int array_index = new_chunk_index; array_index < new_chunk_index + require_chunk_count; array_index++)
+                    {
+                        if(valid_array[array_index]) CATCH;
+                        valid_array[array_index] = true;
+                    }
+                    
+                    recheck_array(&pool->array);
+                    break;
+                }
+                else
+                {
+                    if(pool->allocate_type == AT_pool) CATCH;
+                    pool->pool_size *= 2;
+                    reallocate_buffer_EX(&pool->buffer , pool->pool_size , pool->allocate_type);
+                    reallocate_array_EX(&pool->array , pool->pool_size , pool->allocate_type);
+                }
+            }
+            
+            Chunk * new_chunk = pool->buffer.data + new_chunk_index;
+            new_chunk->allocated_size = 0;
+            new_chunk->chunk_count = require_chunk_count;
+            new_chunk->previous = previous_chunk_index;
+            (*current_chunk_index) = new_chunk_index;
+            
+            chunk = current_pool_to_allocate->buffer.data + new_chunk_index;
+        }
+        
+        int memory_offset = chunk->allocated_size;
+        chunk->allocated_size += size;
+        current_pool_to_allocate = 0;
+        return (pool->memory_start + memory_offset + (*current_chunk_index) * pool->chunk_size);
+    }
+    else
+    {
+        D_Memory * game_memory = 0;
+        
+        switch(allocate_type)
+        {
+            case AT_temp: game_memory = &run_time_memory; break;
+            case AT_frame: game_memory = &frame_time_memory; break;
+            
+            default: CATCH; break;
+        }
+        
+        if(size < 0) CATCH;
+        
+        if (size == 0)
+        {
+            return 0;
+        }
+        
+        unsigned char* start = game_memory->current_memory;
+        game_memory->current_memory += size;
+        if (game_memory->current_memory >= game_memory->start_memory + game_memory->size)
+        {
+            CATCH;
+        }
+        
+        memset(start, 0, size);
+        
+        return start;
+    }
+}
+
+internal Box function get_box()
 {
     Box box = {};
     box.rotation = QuaternionIdentity();
     return box;
 }
 
-internal void create_a_whole_new_world()
+internal void function create_a_whole_new_world()
 {
     reference_frame_list = allocate_list(16 , AT_temp);
     allocate_buffer(&reference_frame_buffer , Vector3 , 16 , AT_temp);
@@ -1703,19 +1791,22 @@ internal void create_a_whole_new_world()
     camera_array = allocate_array(16 , AT_temp);
     camera_within_list = allocate_list(16 , AT_temp);
     
-    allocate_buffer(&player_buffer , Player , 16 , AT_temp);
-    player_array = allocate_array(16 , AT_temp);
+    player_chunk_size = (sizeof(Player));
+    allocate_chunk_pool(&player_pool , 16 , player_chunk_size , AT_temp);
     
     allocate_buffer(&entity_layout_buffer , Entity , 16 , AT_temp);
     entity_layout_array = allocate_array(16 , AT_temp);
     
     allocate_buffer(&entity_active_buffer , Entity , 16 , AT_temp);
     entity_active_array = allocate_array(16 , AT_temp);
+    
+    allocate_buffer(&client_player_buffer , Player , 16 , AT_temp);
+    allocate_buffer(&client_entity_buffer , Entity , 16 , AT_temp);
 }
 
-internal Vector3 * box_to_point(Box box)
+internal Vector3 * function box_to_point(Box box)
 {
-    Vector3 * points = allocate_frame(Vector3 , box_vertex_count);
+    Vector3 * points = allocate_memory_type(Vector3 , box_vertex_count , AT_frame);
     
     points[bv_A] = (Vector3){ -box.size.x * 0.5f , box.size.y * 0.5f , box.size.z * 0.5f};
     points[bv_B] = (Vector3){ box.size.x * 0.5f , box.size.y * 0.5f , box.size.z * 0.5f};
@@ -1726,6 +1817,40 @@ internal Vector3 * box_to_point(Box box)
     points[bv_G] = (Vector3){ -box.size.x * 0.5f , -box.size.y * 0.5f , -box.size.z * 0.5f};
     points[bv_H] = (Vector3){ box.size.x * 0.5f , -box.size.y * 0.5f , -box.size.z * 0.5f};
     
+    Vector3 right_tilt = {0 , box.right_top , box.right_front};
+    Vector3 top_tilt = {box.top_right , 0 , box.top_front};
+    Vector3 front_tilt = {box.front_right , box.front_top , 0};
+    
+    points[bv_B] = Vector3Add(points[bv_B] , right_tilt);
+    points[bv_D] = Vector3Add(points[bv_D] , right_tilt);
+    points[bv_F] = Vector3Add(points[bv_F] , right_tilt);
+    points[bv_H] = Vector3Add(points[bv_H] , right_tilt);
+    
+    points[bv_A] = Vector3Subtract(points[bv_A] , right_tilt);
+    points[bv_C] = Vector3Subtract(points[bv_C] , right_tilt);
+    points[bv_E] = Vector3Subtract(points[bv_E] , right_tilt);
+    points[bv_G] = Vector3Subtract(points[bv_G] , right_tilt);
+    
+    points[bv_A] = Vector3Add(points[bv_A] , top_tilt);
+    points[bv_B] = Vector3Add(points[bv_B] , top_tilt);
+    points[bv_C] = Vector3Add(points[bv_C] , top_tilt);
+    points[bv_D] = Vector3Add(points[bv_D] , top_tilt);
+    
+    points[bv_E] = Vector3Subtract(points[bv_E] , top_tilt);
+    points[bv_F] = Vector3Subtract(points[bv_F] , top_tilt);
+    points[bv_G] = Vector3Subtract(points[bv_G] , top_tilt);
+    points[bv_H] = Vector3Subtract(points[bv_H] , top_tilt);
+    
+    points[bv_A] = Vector3Add(points[bv_A] , front_tilt);
+    points[bv_B] = Vector3Add(points[bv_B] , front_tilt);
+    points[bv_E] = Vector3Add(points[bv_E] , front_tilt);
+    points[bv_F] = Vector3Add(points[bv_F] , front_tilt);
+    
+    points[bv_C] = Vector3Subtract(points[bv_C] , front_tilt);
+    points[bv_D] = Vector3Subtract(points[bv_D] , front_tilt);
+    points[bv_G] = Vector3Subtract(points[bv_G] , front_tilt);
+    points[bv_H] = Vector3Subtract(points[bv_H] , front_tilt);
+    
     for(int point_index = 0 ; point_index < box_vertex_count ; point_index++)
     {
         points[point_index] = Vector3RotateByQuaternion(points[point_index] , box.rotation);
@@ -1735,7 +1860,7 @@ internal Vector3 * box_to_point(Box box)
     return points;
 }
 
-internal float get_line_intersect_with_plane_time(Vector3 start , Vector3 end , Vector3 plane_normal , Vector3 plane_origin)
+internal float function get_line_intersect_with_plane_time(Vector3 start , Vector3 end , Vector3 plane_normal , Vector3 plane_origin)
 {
 	float result = plane_normal.x * (plane_origin.x - start.x) + plane_normal.y * (plane_origin.y - start.y) + plane_normal.z * (plane_origin.z - start.z);
 	result /= plane_normal.x * (end.x - start.x) + plane_normal.y * (end.y - start.y) + plane_normal.z * (end.z - start.z);
@@ -1743,7 +1868,113 @@ internal float get_line_intersect_with_plane_time(Vector3 start , Vector3 end , 
 	return result;
 }
 
-internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box , int * hit_face , float * hit_time)
+internal void function get_box_face(Quad * temp_box_quad , Box box)
+{
+    Vector3 * box_points = box_to_point(box);
+    
+    Quad * top = temp_box_quad + face_top;
+    Quad * bottom = temp_box_quad + face_bottom;
+    Quad * right = temp_box_quad + face_right;
+    Quad * left = temp_box_quad + face_left;
+    Quad * front = temp_box_quad + face_front;
+    Quad * back = temp_box_quad + face_back;
+    
+    top->vertex_position[vertex_top_right] = box_points[bv_B];
+    top->vertex_position[vertex_top_left] = box_points[bv_A];
+    top->vertex_position[vertex_bottom_right] = box_points[bv_D];
+    top->vertex_position[vertex_bottom_left] = box_points[bv_C];
+    
+    bottom->vertex_position[vertex_top_right] = box_points[bv_H];
+    bottom->vertex_position[vertex_top_left] = box_points[bv_G];
+    bottom->vertex_position[vertex_bottom_right] = box_points[bv_F];
+    bottom->vertex_position[vertex_bottom_left] = box_points[bv_E];
+    
+    right->vertex_position[vertex_top_right] = box_points[bv_B];
+    right->vertex_position[vertex_top_left] = box_points[bv_D];
+    right->vertex_position[vertex_bottom_right] = box_points[bv_F];
+    right->vertex_position[vertex_bottom_left] = box_points[bv_H];
+    
+    left->vertex_position[vertex_top_right] = box_points[bv_C];
+    left->vertex_position[vertex_top_left] = box_points[bv_A];
+    left->vertex_position[vertex_bottom_right] = box_points[bv_G];
+    left->vertex_position[vertex_bottom_left] = box_points[bv_E];
+    
+    front->vertex_position[vertex_top_right] = box_points[bv_A];
+    front->vertex_position[vertex_top_left] = box_points[bv_B];
+    front->vertex_position[vertex_bottom_right] = box_points[bv_E];
+    front->vertex_position[vertex_bottom_left] = box_points[bv_F];
+    
+    back->vertex_position[vertex_top_right] = box_points[bv_G];
+    back->vertex_position[vertex_top_left] = box_points[bv_H];
+    back->vertex_position[vertex_bottom_right] = box_points[bv_C];
+    back->vertex_position[vertex_bottom_left] = box_points[bv_D];
+}
+
+internal bool function box_collision_ray(Vector3 origin , Vector3 ray_direction , Box box , int * hit_face , float * hit_time , Vector3 * hit_normal)
+{
+    Quad temp_box_quad[face_count] = {};
+    get_box_face(temp_box_quad , box);
+    
+    float closest_hit_time = FLT_MAX;
+    int closest_hit_face;
+    Vector3 closest_hit_normal = {};
+    bool hited = false;
+    
+    for(int face_index = 0; face_index < face_count; face_index++)
+    {
+        Quad quad = temp_box_quad[face_index];
+        Vector3 a = quad.vertex_position[vertex_top_left];
+        Vector3 b = quad.vertex_position[vertex_top_right];
+        Vector3 c = quad.vertex_position[vertex_bottom_left];
+        Vector3 d = quad.vertex_position[vertex_bottom_right];
+        
+        Vector3 a_to_b = Vector3Subtract(b , a);
+        Vector3 a_to_c = Vector3Subtract(c , a);
+        Vector3 d_to_b = Vector3Subtract(b , d);
+        Vector3 d_to_c = Vector3Subtract(c , d);
+        
+        Vector3 face_normal = Vector3CrossProduct(a_to_b , a_to_c);
+        float current_hit_time = get_line_intersect_with_plane_time(origin , Vector3Add(origin , ray_direction) , face_normal , a);
+        if(current_hit_time > 0)
+        {
+            Vector3 hit_point = Vector3Add(origin , Vector3Scale(ray_direction , current_hit_time));
+            
+            Vector3 a_to_hit_point = Vector3Subtract(hit_point , a);
+            Vector3 d_to_hit_point = Vector3Subtract(hit_point , d);
+            
+            if(Vector3DotProduct(Vector3CrossProduct(a_to_c , a_to_hit_point) , ray_direction) > 0)
+            {
+                if(Vector3DotProduct(Vector3CrossProduct(a_to_hit_point , a_to_b) , ray_direction) > 0)
+                {
+                    if(Vector3DotProduct(Vector3CrossProduct(d_to_hit_point , d_to_c) , ray_direction) > 0)
+                    {
+                        if(Vector3DotProduct(Vector3CrossProduct(d_to_b , d_to_hit_point) , ray_direction) > 0)
+                        {
+                            if(closest_hit_time > current_hit_time)
+                            {
+                                hited = true;
+                                closest_hit_time = current_hit_time;
+                                closest_hit_face = face_index;
+                                closest_hit_normal = face_normal;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    if(hited)
+    {
+        if(hit_face) (*hit_face) = closest_hit_face;
+        if(hit_time) (*hit_time) = closest_hit_time;
+        if(hit_normal) (*hit_normal) = closest_hit_normal;
+    }
+    
+    return hited;
+}
+
+internal bool function _box_collision_ray(Vector3 origin , Vector3 direction, Box box , int * hit_face , float * hit_time)
 {
     Vector3 * points = box_to_point(box);
     
@@ -1755,19 +1986,19 @@ internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box , i
     Vector3 H_to_F = Vector3Subtract(points[bv_F] , points[bv_H]);
     Vector3 H_to_D = Vector3Subtract(points[bv_D] , points[bv_H]);
     
-    Vector3 top_face_direction = Vector3CrossProduct(A_to_B , A_to_C);
-    Vector3 forward_face_direction = Vector3CrossProduct(A_to_B , A_to_E);
-    Vector3 left_face_direction = Vector3CrossProduct(A_to_C , A_to_E);
+    Vector3 bottom_face_direction = Vector3CrossProduct(A_to_B , A_to_C);
+    Vector3 backward_face_direction = Vector3CrossProduct(A_to_B , A_to_E);
+    Vector3 right_face_direction = Vector3CrossProduct(A_to_C , A_to_E);
     
-    Vector3 bottom_face_direction = Vector3Negate(top_face_direction);
-    Vector3 backward_face_direction = Vector3Negate(forward_face_direction);
-    Vector3 right_face_direction = Vector3Negate(left_face_direction);
+    Vector3 top_face_direction = Vector3Negate(bottom_face_direction);
+    Vector3 forward_face_direction = Vector3Negate(backward_face_direction);
+    Vector3 left_face_direction = Vector3Negate(right_face_direction);
     
     int face_to_check[3] = {};
     int face_to_check_count = 0;
     
     //TODO: why some of the vector inverted?
-    //not gonna fix this now, probably just me assuming the axis of cross product wrong
+    //not gonna fix this now, probably just me messing up the cross product
     if(Vector3DotProduct(top_face_direction , direction) < 0) face_to_check[face_to_check_count++] = face_top;
     if(Vector3DotProduct(bottom_face_direction , direction) < 0) face_to_check[face_to_check_count++] = face_bottom;
     if(Vector3DotProduct(right_face_direction , direction) < 0) face_to_check[face_to_check_count++] = face_right;
@@ -1800,8 +2031,10 @@ internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box , i
         
         Vector3 end_point = Vector3Add(origin , direction);
         
-        //TODO: i suspect there is a better way than getting point on plane
+        //i suspect there is a better way than getting point on plane
         //but too lazy to found out
+        
+        //it call project you dummy
         float intersect_point_time = get_line_intersect_with_plane_time(origin , end_point  , face_normal , top_left_corner);
         Vector3 intersect_point = Vector3Lerp(origin , end_point , intersect_point_time);
         
@@ -1839,14 +2072,14 @@ internal bool box_collision_ray( Vector3 origin , Vector3 direction, Box box , i
     return result;
 }
 
-internal int float_to_grid(float x, float size)
+internal int function float_to_grid(float x, float size)
 {
     x /= size;
     x = ceil(x);
     return x;
 }
 
-internal Vector3 position_to_grid(Vector3 position , float size)
+internal Vector3 function position_to_grid(Vector3 position , float size)
 {
     position = Vector3Scale(position , 1.0 / size);
     position.x = ceil(position.x);
@@ -1857,7 +2090,7 @@ internal Vector3 position_to_grid(Vector3 position , float size)
     return position;
 }
 
-internal Vector3 position_to_cell(Vector3 position , float size)
+internal Vector3 function position_to_cell(Vector3 position , float size)
 {
     position = Vector3Scale(position , 1.0 / size);
     position.x = round(position.x);
@@ -1868,7 +2101,7 @@ internal Vector3 position_to_cell(Vector3 position , float size)
     return position;
 }
 
-internal Vector3 get_farest_point_by_direction( Vector3 direction , Vector3 * points , int point_count)
+internal Vector3 function get_farest_point_by_direction( Vector3 direction , Vector3 * points , int point_count)
 {
     Vector3 furthest_point = {};
     float furthest_distance = -FLT_MAX;
@@ -1886,38 +2119,15 @@ internal Vector3 get_farest_point_by_direction( Vector3 direction , Vector3 * po
     return furthest_point;
 }
 
-internal Vector3 get_support_point(Vector3 direction)
+internal Vector3 function get_support_point(Vector3 direction)
 {
-#if 0
-    Vector3 farest_direction_a = {};
-    if(convex_shape_a_is_capsule)
-    {
-        Vector3 capsule_direction = {0,fabs(convex_shape_a_capsule_box.size.y * 0.5f),0};
-        capsule_direction = Vector3RotateByQuaternion(capsule_direction , convex_shape_a_capsule_box.rotation);
-        
-        if(Vector3DotProduct(capsule_direction , direction) < 0)
-        {
-            capsule_direction = Vector3Negate(capsule_direction);
-        }
-        
-        Vector3 sphere_offset =Vector3Scale(Vector3Normalize(direction) , convex_shape_a_capsule_box.size.x * 0.5f);
-        
-        farest_direction_a = Vector3Add(sphere_offset , capsule_direction);
-        farest_direction_a = Vector3Add(farest_direction_a , convex_shape_a_capsule_box.position);
-    }
-    else
-    {
-        farest_direction_a = get_farest_point_by_direction( Vector3Negate(direction) , convex_shape_a_vertices , convex_shape_a_vertices_count);
-    }
-#endif
+    Vector3 a = get_farest_point_by_direction( Vector3Negate(direction) , convex_shape_a_vertices , convex_shape_a_vertices_count);
+    Vector3 b = get_farest_point_by_direction(direction , convex_shape_b_vertices , convex_shape_b_vertices_count);
     
-    Vector3 farest_direction_a = get_farest_point_by_direction( Vector3Negate(direction) , convex_shape_a_vertices , convex_shape_a_vertices_count);
-    Vector3 farest_direction_b = get_farest_point_by_direction(direction , convex_shape_b_vertices , convex_shape_b_vertices_count);
-    
-    return Vector3Subtract(farest_direction_b , farest_direction_a);
+    return Vector3Subtract(b , a);
 }
 
-internal bool same_direction_b(Vector3 start , Vector3 end_a , Vector3 end_b)
+internal bool function same_direction_b(Vector3 start , Vector3 end_a , Vector3 end_b)
 {
     Vector3 direction_a = Vector3Subtract(end_a , start);
     Vector3 direction_b = Vector3Subtract(end_b , start);
@@ -1925,7 +2135,7 @@ internal bool same_direction_b(Vector3 start , Vector3 end_a , Vector3 end_b)
 }
 
 //produce vertical direction to a and same direction to b
-internal Vector3 triple_cross_product(Vector3 a , Vector3 b)
+internal Vector3 function triple_cross_product(Vector3 a , Vector3 b)
 {
     Vector3 third_vector = Vector3CrossProduct(b , a);
     return Vector3CrossProduct(a , third_vector);
@@ -1933,7 +2143,7 @@ internal Vector3 triple_cross_product(Vector3 a , Vector3 b)
 
 #define SAME_DIRECTION(direction_a , direction_b) (Vector3DotProduct(direction_a , direction_b) > 0)
 
-internal void search_triangle(GJK_State * state)
+internal void function search_triangle(GJK_State * state)
 {
     Vector3 a = state->simplex[0];
     Vector3 b = state->simplex[1];
@@ -2018,7 +2228,7 @@ internal void search_triangle(GJK_State * state)
     }
 }
 
-internal bool iterate_simplex( GJK_State * state)
+internal bool function iterate_simplex( GJK_State * state)
 {
     float small_number = 0.000001f;
     
@@ -2180,7 +2390,7 @@ internal bool iterate_simplex( GJK_State * state)
     return false;
 }
 
-internal bool check_shape(Vector3 origin , Vector3 * vertices_a , int vertices_a_count , Vector3 * vertices_b , int vertices_b_count)
+internal bool function check_shape(Vector3 origin , Vector3 * vertices_a , int vertices_a_count , Vector3 * vertices_b , int vertices_b_count , GJK_State * state_result)
 {
     convex_shape_a_vertices = vertices_a;
     convex_shape_a_vertices_count = vertices_a_count;
@@ -2231,11 +2441,11 @@ internal bool check_shape(Vector3 origin , Vector3 * vertices_a , int vertices_a
     }
     
     //draw_simplex(&state);
-    
+    if(state_result) (*state_result) = state;
     return result;
 }
 
-internal Vector3 closest_point_on_line(Vector3 a , Vector3 b , Vector3 point)
+internal Vector3 function closest_point_on_line(Vector3 a , Vector3 b , Vector3 point)
 {
     Vector3 a_to_point = Vector3Subtract(point , a);
     Vector3 a_to_b = Vector3Subtract(b , a);
@@ -2261,7 +2471,7 @@ internal Vector3 closest_point_on_line(Vector3 a , Vector3 b , Vector3 point)
     }
 }
 
-internal Vector3 closest_point_on_triangle(Vector3 a , Vector3 b , Vector3 c , Vector3 point)
+internal Vector3 function closest_point_on_triangle(Vector3 a , Vector3 b , Vector3 c , Vector3 point)
 {
     float small_number = 0.000001f;
     
@@ -2356,13 +2566,12 @@ internal Vector3 closest_point_on_triangle(Vector3 a , Vector3 b , Vector3 c , V
     //draw_arrow_ray( c, c_to_a_vertical_inward , BLUE);
     
     //draw_simplex_triangle(a , b, c);
-    //draw_arrow_line_B( closest_point , point , Fade(PINK , 0.5f));
+    //draw_arrow_line( closest_point , point , Fade(PINK , 0.5f));
     
     return closest_point;
 }
 
-//Vector3 ray_direction , float * time_of_impact , Vector3 * impact_point
-internal bool check_shape_impact(ShapeImpactData * data)
+internal bool function check_shape_impact(ShapeImpactData * data)
 {
     convex_shape_a_vertices = data->shape_a_vertices;
     convex_shape_a_vertices_count = data->shape_a_vertices_count;
@@ -2380,14 +2589,16 @@ internal bool check_shape_impact(ShapeImpactData * data)
     int ray_iterate_count = 0;
     int total_simplex_iterate_count = 0;
     
+    Vector3 simplex[3] = {};
+    Vector3 search_direction = Vector3Negate(data->ray_direction);
+    
+    simplex[0] = get_support_point(search_direction);
+    simplex[1] = get_support_point(Vector3Negate(search_direction));
+    simplex[2] = get_support_point(Vector3Add(search_direction , (Vector3){5,-5,2} ));
+    
     for(;;)
     {
-        Vector3 simplex[3] = {};
-        Vector3 search_direction = Vector3Negate(data->ray_direction);
-        
-        simplex[0] = get_support_point(search_direction);
-        simplex[1] = get_support_point(Vector3Negate(search_direction));
-        simplex[2] = get_support_point(Vector3Add(search_direction , (Vector3){5,-5,2} ));
+        search_direction = Vector3Negate(data->ray_direction);
         
         float closest_distance = FLT_MAX;
         Vector3 closest_point = {};
@@ -2405,11 +2616,11 @@ internal bool check_shape_impact(ShapeImpactData * data)
             total_simplex_iterate_count++;
             if(total_simplex_iterate_count > 30)
             {
-                printf("ray iterate too many %lld\n" , game_update_count);
+                printf("simplex iterate too many %lld\n" , game_update_count);
                 break;
             }
             
-            Vector3 new_support_point = get_support_point(Vector3Subtract( ray_end , closest_point));
+            Vector3 new_support_point = get_support_point(Vector3Subtract(ray_end , closest_point));
             
             int vertex_to_replace = -1;
             Vector3 current_closest_point = {};
@@ -2435,6 +2646,9 @@ internal bool check_shape_impact(ShapeImpactData * data)
                     vertex_to_replace = simplex_index;
                 }
             }
+            
+            if(vertex_to_replace == -1) CATCH;
+            
             
             float current_distance = Vector3DistanceSqr(current_closest_point , ray_end);
             
@@ -2465,12 +2679,12 @@ internal bool check_shape_impact(ShapeImpactData * data)
                 b = simplex[1];
                 c = simplex[2];
                 
-                closest_point = current_closest_point;
-                
                 Vector3 a_to_b = Vector3Subtract(b , a);
                 Vector3 b_to_c = Vector3Subtract(c , b);
                 Vector3 c_to_a = Vector3Subtract(a , c);
                 Vector3 simplex_normal = Vector3CrossProduct(a_to_b , c_to_a);
+                
+                closest_point = current_closest_point;
                 
                 float hit_point_time = get_line_intersect_with_plane_time((Vector3){} , data->ray_direction , simplex_normal , a);
                 Vector3 hit_point = Vector3Lerp((Vector3){} , data->ray_direction , hit_point_time);
@@ -2483,33 +2697,6 @@ internal bool check_shape_impact(ShapeImpactData * data)
                 
                 Vector3 c_to_hit_point = Vector3Subtract(hit_point , c);
                 Vector3 c_to_a_vertical_inward = triple_cross_product(c_to_a , a_to_b);
-                
-                if(SAME_DIRECTION(a_to_hit_point , a_to_b_vertical_inward))
-                {
-                    if(SAME_DIRECTION(b_to_hit_point , b_to_c_vertical_inward))
-                    {
-                        if(SAME_DIRECTION(c_to_hit_point , c_to_a_vertical_inward))
-                        {
-                            float hit_point_distance = Vector3DistanceSqr(hit_point , ray_end);
-                            if(hit_point_distance < 0.01)
-                            {
-                                if(data->stop_if_too_far)
-                                {
-                                    if(hit_point_time > 1)
-                                    {
-                                        break;
-                                    }
-                                }
-                                
-                                data->impact_normal = simplex_normal;
-                                data->impact_point = hit_point;
-                                data->time_of_impact = hit_point_time;
-                                //ray_end = hit_point;
-                                result = true;
-                            }
-                        }
-                    }
-                }
                 
                 if(capture_collision)
                 {
@@ -2525,33 +2712,48 @@ internal bool check_shape_impact(ShapeImpactData * data)
                     collision_visual->b = Vector3Add(b , collision_visual_offset);
                     collision_visual->c = Vector3Add(c , collision_visual_offset);
                     collision_visual->closest_point = Vector3Add(closest_point , collision_visual_offset);
-                    collision_visual->ray_end = Vector3Add( ray_end , collision_visual_offset);
+                    collision_visual->ray_end = Vector3Add(ray_end , collision_visual_offset);
+                    collision_visual->offset = collision_visual_offset;
+                    collision_visual->direction = data->ray_direction;
                     
                     collision_visual->shape_a = shape_a_union;
                     collision_visual->shape_b = shape_b_union;
                 }
                 
+                if(SAME_DIRECTION(a_to_hit_point , a_to_b_vertical_inward))
+                {
+                    if(SAME_DIRECTION(b_to_hit_point , b_to_c_vertical_inward))
+                    {
+                        if(SAME_DIRECTION(c_to_hit_point , c_to_a_vertical_inward))
+                        {
+                            float hit_point_distance = Vector3DistanceSqr(hit_point , ray_end);
+                            
+                            //this check seem pointless
+                            if(hit_point_distance < 0.00001)
+                            {
+                                if(data->stop_if_too_far)
+                                {
+                                    if(hit_point_time > 1.0f)
+                                    {
+                                        break;
+                                    }
+                                }
+                                
+                                data->impact_normal = simplex_normal;
+                                
+                                data->impact_point = hit_point;
+                                data->time_of_impact = hit_point_time;
+                                result = true;
+                            }
+                        }
+                    }
+                }
+                
                 break;
             }
             
-            if(vertex_to_replace == -1) CATCH;
-            
             simplex[vertex_to_replace] = new_support_point;
         }
-        
-        //draw_arrow_line_B( closest_point , ray_end  , Fade(PINK , 0.5f));
-        //draw_arrow_line_B((Vector3){} , ray_end , Fade(ORANGE , 0.3f));
-        
-#if 0
-        if(result)
-        {
-            draw_arrow_line_B((Vector3){} , ray_end , GOLD);
-        }
-        else
-        {
-            draw_arrow_line_B((Vector3){} , ray_end , Fade(ORANGE , 0.3f));
-        }
-#endif
         
         if(total_simplex_iterate_count > 50) 
         {
@@ -2593,6 +2795,9 @@ internal bool check_shape_impact(ShapeImpactData * data)
             break;
         }
         
+        if(Vector3LengthSqr(surface_normal) > 0.0000001f)
+        {
+        }
         ray_time = ray_time - (Vector3DotProduct(surface_normal , surface_normal) / Vector3DotProduct(surface_normal , data->ray_direction));
         
         if(data->stop_if_too_far)
@@ -2617,7 +2822,7 @@ internal bool check_shape_impact(ShapeImpactData * data)
     return result;
 }
 
-internal void get_bound(Vector3 * vertices , int vertices_count , Vector3 * right_top_forward , Vector3 * left_bottom_backward )
+internal void function get_bound(Vector3 * vertices , int vertices_count , Vector3 * right_top_forward , Vector3 * left_bottom_backward )
 {
     for(int vertex_index = 0 ; vertex_index < vertices_count ; vertex_index++)
     {
@@ -2631,7 +2836,7 @@ internal void get_bound(Vector3 * vertices , int vertices_count , Vector3 * righ
     }
 }
 
-internal BoundingBoxNode box_to_bound(Box box)
+internal BoundingBoxNode function box_to_bound(Box box)
 {
     BoundingBoxNode node = {};
     node.right_top_forward = (Vector3){-FLT_MAX , -FLT_MAX , -FLT_MAX};
@@ -2641,7 +2846,7 @@ internal BoundingBoxNode box_to_bound(Box box)
     return node;
 }
 
-internal bool bounding_box_collided(BoundingBoxNode box_a , BoundingBoxNode box_b)
+internal bool function bounding_box_collided(BoundingBoxNode box_a , BoundingBoxNode box_b)
 {
     float a_right = box_a.right_top_forward.x;
     float a_top = box_a.right_top_forward.y;
@@ -2713,7 +2918,7 @@ internal bool bounding_box_collided(BoundingBoxNode box_a , BoundingBoxNode box_
     return false;
 }
 
-internal void shape_union_to_vertices(ShapeUnion shape_union , Vector3 ** vertices , int * vertices_count)
+internal void function shape_union_to_vertices(ShapeUnion shape_union , Vector3 ** vertices , int * vertices_count)
 {
     if(shape_union.type == ST_box)
     {
@@ -2731,28 +2936,13 @@ internal void shape_union_to_vertices(ShapeUnion shape_union , Vector3 ** vertic
     }
 }
 
-internal void shape_to_vertices(Shape shape , Vector3 ** vertices , int * vertices_count)
+internal void function collision_push_root(BoundingBoxNode * root)
 {
-    ShapeUnion shape_union = {};
-    shape_union.type = shape.type;
-    
-    if(shape.type == ST_box)
-    {
-        shape_union.box = box_in_map_buffer.data[shape.index];
-    }
-    else if(shape.type == ST_quad)
-    {
-        shape_union.quad = quad_in_map_buffer.data[shape.index];
-    }
-    else 
-    {
-        CATCH;
-    }
-    
-    shape_union_to_vertices(shape_union , vertices , vertices_count);
+    if(buffer_full(bounding_box_root_stack)) reallocate_buffer(&bounding_box_root_stack , AT_temp);
+    bounding_box_root_stack.data[bounding_box_root_stack.count++] = root;
 }
 
-internal ShapeUnionBuffer get_collided_bounding_box(ConvexShape convex_shape)
+internal ShapeUnionBuffer function get_collided_bounding_box(ConvexShape convex_shape)
 {
     double tree_walk_time = time_stamp();
     
@@ -2773,7 +2963,7 @@ internal ShapeUnionBuffer get_collided_bounding_box(ConvexShape convex_shape)
         CATCH;
     }
     
-    Vector3 * all_vertices = allocate_frame(Vector3 , convex_shape.shape_vertices_count * 2);
+    Vector3 * all_vertices = allocate_memory_type(Vector3 , convex_shape.shape_vertices_count * 2 , AT_frame);
     for(int vertex_index = 0 ; vertex_index < convex_shape.shape_vertices_count ; vertex_index++)
     {
         all_vertices[vertex_index] = convex_shape.shape_vertices[vertex_index];
@@ -2797,26 +2987,17 @@ internal ShapeUnionBuffer get_collided_bounding_box(ConvexShape convex_shape)
     convex_shape_bounding_box.left_bottom_backward.y -= UNIT_SIZE * 0.5f;
     convex_shape_bounding_box.left_bottom_backward.z -= UNIT_SIZE * 0.5f;
     
-    if(previous_update_count != game_update_count)
-    {
-        previous_update_count = game_update_count;
-        debug_box = get_box();
-        debug_box.position = Vector3Add(convex_shape_bounding_box.right_top_forward , convex_shape_bounding_box.left_bottom_backward);
-        debug_box.position = Vector3Scale(debug_box.position , 0.5f);
-        debug_box.size = Vector3Subtract(convex_shape_bounding_box.right_top_forward , convex_shape_bounding_box.left_bottom_backward);
-        debug_box.size.x = fabs(debug_box.size.x);
-        debug_box.size.y = fabs(debug_box.size.y);
-        debug_box.size.z = fabs(debug_box.size.z);
-    }
-    
     ShapeUnionBuffer shape_union_buffer = {};
-    allocate_buffer( &shape_union_buffer , ShapeUnion , 16 , AT_frame);
+    allocate_buffer(&shape_union_buffer , ShapeUnion , 16 , AT_frame);
     
-    if(bounding_box_root)
+    if(bounding_box_root_stack.count == 0) CATCH;
+    
+    for(int root_stack_index = 0; root_stack_index < bounding_box_root_stack.count; root_stack_index++)
     {
         BoundingBoxNode * node_stack[128] = {};
         int node_stack_count = 0;
-        node_stack[node_stack_count++] = bounding_box_root;
+        
+        if(bounding_box_root_stack.data[root_stack_index]) node_stack[node_stack_count++] = bounding_box_root_stack.data[root_stack_index];
         
         for(;;)
         {
@@ -2828,7 +3009,7 @@ internal ShapeUnionBuffer get_collided_bounding_box(ConvexShape convex_shape)
             if(node->left) node_stack[node_stack_count++] = node->left;
             if(node->right) node_stack[node_stack_count++] = node->right;
             
-            //why there is invalid node?
+            //TODO: why there is invalid node?
             if(node->shape.type == ST_invalid) continue;
             
             if(bounding_box_collided((*node) , convex_shape_bounding_box))
@@ -2839,27 +3020,19 @@ internal ShapeUnionBuffer get_collided_bounding_box(ConvexShape convex_shape)
                 }
                 
                 ShapeUnion * new_shape = shape_union_buffer.data + shape_union_buffer.count++;
-                new_shape->type = node->shape.type;
-                
-                if(node->shape.type == ST_box)
-                {
-                    new_shape->box = box_in_map_buffer.data[node->shape.index];
-                }
-                else if(node->shape.type == ST_quad)
-                {
-                    new_shape->quad = quad_in_map_buffer.data[node->shape.index];
-                }
-                
+                (*new_shape) = node->shape;
             }
         }
     }
+    
+    bounding_box_root_stack.count = 0;
     
     tree_walk_time = (time_stamp() - tree_walk_time) / (1000.0);
     
     return shape_union_buffer;
 }
 
-internal void start_record_collision(int type , ConvexShape convex_shape)
+internal void function start_record_collision(int type , ConvexShape convex_shape)
 {
     if(capture_collision) 
     {
@@ -2870,10 +3043,11 @@ internal void start_record_collision(int type , ConvexShape convex_shape)
     {
         if(buffer_full(frame_collision_buffer))
         {
-            reallocate_buffer(&frame_collision_buffer, AT_temp);
+            reallocate_buffer(&frame_collision_buffer , AT_temp);
         }
         
         current_frame_collision = frame_collision_buffer.data + frame_collision_buffer.count++;
+        current_frame_collision->update_index = game_update_count;
         current_frame_collision->collision_type = type;
         current_frame_collision->collision_visual_offset = convex_shape.position;
         current_frame_collision->slice_start = collision_visual_buffer.count;
@@ -2882,7 +3056,7 @@ internal void start_record_collision(int type , ConvexShape convex_shape)
     }
 }
 
-internal void end_record_collision()
+internal void function end_record_collision()
 {
     if(store_multiple_frame_collision)
     {
@@ -2890,85 +3064,127 @@ internal void end_record_collision()
     }
 }
 
-internal CollisionResult update_convex_collision(ConvexShape convex_shape)
+//this is slow but fast enough for my game
+internal CollisionResult function update_collision(ConvexShape convex_shape)
 {
+    
     bool skip_this = capture_collision;
     if(!convex_shape.capture_collision) capture_collision = false;
     start_record_collision(CT_collision , convex_shape);
     
+    collision_push_root(bounding_box_in_map_root);
     ShapeUnionBuffer shape_buffer = get_collided_bounding_box(convex_shape);
     
     shape_a_union = convex_shape.shape;
-    shape_union_to_vertices(convex_shape.shape , &convex_shape.shape_vertices , &convex_shape.shape_vertices_count);
     
     double shape_impact_check_time = time_stamp();
     
     int check_count = 0;
-    Vector3 previous_position = convex_shape.position;
     
+    shape_union_to_vertices(convex_shape.shape , &convex_shape.shape_vertices , &convex_shape.shape_vertices_count);
     Vector3 shape_offset = {};
     Vector3 shape_velocity = convex_shape.velocity;
-    
     int surface_normal_count = 0;
     Vector3 total_surface_normal = {};
-    Vector3 average_surface_normal = {};
-    Vector3 surface_normal = {};
     bool impacted = false;
+    bool collided_something = false;
     
+    //how about start from triangle from previous GJK iteration so no need to iterate all of them again
+    //i did that but there is no noticable difference?
     for(;;)
     {
+        //break;
         check_count++;
-        if(check_count > 5)
+        if(check_count > 8)
         {
             shape_velocity = (Vector3){};
-            shape_offset = (Vector3){};
             //printf("too many contact %lld\n" , game_update_count);
             break;
         }
         
         impacted = false;
-        float closest_hit_time = FLT_MAX;
-        surface_normal = (Vector3){};
+        float closest_impact_time = FLT_MAX;
+        Vector3 surface_normal = {};
+        Vector3 collided_shape_velocity = {};
+        Vector3 collided_shape_origin = {};
         
         for(int shape_index = 0 ; shape_index < shape_buffer.count ; shape_index++)
         {
-            ShapeUnion shape = shape_buffer.data[shape_index];
+            ShapeUnion collided_shape = shape_buffer.data[shape_index];
+            
+            if(convex_shape.shape.owner.is_entity)
+            {
+                if(collided_shape.owner.is_entity == convex_shape.shape.owner.is_entity)
+                {
+                    if(collided_shape.owner.entity_handle.entity_index == convex_shape.shape.owner.entity_handle.entity_index)
+                    {
+                        if(collided_shape.owner.entity_handle.generation_index == convex_shape.shape.owner.entity_handle.generation_index)
+                        {
+                            continue;
+                        }
+                    }
+                }
+            }
             
             if(capture_collision)
             {
-                shape_b_union = shape;
+                shape_b_union = collided_shape;
             }
             
-            Vector3 * shape_vertices = 0;
-            int shape_vertices_count = 0;
+            Vector3 * collided_shape_vertices = 0;
+            int collided_shape_vertices_count = 0;
             
-            shape_union_to_vertices(shape , &shape_vertices , &shape_vertices_count);
+            shape_union_to_vertices(collided_shape , &collided_shape_vertices , &collided_shape_vertices_count);
+            
+            //the origin can land within the minkowski difference
+            //because the collided shape have velocity and the position can be either before or after apply velocity
+            //in both case the origin can land within minkowski difference because the ray cast was the subtract velocity from shape a by velocity from shape b
+            //and still can consider as not collided
+            //the algorithm can't handle ray start within minkowski difference, i haven't revisit the paper yet but i don't think it know this
+            //in here i used the position before applying velocity
+            //to avoid this you have to check is origin within minkowski difference
+            //if it is it can still mean the collided shape doesn't collided after it apply its velocity
+            //so you can apply velocity to position, and because it already applied there no need to subtract velocity from the ray
+            bool shape_overlapped = check_shape((Vector3){} , convex_shape.shape_vertices , convex_shape.shape_vertices_count , collided_shape_vertices , collided_shape_vertices_count , 0);
+            if(shape_overlapped)
+            {
+                if(collided_shape.type != ST_box) CATCH;
+                for(int vertex_index = 0; vertex_index < collided_shape_vertices_count; vertex_index++)
+                {
+                    collided_shape_vertices[vertex_index] = Vector3Add(collided_shape_vertices[vertex_index] , collided_shape.velocity);
+                }
+            }
             
             ShapeImpactData impact_data = {};
-            impact_data.shape_b_vertices = shape_vertices;
-            impact_data.shape_b_vertices_count = shape_vertices_count;
-            
+            impact_data.shape_b_vertices = collided_shape_vertices;
+            impact_data.shape_b_vertices_count = collided_shape_vertices_count;
             impact_data.shape_a_vertices = convex_shape.shape_vertices;
             impact_data.shape_a_vertices_count = convex_shape.shape_vertices_count;
-            impact_data.ray_direction = convex_shape.velocity;
             impact_data.stop_if_too_far = true;
+            if(shape_overlapped)
+            {
+                impact_data.ray_direction = convex_shape.velocity;
+            }
+            else
+            {
+                impact_data.ray_direction = Vector3Subtract(convex_shape.velocity , collided_shape.velocity);
+            }
             
             if(check_shape_impact(&impact_data))
             {
                 if(impact_data.time_of_impact > 0)
                 {
                     impacted = true;
-                    if(closest_hit_time > impact_data.time_of_impact)
+                    
+                    if(closest_impact_time > impact_data.time_of_impact)
                     {
-                        closest_hit_time = impact_data.time_of_impact;
+                        closest_impact_time = impact_data.time_of_impact;
                         surface_normal = impact_data.impact_normal;
+                        collided_shape_velocity = collided_shape.velocity;
+                        if(collided_shape.type != ST_box) CATCH;
+                        collided_shape_origin = collided_shape.box.position;
                     }
                 }
-                //draw_quad_D(quad , MAROON);
-            }
-            else
-            {
-                //draw_quad_D(quad , PURPLE);
             }
         }
         
@@ -2976,80 +3192,387 @@ internal CollisionResult update_convex_collision(ConvexShape convex_shape)
         
         if(impacted)
         {
-            if(closest_hit_time > 0)
+            if(closest_impact_time > 0)
             {
-                if(closest_hit_time < 1.0)
+                if(closest_impact_time < 1.0)
                 {
                     collided_in_this_iteration = true;
                 }
             }
         }
         
-        Vector3 impact_point = Vector3Add(convex_shape.position , Vector3Scale(convex_shape.velocity , closest_hit_time));
-        Vector3 direction_to_point = Vector3Subtract(impact_point , convex_shape.position);
-        if(Vector3DotProduct(direction_to_point , surface_normal) > 0) surface_normal = Vector3Negate(surface_normal);
+        Vector3 start_velocity = shape_velocity;
+        if(Vector3DotProduct(Vector3Subtract(convex_shape.position , collided_shape_origin) , surface_normal) < 0) surface_normal = Vector3Negate(surface_normal);
+        Vector3 impact_point = Vector3Add(Vector3Add(convex_shape.position , collided_shape_velocity) , Vector3Scale(start_velocity, closest_impact_time));
         
         if(collided_in_this_iteration)
         {
+            collided_something = true;
             surface_normal = Vector3Normalize(surface_normal);
-            surface_normal_count++;
-            total_surface_normal = Vector3Add(total_surface_normal , surface_normal);
-            average_surface_normal = Vector3Scale(total_surface_normal , 1.0 / surface_normal_count);
             
-            Vector3 collision_point = Vector3Add(convex_shape.position , Vector3Scale(convex_shape.velocity , closest_hit_time));
+            if(fabs(Vector3DotProduct(surface_normal , start_velocity)) > 0.001f)
+            {
+                surface_normal_count++;
+                total_surface_normal = Vector3Add(total_surface_normal , surface_normal);
+            }
+            
+            Vector3 average_surface_normal = Vector3Scale(total_surface_normal , 1.0 / surface_normal_count);
             
             if(capture_collision)
             {
-                if(!collision_visual_buffer.count) CATCH;
-                
                 CollisionVisual * visual = collision_visual_buffer.data + (collision_visual_buffer.count - 1);
                 visual->collided =true;
-                visual->collision_point = collision_point;
+                visual->collision_point = impact_point;
                 visual->collision_normal = surface_normal;
             }
             
-            Vector3 project_velocity = (Vector3){};
-            Vector3 right_axis = Vector3CrossProduct(convex_shape.velocity , surface_normal);
-            if(Vector3LengthSqr(right_axis) < 0.0000001f)
+            Vector3 offset = {};
+            
+            if(Vector3DotProduct(start_velocity , surface_normal) < 0.0f)
             {
-                if(Vector3DotProduct(convex_shape.velocity , surface_normal) < 0)
-                {
-                    project_velocity = (Vector3){};
-                }
-            } 
-            else
+                offset = Vector3Scale(start_velocity , 1.0 - closest_impact_time);
+                offset = Vector3Project(offset , surface_normal);
+                offset = Vector3Negate(offset);
+            }
+            
+            //sometime player can clipping ceiling when jumping against ceiling and being push by block on side
+            //weir
+            
+            float gap = 0.004f;
+            
+            //sometime check_shape_impact give weir normal
+            //this check prevent that but this worry me
+            //if(fabs(Vector3DotProduct(surface_normal , start_velocity)) > 0.001f)
             {
-                float dot_product = Vector3DotProduct(convex_shape.velocity , surface_normal);
-                if(dot_product < 0)
+                //if not adding this offset from surface give more smooth collision on concave corner
+                offset = Vector3Add(offset , Vector3Scale(surface_normal , gap));
+                //a bit worry if the average is zero
+                //but it make fewer iterate
+                if(surface_normal_count) offset = Vector3Add(offset , Vector3Scale(average_surface_normal , gap));
+            }
+            
+            shape_velocity = Vector3Add(shape_velocity , offset);
+            
+            if(Vector3LengthSqr(surface_normal) > 0.0001f)
+            {
+                if(Vector3DotProduct(collided_shape_velocity , surface_normal) > 0.01f)
                 {
-                    Vector3 forward_axis = Vector3CrossProduct(surface_normal , right_axis);
-                    project_velocity = Vector3Project(convex_shape.velocity , forward_axis);
-                    project_velocity = project_on_plane(project_velocity , average_surface_normal);
-                }
-                else
-                {
-                    //CATCH;
-                    project_velocity = convex_shape.velocity;
+                    Vector3 push_force = Vector3Scale(collided_shape_velocity , 1.0 - closest_impact_time);
+                    push_force = Vector3Project(push_force , surface_normal);
+                    shape_offset = Vector3Add(shape_offset , push_force);
+                    shape_offset = push_force;
                 }
             }
             
-            //detect invalid value
-            if(project_velocity.x != project_velocity.x) CATCH;
+            //draw_arrow_ray(convex_shape.position , Vector3Scale(start_velocity , 100) , WHITE);
+            //draw_arrow_ray(convex_shape.position , Vector3Scale(shape_velocity , 100) , BLUE);
+            //draw_arrow_ray(convex_shape.position , Vector3Scale(offset , 100) , YELLOW);
+            //draw_arrow_ray(convex_shape.position , Vector3Scale(shape_offset , 100) , GREEN);
             
-            shape_velocity = project_velocity;
-            
-            float gap = 0.001f;
-            Vector3 offset = Vector3Subtract( convex_shape.position , collision_point);
-            offset = Vector3Project(offset , surface_normal);
-            offset = Vector3Project(offset , average_surface_normal);
-            float distance_to_collision = Vector3Length(offset);
-            shape_offset = Vector3Scale(surface_normal , gap - distance_to_collision);
+            if(shape_velocity.x != shape_velocity.x) CATCH;
+            if(shape_velocity.y != shape_velocity.y) CATCH;
+            if(shape_velocity.z != shape_velocity.z) CATCH;
             
             convex_shape.velocity = Vector3Add(shape_velocity , shape_offset);
         }
         else
         {
             //printf("couldn't hit anything %lld\n" , game_update_count);
+            break;
+        }
+    }
+    
+    //it was so nice before
+    //only checking ray and that is all of it
+    //and it start clipping through to the back of a moving block
+    //i checked the math and if the math and the code is correct that shouldn't happen at all
+    //but it happened so now i gotta push it out ):
+    
+    //good new i work it out in one night
+    
+    //the push is wrong tho
+    collision_push_root(bounding_box_in_map_root);
+    shape_buffer = get_collided_bounding_box(convex_shape);
+    
+    bool stucked = false;
+    
+    int push_attemp = 0;
+    Vector3 offset_within_shape = {};
+    for(;;)
+    {
+        break;
+        push_attemp++;
+        if(push_attemp > 10)
+        {
+            stucked = true;
+            break;
+        }
+        
+        shape_union_to_vertices(convex_shape.shape , &convex_shape.shape_vertices , &convex_shape.shape_vertices_count);
+        
+        for(int vertex_index = 0; vertex_index < convex_shape.shape_vertices_count; vertex_index++)
+        {
+            convex_shape.shape_vertices[vertex_index] = Vector3Add(convex_shape.shape_vertices[vertex_index] , offset_within_shape);
+        }
+        
+        bool within_other_shape = false;
+        
+        for(int buffer_index = 0; buffer_index < shape_buffer.count; buffer_index++)
+        {
+            ShapeUnion collided_shape = shape_buffer.data[buffer_index];
+            
+            if(convex_shape.shape.owner.is_entity)
+            {
+                if(collided_shape.owner.is_entity == convex_shape.shape.owner.is_entity)
+                {
+                    if(collided_shape.owner.entity_handle.entity_index == convex_shape.shape.owner.entity_handle.entity_index)
+                    {
+                        if(collided_shape.owner.entity_handle.generation_index == convex_shape.shape.owner.entity_handle.generation_index)
+                        {
+                            continue;
+                        }
+                    }
+                }
+            }
+            
+            Vector3 * collided_shape_vertices = 0;
+            int collided_shape_vertices_count = 0;
+            
+            shape_union_to_vertices(collided_shape , &collided_shape_vertices , &collided_shape_vertices_count);
+            
+            for(int vertex_index = 0; vertex_index < collided_shape_vertices_count; vertex_index++)
+            {
+                //collided_shape_vertices[vertex_index] = Vector3Add(collided_shape_vertices[vertex_index] , collided_shape.velocity);
+            }
+            
+            GJK_State end_state = {};
+            if(check_shape((Vector3){} , convex_shape.shape_vertices , convex_shape.shape_vertices_count , collided_shape_vertices , collided_shape_vertices_count , &end_state))
+            {
+                within_other_shape = true;
+                if(end_state.simplex_count != 4) continue;
+                
+                TriangleIndexBuffer triangle_index_buffer = {};
+                Array triangle_index_array = {};
+                Vector3Buffer polytope = {};
+                
+                allocate_buffer(&polytope , Vector3 , 16 , AT_frame);
+                allocate_buffer(&triangle_index_buffer , TriangleIndex , 16 , AT_frame);
+                triangle_index_array = allocate_array(16 , AT_frame);
+                
+                polytope.data[polytope.count++] = end_state.simplex[0];
+                polytope.data[polytope.count++] = end_state.simplex[1];
+                polytope.data[polytope.count++] = end_state.simplex[2];
+                polytope.data[polytope.count++] = end_state.simplex[3];
+                
+                triangle_index_buffer.data[add_to_array(&triangle_index_array)] = (TriangleIndex){0,1,2};
+                triangle_index_buffer.data[add_to_array(&triangle_index_array)] = (TriangleIndex){3,1,2};
+                triangle_index_buffer.data[add_to_array(&triangle_index_array)] = (TriangleIndex){0,3,2};
+                triangle_index_buffer.data[add_to_array(&triangle_index_array)] = (TriangleIndex){0,1,3};
+                
+                int try_attemp = 0;
+                
+                //Vector3 previous_closest_normal = {FLT_MAX , FLT_MAX , FLT_MAX};
+                for(;;)
+                {
+                    try_attemp++;
+                    bool stop = false;
+                    if(try_attemp > 6) stop = true;
+                    
+                    Vector3 closest_normal = {FLT_MAX , FLT_MAX , FLT_MAX};
+                    
+                    array_foreach(triangle_index , &triangle_index_array)
+                    {
+                        Vector3 a = polytope.data[triangle_index_buffer.data[triangle_index].a_index];
+                        Vector3 b = polytope.data[triangle_index_buffer.data[triangle_index].b_index];
+                        Vector3 c = polytope.data[triangle_index_buffer.data[triangle_index].c_index];
+                        Vector3 a_to_b = Vector3Subtract(b , a);
+                        Vector3 a_to_c = Vector3Subtract(c , a);
+                        
+                        Vector3 normal = Vector3CrossProduct(a_to_b , a_to_c);
+                        if(Vector3DotProduct(normal , a) < 0) normal = Vector3Negate(normal);
+                        normal = Vector3Project(a , normal);
+                        
+                        if(Vector3LengthSqr(closest_normal) > Vector3LengthSqr(normal))
+                        {
+                            closest_normal = normal;
+                        }
+                        
+                        //draw_arrow_ray(convex_shape.position , normal , BLACK);
+                    }
+                    
+                    bool found = false;
+                    
+                    Vector3 new_support_point = get_support_point(closest_normal);
+                    Vector3 new_support_point_on_normal = Vector3Project(new_support_point , closest_normal);
+                    
+                    if(Vector3DistanceSqr(new_support_point_on_normal , closest_normal) < 0.001f)
+                    {
+                        float gap = 0.002;
+                        
+                        found = true;
+                        offset_within_shape = Vector3Add(offset_within_shape , new_support_point_on_normal);
+                        offset_within_shape = Vector3Add(offset_within_shape , Vector3Scale(Vector3Normalize(new_support_point_on_normal) , gap));
+                        
+                        if(Vector3DotProduct(offset_within_shape , shape_velocity) > 0)
+                        {
+                            //shape_offset = (Vector3){};
+                        }
+                    }
+                    
+                    //if(found) draw_arrow_ray(convex_shape.position , closest_normal , SKYBLUE);
+                    
+                    if(found)
+                    {
+                        shape_velocity = project_on_plane(shape_velocity , new_support_point_on_normal);
+                        shape_velocity = (Vector3){};
+                        
+#if 1
+                        if(convex_shape.capture_collision)
+                        {
+                            array_foreach(triangle_index , &triangle_index_array)
+                            {
+                                Vector3 a = polytope.data[triangle_index_buffer.data[triangle_index].a_index];
+                                Vector3 b = polytope.data[triangle_index_buffer.data[triangle_index].b_index];
+                                Vector3 c = polytope.data[triangle_index_buffer.data[triangle_index].c_index];
+                                
+                                Vector3 a_to_b = Vector3Subtract(b , a);
+                                Vector3 a_to_c = Vector3Subtract(c , a);
+                                
+                                Vector3 normal = Vector3CrossProduct(a_to_b , a_to_c);
+                                if(Vector3DotProduct(normal , a) < 0) normal = Vector3Negate(normal);
+                                normal = Vector3Project(a , normal);
+                                
+                                a = Vector3Add(a , convex_shape.position);
+                                b = Vector3Add(b , convex_shape.position);
+                                c = Vector3Add(c , convex_shape.position);
+                                
+                                draw_simplex_triangle(a , b , c);
+                                
+                                draw_arrow_ray(convex_shape.position , normal , Fade(BLACK , 0.3f));
+                            }
+                        }
+                        draw_arrow_ray(convex_shape.position , offset_within_shape , RED);
+                        draw_arrow_ray(convex_shape.position , new_support_point_on_normal , BLUE);
+                        draw_arrow_ray(convex_shape.position , new_support_point , YELLOW);
+#endif
+                        
+                        break;
+                    }
+                    
+                    if(stop)
+                    {
+                        break;
+                    }
+                    
+                    if(buffer_full(polytope)) reallocate_buffer(&polytope , AT_frame);
+                    
+                    int new_support_point_index = polytope.count++;
+                    polytope.data[new_support_point_index] = new_support_point;
+                    
+                    local_persist bool edge_buffer_initialized = false;
+                    local_persist NewEdgeBuffer new_edge_buffer = {};
+                    local_persist Array new_edge_array = {};
+                    
+                    if(!edge_buffer_initialized)
+                    {
+                        edge_buffer_initialized = true;
+                        allocate_buffer(&new_edge_buffer , NewEdge , 16 , AT_temp);
+                        new_edge_array = allocate_array(16 , AT_temp);
+                    }
+                    
+                    clear_array(&new_edge_array);
+                    
+                    array_foreach(triangle_index , &triangle_index_array)
+                    {
+                        int a_index = triangle_index_buffer.data[triangle_index].a_index;
+                        int b_index = triangle_index_buffer.data[triangle_index].b_index;
+                        int c_index = triangle_index_buffer.data[triangle_index].c_index;
+                        
+                        Vector3 a = polytope.data[a_index];
+                        Vector3 b = polytope.data[b_index];
+                        Vector3 c = polytope.data[c_index];
+                        Vector3 a_to_b = Vector3Subtract(b , a);
+                        Vector3 a_to_c = Vector3Subtract(c , a);
+                        
+                        Vector3 normal = Vector3CrossProduct(a_to_b , a_to_c);
+                        if(Vector3DotProduct(normal , a) < 0) normal = Vector3Negate(normal);
+                        
+                        if(Vector3DotProduct(new_support_point , normal) > 2)
+                        {
+                            delete_from_array(&triangle_index_array , triangle_index);
+                            NewEdge all_new_edge[3] = {{a_index , b_index} , {b_index , c_index} , {c_index , a_index}};
+                            bool valid_edge[3] = {};
+                            
+                            for(int new_edge_index = 0; new_edge_index < 3; new_edge_index++)
+                            {
+                                bool no_duplication = true;
+                                NewEdge new_edge = all_new_edge[new_edge_index];
+                                
+                                array_foreach(previous_edge_index , &new_edge_array)
+                                {
+                                    NewEdge previous_edge = new_edge_buffer.data[previous_edge_index];
+                                    if(new_edge.a_index == previous_edge.a_index)
+                                    {
+                                        if(new_edge.b_index == previous_edge.b_index)
+                                        {
+                                            no_duplication = false;
+                                        }
+                                    }
+                                    else if(new_edge.a_index == previous_edge.b_index)
+                                    {
+                                        if(new_edge.b_index == previous_edge.a_index)
+                                        {
+                                            no_duplication = false;
+                                        }
+                                    }
+                                    
+                                    if(!no_duplication)
+                                    {
+                                        delete_from_array(&new_edge_array , previous_edge_index);
+                                        break;
+                                    }
+                                }
+                                
+                                valid_edge[new_edge_index] = no_duplication;
+                            }
+                            
+                            for(int new_edge_index = 0; new_edge_index < 3; new_edge_index++)
+                            {
+                                NewEdge new_edge = all_new_edge[new_edge_index];
+                                
+                                if(valid_edge[new_edge_index])
+                                {
+                                    if(array_full(&new_edge_array))
+                                    {
+                                        reallocate_array(&new_edge_array , AT_temp);
+                                        reallocate_buffer(&new_edge_buffer , AT_temp);
+                                    }
+                                    new_edge_buffer.data[add_to_array(&new_edge_array)] = new_edge;
+                                }
+                            }
+                        }
+                    }
+                    
+                    array_foreach(edge_index , &new_edge_array)
+                    {
+                        
+                        NewEdge edge = new_edge_buffer.data[edge_index];
+                        TriangleIndex new_triangle = {edge.a_index , edge.b_index , new_support_point_index};
+                        
+                        if(array_full(&triangle_index_array))
+                        {
+                            reallocate_array(&triangle_index_array , AT_frame);
+                            reallocate_buffer(&triangle_index_buffer , AT_frame);
+                        }
+                        
+                        triangle_index_buffer.data[add_to_array(&triangle_index_array)] = new_triangle;
+                    }
+                }
+            }
+        }
+        
+        if(!within_other_shape) 
+        {
             break;
         }
     }
@@ -3061,12 +3584,14 @@ internal CollisionResult update_convex_collision(ConvexShape convex_shape)
     //printf( "check : %f\n", (time_stamp() - shape_impact_check_time) / (1000 ));
     //printf( "making tree : %f , walk in tree : %f , check : %f count : %d\n", shape_tree_time , tree_walk_time , (time_stamp() - shape_impact_check_time) / 1000 , shape_buffer_count);
     CollisionResult result = {};
+    result.stucked = stucked;
+    result.collided = collided_something;
     result.velocity = shape_velocity;
-    result.offset = shape_offset;
+    result.offset = Vector3Add(shape_offset , offset_within_shape);
     return result;
 }
 
-internal RayCastResultBuffer convex_shape_ray_cast(ConvexShape convex_shape)
+internal RayCastResultBuffer function convex_shape_ray_cast(ConvexShape convex_shape)
 {
     bool skip_this = capture_collision;
     if(!convex_shape.capture_collision) capture_collision = false;
@@ -3086,6 +3611,13 @@ internal RayCastResultBuffer convex_shape_ray_cast(ConvexShape convex_shape)
     {
         ShapeUnion shape = shape_buffer.data[shape_index];
         
+        if(Vector3DotProduct(shape.velocity , convex_shape.velocity) > 0)
+        {
+            if(shape.type != ST_box) CATCH;
+            shape.box.position = Vector3Add(shape.box.position , shape.velocity);
+            shape.velocity = (Vector3){};
+        }
+        
         if(capture_collision)
         {
             shape_b_union = shape;
@@ -3101,8 +3633,8 @@ internal RayCastResultBuffer convex_shape_ray_cast(ConvexShape convex_shape)
         impact_data.shape_b_vertices_count = shape_vertices_count;
         impact_data.shape_a_vertices = convex_shape.shape_vertices;
         impact_data.shape_a_vertices_count = convex_shape.shape_vertices_count;
-        impact_data.ray_direction = convex_shape.velocity;
-        impact_data.stop_if_too_far = !convex_shape.get_all;
+        impact_data.ray_direction = Vector3Subtract(convex_shape.velocity , shape.velocity);
+        impact_data.stop_if_too_far = !convex_shape.collect_all_collision;
         
         if(check_shape_impact(&impact_data))
         {
@@ -3118,6 +3650,7 @@ internal RayCastResultBuffer convex_shape_ray_cast(ConvexShape convex_shape)
                 RayCastResult * result = result_buffer.data + result_buffer.count++;
                 result->hit_time = impact_data.time_of_impact;
                 result->surface_normal = impact_data.impact_normal;
+                result->shape_owner = shape.owner;
             }
             
             //draw_quad_D(quad , MAROON);
@@ -3136,7 +3669,7 @@ internal RayCastResultBuffer convex_shape_ray_cast(ConvexShape convex_shape)
     return result_buffer;
 }
 
-internal ShapeUnionBuffer convex_shape_overlap(ConvexShape convex_shape)
+internal ShapeUnionBuffer function convex_shape_overlap(ConvexShape convex_shape)
 {
     ShapeUnionBuffer buffer = get_collided_bounding_box(convex_shape);
     
@@ -3153,7 +3686,7 @@ internal ShapeUnionBuffer convex_shape_overlap(ConvexShape convex_shape)
         
         shape_union_to_vertices(shape , &shape_vertices , &shape_vertices_count);
         
-        if(check_shape((Vector3){} , convex_shape.shape_vertices , convex_shape.shape_vertices_count , shape_vertices , shape_vertices_count))
+        if(check_shape((Vector3){} , convex_shape.shape_vertices , convex_shape.shape_vertices_count , shape_vertices , shape_vertices_count , 0))
         {
             if(buffer_full(collided_buffer))
             {
@@ -3168,14 +3701,14 @@ internal ShapeUnionBuffer convex_shape_overlap(ConvexShape convex_shape)
     return collided_buffer;
 }
 
-internal int shape_cell_hash(int x , int y , int z)
+internal int function shape_cell_hash(int x , int y , int z)
 {
     int hash_size = 16;
     return hash_int( hash_size * hash_size * z + hash_size * y + x );
 }
 
 //remove this
-internal bool iterate_cell_by_bound(CellIterator * iterator, Vector3 * vertices , int vertex_count , float cell_size)
+internal bool function iterate_cell_by_bound(CellIterator * iterator, Vector3 * vertices , int vertex_count , float cell_size)
 {
     if(!iterator->initialized)
     {
@@ -3231,12 +3764,13 @@ internal bool iterate_cell_by_bound(CellIterator * iterator, Vector3 * vertices 
     return true;
 }
 
-internal BoundingBoxNode * split_bounding_box(BoundingBoxNode * buffer , int buffer_count , int split_type , int split_fail_attemp)
+//TODO: i don't know how to split to a binary tree
+internal BoundingBoxNode * function split_bounding_box(BoundingBoxNode * buffer , int buffer_count , int split_type , int split_fail_attemp)
 {
     if(buffer_count == 0) return 0;
     if(buffer_count == 1) return buffer;
     
-    BoundingBoxNode * root_node = allocate_frame(BoundingBoxNode , 1);
+    BoundingBoxNode * root_node = allocate_memory_type(BoundingBoxNode , 1 , AT_frame);
     root_node->left = 0;
     root_node->right = 0;
     
@@ -3283,10 +3817,10 @@ internal BoundingBoxNode * split_bounding_box(BoundingBoxNode * buffer , int buf
     
     BoundingBoxNode * left_buffer = 0;
     int left_buffer_count = 0;
-    left_buffer = allocate_frame(BoundingBoxNode , buffer_count);
+    left_buffer = allocate_memory_type(BoundingBoxNode , buffer_count , AT_frame);
     
     BoundingBoxNode * right_buffer = 0;
-    right_buffer = allocate_frame(BoundingBoxNode , buffer_count);
+    right_buffer = allocate_memory_type(BoundingBoxNode , buffer_count , AT_frame);
     int right_buffer_count = 0;
     
     for(int bounding_box_index = 0 ; bounding_box_index < buffer_count ; bounding_box_index++)
@@ -3344,7 +3878,7 @@ internal BoundingBoxNode * split_bounding_box(BoundingBoxNode * buffer , int buf
     return root_node;
 }
 
-internal int cell_to_index(Int3 cell)
+internal int function cell_to_index(Int3 cell)
 {
     if(cell.x < 0) CATCH;
     if(cell.y < 0) CATCH;
@@ -3359,7 +3893,7 @@ internal int cell_to_index(Int3 cell)
 //TODO: big to-do here
 //make it better? less cell and build faster
 //my best chance is delaunay triangulation
-internal void generate_nav_mesh()
+internal void function generate_nav_mesh()
 {
     if(box_in_map_array.count == 0) return;
     
@@ -3415,7 +3949,7 @@ internal void generate_nav_mesh()
     if(new_nav_mesh_capacity > nav_mesh_cell_capacity)
     {
         nav_mesh_cell_capacity = new_nav_mesh_capacity;
-        nav_mesh_cell = allocate_temp(CellData , nav_mesh_cell_capacity);
+        nav_mesh_cell = allocate_memory_type(CellData , nav_mesh_cell_capacity , AT_temp);
     }
     
     for(int cell_index = 0; cell_index < new_nav_mesh_count ; cell_index++)
@@ -3466,7 +4000,7 @@ internal void generate_nav_mesh()
             cell_box.size = (Vector3){nav_mesh_cell_size , nav_mesh_cell_size , nav_mesh_cell_size};
             //draw_box_line(cell_box , Fade(WHITE , 0.1) , 5);
             
-            if(check_shape((Vector3){} , box_to_point(cell_box) , box_vertex_count , box_vertices , box_vertex_count))
+            if(check_shape((Vector3){} , box_to_point(cell_box) , box_vertex_count , box_vertices , box_vertex_count , 0))
             {
                 Int3 cell = {};
                 cell.x = x - nav_mesh_start.x;
@@ -3496,7 +4030,7 @@ internal void generate_nav_mesh()
 }
 
 //this is extremely slow?
-internal PathResult path_finding(Vector3 start , Vector3 end)
+internal PathResult function path_finding(Vector3 start , Vector3 end)
 {
     PathResult result = {};
     result.path_found = false;
@@ -3662,7 +4196,8 @@ internal PathResult path_finding(Vector3 start , Vector3 end)
                     int old_queue_capacity = search_queue_capacity;
                     search_queue_capacity *= 2;
                     if(search_queue_capacity > 10000) CATCH;
-                    Int3 * new_queue = allocate_temp(Int3 , search_queue_capacity);
+                    
+                    Int3 * new_queue = allocate_memory_type(Int3 , search_queue_capacity , AT_temp);
                     
                     int new_queue_index = 0;
                     for(int queue_index = search_queue_head; queue_index < old_queue_capacity; queue_index++ , new_queue_index++)
@@ -3713,7 +4248,7 @@ internal PathResult path_finding(Vector3 start , Vector3 end)
             CellData * cell_data = nav_mesh_cell + cell_to_index(cell);
             if(result.buffer.count == result.buffer.capacity)
             {
-                reallocate_buffer( &result.buffer , AT_frame);
+                reallocate_buffer(&result.buffer , AT_frame);
             }
             Int3 * new_path_cell = result.buffer.data + result.buffer.count++;
             (*new_path_cell) = cell;
@@ -3736,7 +4271,7 @@ internal PathResult path_finding(Vector3 start , Vector3 end)
     return result;
 }
 
-internal bool load_data_from_file(char * path)
+internal bool function load_data_from_file(char * path)
 {
     FILE * game_save_file = fopen(path , "rb");
     
@@ -3765,14 +4300,15 @@ internal bool load_data_from_file(char * path)
     return true;
 }
 
-internal bool load_map()
+internal bool function load_map()
 {
     if(!load_data_from_file(get_app_file_path(map_save_name))) return false;
     
     int quad_count = 0;
     int quad_capacity = 1;
-    read_data(quad_count , "map_quad_count" , int);
+    READ_DATA(quad_count , "map_quad_count" , int);
     for( ;quad_capacity < quad_count; quad_capacity *= 2 );
+    
     quad_in_map_array = allocate_array(quad_capacity , AT_temp);
     allocate_buffer( &quad_in_map_buffer , Quad , quad_capacity , AT_temp);
     
@@ -3780,15 +4316,15 @@ internal bool load_map()
     {
         Quad * quad = quad_in_map_buffer.data + add_to_array(&quad_in_map_array);
         
-        read_buffer(quad->vertex_position[vertex_top_left] , "map_quad_top_left_vertex" , Vector3 , quad_index);
-        read_buffer(quad->vertex_position[vertex_top_right] , "map_quad_top_right_vertex" , Vector3 , quad_index);
-        read_buffer(quad->vertex_position[vertex_bottom_left] , "map_quad_bottom_left_vertex" , Vector3 , quad_index);
-        read_buffer(quad->vertex_position[vertex_bottom_right] , "map_quad_bottom_right_vertex" , Vector3 , quad_index);
+        READ_BUFFER(quad->vertex_position[vertex_top_left] , "map_quad_top_left_vertex" , Vector3 , quad_index);
+        READ_BUFFER(quad->vertex_position[vertex_top_right] , "map_quad_top_right_vertex" , Vector3 , quad_index);
+        READ_BUFFER(quad->vertex_position[vertex_bottom_left] , "map_quad_bottom_left_vertex" , Vector3 , quad_index);
+        READ_BUFFER(quad->vertex_position[vertex_bottom_right] , "map_quad_bottom_right_vertex" , Vector3 , quad_index);
     }
     
     int box_count = 0;
     int box_capacity = 1;
-    read_data(box_count , "map_box_count" , int);
+    READ_DATA(box_count , "map_box_count" , int);
     for(;box_capacity < box_count; box_capacity *= 2);
     box_in_map_array = allocate_array(box_capacity , AT_temp);
     allocate_buffer(&box_in_map_buffer , Box , box_capacity , AT_temp);
@@ -3797,30 +4333,46 @@ internal bool load_map()
     {
         Box * box = box_in_map_buffer.data + add_to_array(&box_in_map_array);
         
-        read_buffer(box->position , "map_box_position" , Vector3 , box_index);
-        read_buffer(box->size , "map_box_size" , Vector3 , box_index);
-        read_buffer(box->rotation , "map_box_rotation" , Quaternion , box_index);
+        READ_BUFFER(box->position , "map_box_position" , Vector3 , box_index);
+        READ_BUFFER(box->size , "map_box_size" , Vector3 , box_index);
+        READ_BUFFER(box->rotation , "map_box_rotation" , Quaternion , box_index);
+        
+        READ_BUFFER(box->top_front , "map_box_top_front" , float , box_index);
+        READ_BUFFER(box->top_right , "map_box_top_right" , float , box_index);
+        READ_BUFFER(box->right_top , "map_box_right_top" , float , box_index);
+        READ_BUFFER(box->right_front , "map_box_right_front" , float , box_index);
+        READ_BUFFER(box->front_top , "map_box_front_top" , float , box_index);
+        READ_BUFFER(box->front_right , "map_box_front_right" , float , box_index);
     }
-    
     
     int entity_count = 0;
     int entity_capacity = 1;
-    read_data(entity_count , "entity_count" , int);
+    READ_DATA(entity_count , "entity_count" , int);
     for(;entity_capacity < entity_count; entity_capacity *= 2);
     entity_layout_array = allocate_array(entity_capacity , AT_temp);
     allocate_buffer(&entity_layout_buffer , Entity , entity_capacity , AT_temp);
     
     for(int entity_index = 0; entity_index < entity_count ; entity_index++)
     {
-        //Entity * entity = entity_layout_buffer.data + add_to_array(&entity_layout_array);
+        int new_entity_index = add_to_array(&entity_layout_array);
+        Entity * entity = entity_layout_buffer.data + new_entity_index;
         
-        //read_buffer(entity->position , "entity_position" , Vector3 , entity_index);
+        READ_BUFFER(entity->type , "entity_type" , int , entity_index);
+        READ_BUFFER(entity->position , "entity_position" , Vector3 , entity_index);
+        READ_BUFFER(entity->box.rotation , "entity_rotation" , Quaternion , entity_index);
+        READ_BUFFER(entity->box.size , "entity_size" , Vector3 , entity_index);
+        READ_BUFFER(entity->generation_index , "entity_generation_index" , int ,entity_index);
+        
+        entity->box.position = entity->position;
+        //entity->player_index = -1;
+        entity->entity_index = entity_index;
     }
     
 #ifdef BUILD_D_WINDOWS
+    
     int trigger_box_count = 0;
     int trigger_box_capacity = 1;
-    read_data(trigger_box_count , "camera_trigger_count" , int);
+    READ_DATA(trigger_box_count , "camera_trigger_count" , int);
     for(;trigger_box_capacity < trigger_box_count ; trigger_box_capacity*=2);
     camera_array = allocate_array(trigger_box_capacity , AT_temp);
     allocate_buffer(&camera_buffer , CameraTrigger , trigger_box_capacity , AT_temp);
@@ -3832,21 +4384,21 @@ internal bool load_map()
         Box * zone = camera_zone_buffer.data + new_camera_index;
         CameraTrigger * trigger = camera_buffer.data + new_camera_index;
         
-        read_buffer(zone->position , "camera_zone_position" , Vector3 , trigger_box_index);
-        read_buffer(zone->size , "camera_zone_size" , Vector3 , trigger_box_index);
-        read_buffer(zone->rotation , "camera_zone_rotation" , Quaternion , trigger_box_index);
-        read_buffer(trigger->camera_target_offset , "camera_zone_offset" , Vector3 , trigger_box_index);
+        READ_BUFFER(zone->position , "camera_zone_position" , Vector3 , trigger_box_index);
+        READ_BUFFER(zone->size , "camera_zone_size" , Vector3 , trigger_box_index);
+        READ_BUFFER(zone->rotation , "camera_zone_rotation" , Quaternion , trigger_box_index);
+        READ_BUFFER(trigger->camera_target_offset , "camera_zone_offset" , Vector3 , trigger_box_index);
     }
     
-    read_data(selected_reference_frame_index , "selected reference frame" , int);
+    READ_DATA(selected_reference_frame_index , "selected reference frame" , int);
     
     int reference_frame_count = 0;
-    read_data(reference_frame_count , "reference frame count" , int);
+    READ_DATA(reference_frame_count , "reference frame count" , int);
     
     for(int reference_frame_index = 0 ; reference_frame_index < reference_frame_count ; reference_frame_index++)
     {
         Vector3 refernce_frame = {};
-        read_buffer(refernce_frame , "reference frame" , Vector3 , reference_frame_index);
+        READ_BUFFER(refernce_frame , "reference frame" , Vector3 , reference_frame_index);
         
         if(list_full(&reference_frame_list))
         {
@@ -3864,35 +4416,41 @@ internal bool load_map()
     return true;
 }
 
-internal void build_tree_from_box(BoundingBoxNodeBuffer * bounding_box_buffer , Array * box_array , BoxBuffer * box_buffer)
+internal void function add_box_to_bounding_box_buffer(Box box , Vector3 velocity , ShapeOwner owner , BoundingBoxNodeBuffer * bounding_box_buffer)
 {
-    array_foreach( box_index , box_array)
+    Vector3 box_vertices[box_vertex_count * 2] = {};
+    
+    Box box_after_velocity = box;
+    box_after_velocity.position = Vector3Add(box_after_velocity.position , velocity);
+    
+    Vector3 * box_before_velocity_vertices = box_to_point(box);
+    Vector3 * box_after_velocity_vertices = box_to_point(box_after_velocity);
+    
+    for(int box_index = 0; box_index < box_vertex_count; box_index++) box_vertices[box_index] = box_before_velocity_vertices[box_index];
+    for(int box_index = 0; box_index < box_vertex_count; box_index++) box_vertices[box_index + box_vertex_count] = box_after_velocity_vertices[box_index];
+    
+    Vector3 right_top_forward = {-FLT_MAX , -FLT_MAX , -FLT_MAX};
+    Vector3 left_bottom_backward = {FLT_MAX , FLT_MAX , FLT_MAX};
+    
+    get_bound(box_vertices , box_vertex_count * 2 , &right_top_forward , &left_bottom_backward);
+    
+    if(buffer_full(*bounding_box_buffer))
     {
-        Box box = box_buffer->data[box_index];
-        
-        Vector3 * box_vertices = box_to_point(box);
-        
-        Vector3 right_top_forward = {-FLT_MAX , -FLT_MAX , -FLT_MAX};
-        Vector3 left_bottom_backward = {FLT_MAX , FLT_MAX , FLT_MAX};
-        
-        get_bound(box_vertices , box_vertex_count , &right_top_forward , &left_bottom_backward);
-        
-        if(buffer_full(*bounding_box_buffer))
-        {
-            reallocate_buffer(bounding_box_buffer , AT_frame);
-        }
-        
-        BoundingBoxNode * new_bounding_box = bounding_box_buffer->data + bounding_box_buffer->count++;
-        new_bounding_box->right_top_forward = right_top_forward;
-        new_bounding_box->left_bottom_backward = left_bottom_backward;
-        new_bounding_box->shape.type = ST_box;
-        new_bounding_box->shape.index = box_index;
-        new_bounding_box->left = 0;
-        new_bounding_box->right = 0;
+        reallocate_buffer(bounding_box_buffer , AT_frame);
     }
+    
+    BoundingBoxNode * new_bounding_box = bounding_box_buffer->data + bounding_box_buffer->count++;
+    new_bounding_box->right_top_forward = right_top_forward;
+    new_bounding_box->left_bottom_backward = left_bottom_backward;
+    new_bounding_box->shape.type = ST_box;
+    new_bounding_box->shape.box = box;
+    new_bounding_box->shape.velocity = velocity;
+    new_bounding_box->shape.owner = owner;
+    new_bounding_box->left = 0;
+    new_bounding_box->right = 0;
 }
 
-internal float snap_to_fixed_angle(float x)
+internal float function snap_to_fixed_angle(float x)
 {
     float a[5] = {};
     
@@ -3918,8 +4476,214 @@ internal float snap_to_fixed_angle(float x)
     return a[closest_index];
 }
 
-internal void world_update()
+internal EntityHandle function entity_to_handle(Entity * entity)
 {
+    EntityHandle handle = {};
+    handle.entity_index = entity->entity_index;
+    handle.generation_index = entity->generation_index;
+    return handle;
+}
+
+internal Entity * function handle_to_entity(EntityHandle handle)
+{
+    if(handle.entity_index < 0) CATCH;
+    if(handle.entity_index >= entity_active_array.upper_bound) return 0;
+    Entity * entity = entity_active_buffer.data + handle.entity_index;
+    if(entity->respawning) return 0;
+    if(!entity_active_array.valid_array[handle.entity_index]) return 0;
+    if(handle.generation_index != entity->generation_index) return 0;
+    if(handle.entity_index != entity->entity_index) CATCH;
+    
+    return entity;
+}
+
+internal bool function ground_spring(Box box, Vector3 * velocity , Vector3 ray, float spring_percent , float max_slop_angle, Vector3 * ground_normal , float * ground_hit_time , ShapeOwner * ground_owner)
+{
+    bool grounded = false;
+    
+    //ray = Vector3Add(ray , Vector3Project(Vector3Scale(box.size , -0.5f) , ray ));
+    
+    ConvexShape ray_cast_shape = {};
+    ray_cast_shape.shape.box = box;
+    ray_cast_shape.shape.type = ST_box;
+    ray_cast_shape.velocity = ray;
+    ray_cast_shape.position = box.position;
+    //ray_cast_shape.capture_collision = true;
+    
+    collision_push_root(bounding_box_in_map_root);
+    RayCastResultBuffer ray_cast_result_buffer = convex_shape_ray_cast(ray_cast_shape);
+    
+    float closest_ground_hit_time = FLT_MAX;
+    Vector3 closest_ground_normal = {};
+    ShapeOwner closest_ground_owner = {};
+    
+    for(int buffer_index = 0 ; buffer_index < ray_cast_result_buffer.count ; buffer_index++)
+    {
+        RayCastResult result = ray_cast_result_buffer.data[buffer_index];
+        
+        Vector3 surface_normal = Vector3Normalize(result.surface_normal);
+        float ground_angle = Vector3Angle((Vector3){0,1,0} , surface_normal) * RAD2DEG;
+        
+        if(closest_ground_hit_time > result.hit_time)
+        {
+            if(ground_angle < max_slop_angle)
+            {
+                grounded = true;
+                
+                closest_ground_hit_time = result.hit_time;
+                closest_ground_normal = surface_normal;
+                closest_ground_owner = result.shape_owner;
+            }
+        }
+    }
+    
+    if(ground_normal) (*ground_normal) = closest_ground_normal;
+    if(ground_hit_time) (*ground_hit_time) = closest_ground_hit_time;
+    
+    if(grounded)
+    {
+        //i don't think i'm gonna stand on a wall but i make it possible anyway
+        Vector3 velocity_on_ray = Vector3Project((*velocity) , ray);
+        Vector3 spring = Vector3Scale(ray , (closest_ground_hit_time - spring_percent) * 2.0f);
+        spring = Vector3Add(spring , velocity_on_ray);
+        spring = Vector3Scale(spring , 0.2f);
+        (*velocity) = Vector3Subtract((*velocity) , velocity_on_ray);
+        (*velocity) = Vector3Add((*velocity) , spring);
+        if(ground_owner) (*ground_owner) = closest_ground_owner;
+        
+        //float spring = ray.y * (closest_ground_hit_time - spring_percent) + player->velocity.y;
+        //spring *= 0.5f;
+        //player->velocity.y = spring;
+    }
+    
+    return grounded;
+}
+
+internal Vector3 function vector3_abs(Vector3 vector)
+{
+    vector.x = fabs(vector.x);
+    vector.y = fabs(vector.y);
+    vector.z = fabs(vector.z);
+    
+    return vector;
+}
+
+internal Quaternion function quaternion_from_vector3_to_vector3(Vector3 from , Vector3 to)
+{
+    Quaternion rotation = QuaternionIdentity();
+    float dot_product = Vector3DotProduct(from , to);
+    if(dot_product < -0.999999f)
+    {
+        rotation = QuaternionFromEuler(0 , DEG2RAD * 90 , 0);
+    }
+    else if(dot_product < 0.999999f)
+    {
+        Quaternion result = { 0 };
+        
+        float cos2Theta = (from.x*to.x + from.y*to.y + from.z*to.z);    // Vector3DotProduct(from, to)
+        Vector3 cross = { from.y*to.z - from.z*to.y, from.z*to.x - from.x*to.z, from.x*to.y - from.y*to.x }; // Vector3CrossProduct(from, to)
+        
+        result.x = cross.x;
+        result.y = cross.y;
+        result.z = cross.z;
+        result.w = 1.0f + cos2Theta;
+        
+        // QuaternionNormalize(q);
+        // NOTE: Normalize to essentially nlerp the original and identity to 0.5
+        Quaternion q = result;
+        float length = sqrtf(q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w);
+        if (length == 0.0f) length = 1.0f;
+        float ilength = 1.0f/length;
+        
+        result.x = q.x*ilength;
+        result.y = q.y*ilength;
+        result.z = q.z*ilength;
+        result.w = q.w*ilength;
+        
+        rotation = result;
+    }
+    
+    return rotation;
+}
+
+internal void function update_player_box(Player * player)
+{
+    player->box = get_box();
+    player->box.position = player->position;
+    player->box.size = player_box_size;
+    player->collide_box = player->box;
+    
+    player->collide_box.position = Vector3Subtract( player->collide_box.position , Vector3Scale(player_spring_ray , 0.5f * player_spring_percent));
+    player->collide_box.size = Vector3Subtract(player->collide_box.size , Vector3Scale(vector3_abs(player_spring_ray) , player_spring_percent));
+}
+
+internal void function copy_from_layout(Entity * entity , int layout_entity_index)
+{
+    if(entity_layout_array.valid_array[layout_entity_index])
+    {
+        Entity * layout_entity = entity_layout_buffer.data + layout_entity_index;
+        
+        (*entity) = (*layout_entity);
+        entity->box.size.x -= 0.05 * UNIT_SIZE;
+        entity->box.size.y -= 0.05 * UNIT_SIZE;
+        entity->box.size.z -= 0.05 * UNIT_SIZE;
+        entity->respawnable = true;
+        entity->previous_position = entity->position;
+        entity->velocity = (Vector3){};
+        
+        entity->respawning = false;
+        entity->clearable = false;
+        
+        bool fixed_size = false;
+        if(entity->type == E_hook) fixed_size = true;
+        if(entity->type == E_small_block) fixed_size = true;
+        if(entity->type == E_bubble) fixed_size = true;
+        
+        if(fixed_size)
+        {
+            entity->box.size.x = GRID_SIZE * 0.5f;
+            entity->box.size.y = GRID_SIZE * 0.5f;
+            entity->box.size.z = GRID_SIZE * 0.5f;
+        }
+    }
+}
+
+internal Player * function index_to_player(int player_index)
+{
+    if(!player_pool.array.valid_array[player_index]) return 0;
+    if(player_pool.buffer.data[player_index].previous != -1) return 0;
+    Player * player = (Player*)(player_pool.memory_start + (player_index * player_pool.chunk_size));
+    
+    return player;
+}
+
+internal void function world_update()
+{
+    if(!entity_initialized)
+    {
+        entity_initialized = true;
+        clear_array(&entity_active_array);
+        
+        int entity_capacity = entity_layout_array.capacity;
+        
+        if(entity_active_array.capacity < entity_capacity)
+        {
+            entity_active_array = allocate_array(entity_capacity , AT_temp);
+            allocate_buffer(&entity_active_buffer , Entity , entity_capacity , AT_temp);
+        }
+        
+        entity_active_array.count = entity_layout_array.count;
+        entity_active_array.upper_bound = entity_layout_array.upper_bound;
+        entity_active_array.lowest_index = entity_layout_array.lowest_index;
+        
+        for(int entity_index = 0 ; entity_index < entity_capacity ; entity_index++)
+        {
+            entity_active_array.valid_array[entity_index] = entity_layout_array.valid_array[entity_index];
+            
+            copy_from_layout(entity_active_buffer.data + entity_index , entity_index);
+        }
+    }
+    
 #ifdef BUILD_D_WINDOWS
     glClearDepth(1);
     glClear(GL_DEPTH_BUFFER_BIT);
@@ -3935,11 +4699,20 @@ internal void world_update()
     double shape_tree_time = time_stamp();
     
     BoundingBoxNodeBuffer bounding_box_buffer = {};
-    allocate_buffer( &bounding_box_buffer , BoundingBoxNode , 128 , AT_frame);;
+    allocate_buffer( &bounding_box_buffer , BoundingBoxNode , 128 , AT_frame);
     
-    build_tree_from_box(&bounding_box_buffer , &box_in_map_array , &box_in_map_buffer);
+    array_foreach(box_index , &box_in_map_array)
+    {
+        Box box = box_in_map_buffer.data[box_index];
+        ShapeOwner owner = {};
+        owner.is_entity = false;
+        
+        add_box_to_bounding_box_buffer(box , (Vector3){} , owner , &bounding_box_buffer );
+    }
     
     //TODO: quads are missing???
+    //something wrong with editor
+    //quad was spawn on the other side of origin
     array_foreach(quad_index , &quad_in_map_array)
     {
         Quad quad = quad_in_map_buffer.data[quad_index];
@@ -3958,26 +4731,333 @@ internal void world_update()
         new_bounding_box->right_top_forward = right_top_forward;
         new_bounding_box->left_bottom_backward = left_bottom_backward;
         new_bounding_box->shape.type = ST_quad;
-        new_bounding_box->shape.index = quad_index;
+        new_bounding_box->shape.quad = quad;
         new_bounding_box->left = 0;
         new_bounding_box->right = 0;
     }
     
-    bounding_box_root = split_bounding_box(bounding_box_buffer.data , bounding_box_buffer.count , split_yz , 0);
+    array_foreach(entity_index , &entity_active_array)
+    {
+        Entity * entity = entity_active_buffer.data + entity_index;
+        if(entity->respawning) continue;
+        
+        bool collidable_entity = false;
+        if(entity->type == E_moving_wall) collidable_entity = true;
+        if(entity->solid) collidable_entity = true;
+        
+        if(!collidable_entity) continue;
+        
+        ShapeOwner owner = {};
+        owner.is_entity = true;
+        owner.entity_handle = entity_to_handle(entity);
+        
+        Box entity_box = entity->box;
+        entity_box.position = entity->previous_position;
+        add_box_to_bounding_box_buffer(entity_box , Vector3Subtract(entity->position , entity->previous_position) , owner , &bounding_box_buffer);
+    }
+    
+    bounding_box_in_map_root = split_bounding_box(bounding_box_buffer.data , bounding_box_buffer.count , split_yz , 0);
     
     shape_tree_time = (time_stamp() - shape_tree_time) / (1000.0);
     
-    array_foreach(player_index , &player_array)
+    BoundingBoxNodeBuffer player_bounding_box_buffer = {};
+    int player_count = 0;
+    array_foreach(player_index , &player_pool.array)
     {
-        Player * player = player_buffer.data + player_index;
-        PlayerConnection * player_connection = player_connection_buffer.data + player_index;
+        if(!index_to_player(player_index)) continue;
+        player_count++;
+    }
+    allocate_buffer(&player_bounding_box_buffer , BoundingBoxNode , player_count , AT_frame);
+    
+    array_foreach(player_index , &player_pool.array)
+    {
+        Player * player = index_to_player(player_index);
+        if(!player) continue;
         
+        ShapeOwner owner = {};
+        owner.is_player = true;
+        owner.player_index = player_index;
+        add_box_to_bounding_box_buffer(player->box , player->velocity , owner , &player_bounding_box_buffer);
+    }
+    
+    BoundingBoxNode * player_bounding_box_root = split_bounding_box(player_bounding_box_buffer.data , player_bounding_box_buffer.count , split_yz , 0);
+    
+    array_foreach(entity_index , &entity_active_array)
+    {
+        Entity * entity = entity_active_buffer.data + entity_index;
+        
+        if(entity->clearable)
+        {
+            entity->clear_timer += DELTA_TIME;
+            
+            float clear_time = default_entity_clear_time;
+            if(entity->override_clear_time) clear_time = entity->clear_time;
+            if(entity->clear_timer >= clear_time)
+            {
+                entity->cleared = true;
+            }
+        }
+        
+        if(entity->cleared)
+        {
+            if(entity->respawnable)
+            {
+                if(!entity->respawning) entity->respawn_timer = 0;
+                entity->respawning = true;
+            }
+            else
+            {
+                delete_from_array(&entity_active_array , entity_index);
+                continue;
+            }
+        }
+        
+        if(entity->respawning) 
+        {
+            entity->respawn_timer += DELTA_TIME;
+            
+            float respawn_time = default_entity_respawn_time;
+            if(entity->override_respawn_time) respawn_time = entity->respawn_time;
+            
+            if(entity->respawn_timer < respawn_time)
+            {
+                continue;
+            }
+            else
+            {
+                copy_from_layout(entity , entity_index);
+            }
+        }
+        
+        if(!entity->stop_expanding)
+        {
+            if(entity->expanding)
+            {
+                float expand_speed = UNIT_SIZE * 0.8f;
+                Vector3 direction = Vector3Normalize(entity->charge_direction);
+                Vector3 expand_size = Vector3Scale(direction , expand_speed);
+                
+                entity->box.size = Vector3Add(entity->box.size , vector3_abs(expand_size));
+                entity->position = Vector3Add(entity->position , Vector3Scale(expand_size , 0.5f));
+                
+                entity->position = Vector3Add(entity->position , Vector3Scale(direction , UNIT_SIZE * 0.02f));
+                
+                ConvexShape trigger = {};
+                trigger.shape.type = ST_box;
+                trigger.shape.box = entity->box;
+                trigger.velocity = (Vector3){};
+                trigger.position = entity->box.position;
+                
+                collision_push_root(bounding_box_in_map_root);
+                ShapeUnionBuffer shape_buffer = convex_shape_overlap(trigger);
+                
+                if(shape_buffer.count > 0) entity->stop_expanding = true;
+            }
+        }
+        
+        entity->box.position = entity->position;
+        
+        //Player * player = index_to_player(entity->player_index);
+        //Player * player = 0;
+        
+        if(entity->charging)
+        {
+            Vector3 charge_force = Vector3Normalize(entity->charge_direction);
+            
+            entity->charge_timer += DELTA_TIME;
+            if(entity->charge_timer > 1.42) entity->charging = false;
+            
+            if(entity->type == E_moving_wall || entity->solid)
+            {
+                float target_force = 0.008f * UNIT_SIZE;
+                float max_force = 0.4f * UNIT_SIZE;
+                float apply_force = max_force - Vector3Length(entity->velocity);
+                if(apply_force < 0) apply_force = 0;
+                if(apply_force > target_force) apply_force = target_force;
+                
+                charge_force = Vector3Scale(charge_force , target_force);
+                entity->velocity = Vector3Add(entity->velocity , charge_force);
+            }
+            
+            if(entity->type == E_hook) 
+            {
+                entity->velocity = Vector3Scale(charge_force , 1.0f * UNIT_SIZE);
+            }
+            
+            Box box_to_stop = entity->box;
+            box_to_stop.size.x -= 0.01 * UNIT_SIZE;
+            box_to_stop.size.y -= 0.01 * UNIT_SIZE;
+            box_to_stop.size.z -= 0.01 * UNIT_SIZE;
+            
+            Vector3 box_offset = Vector3Normalize(entity->charge_direction);
+            box_offset = Vector3Scale(box_offset , UNIT_SIZE * 0.02f);
+            box_to_stop.position = Vector3Add(box_to_stop.position , box_offset);
+            box_to_stop.size = Vector3Add(box_to_stop.size , vector3_abs(box_offset));
+            
+            ConvexShape trigger = {};
+            trigger.shape.type = ST_box;
+            trigger.shape.box = box_to_stop;
+            trigger.velocity = (Vector3){};
+            trigger.position = box_to_stop.position;
+            
+            collision_push_root(bounding_box_in_map_root);
+            ShapeUnionBuffer shape_buffer = convex_shape_overlap(trigger);
+            
+            //draw_box_line(box_to_stop , Fade(YELLOW , 0.5f) , 5);
+            
+            for(int buffer_index = 0; buffer_index < shape_buffer.count; buffer_index++)
+            {
+                ShapeOwner owner = shape_buffer.data[buffer_index].owner;
+                if(owner.is_entity)
+                {
+                    if(handle_to_entity(owner.entity_handle) == entity)
+                    {
+                        continue;
+                    }
+                }
+                
+                if(entity->type == E_moving_wall)
+                {
+                    entity->velocity = (Vector3){};
+                    entity->charging = false;
+                    entity->clearable = true;
+                }
+                else if(entity->type == E_hook)
+                {
+                    entity->charging = false;
+                    //entity->unpickable = false;
+                    entity->velocity = (Vector3){};
+                    entity->hook_on_surface = true;
+                }
+                break;
+            }
+        }
+        
+        bool detoned = false;
+        
+        if(key_pressed(KEY_U))
+        {
+            if(entity->detonable) detoned = true;
+        }
+        
+        if(detoned)
+        {
+            entity->cleared = true;
+            
+            Box bomb_trigger_box = entity->box;
+            
+            float bomb_radius = GRID_SIZE * 4.0;
+            bomb_trigger_box.size = (Vector3){bomb_radius , bomb_radius , bomb_radius};
+            
+            ConvexShape bomb_trigger = {};
+            bomb_trigger.shape.type = ST_box;
+            bomb_trigger.shape.box = bomb_trigger_box;
+            bomb_trigger.velocity = (Vector3){0 , 0 , 0};
+            bomb_trigger.position = bomb_trigger_box.position;
+            bomb_trigger.capture_collision = false;
+            
+            collision_push_root(player_bounding_box_root);
+            collision_push_root(bounding_box_in_map_root);
+            ShapeUnionBuffer hit_buffer = convex_shape_overlap(bomb_trigger);
+            
+            for(int hit_buffer_index = 0; hit_buffer_index < hit_buffer.count; hit_buffer_index++)
+            {
+                ShapeUnion hit_trigger =  hit_buffer.data[hit_buffer_index];
+                ShapeOwner hit_owner = hit_trigger.owner;
+                
+                if(hit_owner.is_entity)
+                {
+                    Entity * hit_entity = handle_to_entity(hit_owner.entity_handle);
+                }
+                else if(hit_owner.is_player)
+                {
+                    Player * hit_player = index_to_player(hit_owner.player_index);
+                    Vector3 hit_direction = Vector3Subtract(hit_player->position , entity->position);
+                    hit_direction = Vector3Normalize(hit_direction);
+                    Vector3 explosion_force = Vector3Scale(hit_direction , UNIT_SIZE * 1.0f);
+                    //printf("%f %f %f : %f\n" , explosion_force.x , explosion_force.y , explosion_force.z , Vector3Length(explosion_force));
+                    hit_player->velocity = Vector3Add(hit_player->velocity , explosion_force);
+                }
+            }
+        }
+        
+        if(entity->position.y < -5 * GRID_SIZE)
+        {
+            entity->clearable = true;
+        }
+        
+        bool has_physics = false;
+        if(entity->type == E_moving_wall) has_physics = true;
+        if(entity->solid) has_physics = true;
+        
+        if(has_physics)
+        {
+            if(!entity->charging)
+            {
+                entity->velocity_multipler = Lerp(entity->velocity_multipler , 0.9 , 0.2f);
+                entity->gravity_force = Lerp(entity->gravity_force , UNIT_SIZE * 0.3f , 0.02f);
+            }
+            else
+            {
+                entity->velocity_multipler = Lerp(entity->velocity_multipler , 1.0 , 0.2f);
+                entity->gravity_force = Lerp(entity->gravity_force , UNIT_SIZE * 0.01f , 0.3f);
+            }
+            
+            entity->velocity.y -= entity->gravity_force;
+            entity->velocity = Vector3Scale(entity->velocity , entity->velocity_multipler);
+            
+            ShapeOwner shape_owner = {};
+            shape_owner.is_entity = true;
+            shape_owner.entity_handle = entity_to_handle(entity);
+            
+            ConvexShape entity_shape = {};
+            entity_shape.shape.owner = shape_owner;
+            entity_shape.shape.type = ST_box;
+            entity_shape.shape.box = entity->box;
+            entity_shape.velocity = entity->velocity;
+            entity_shape.position = entity->position;
+            entity_shape.capture_collision = true;
+            
+            CollisionResult collision_result = update_collision(entity_shape);
+            
+            entity->position = Vector3Add(entity->position , collision_result.offset);
+            entity->velocity = collision_result.velocity;
+        }
+        
+        entity->previous_position = entity->position;
+        entity->position = Vector3Add(entity->position , entity->velocity);
+    }
+    
+    BoundingBoxNodeBuffer entity_bounding_box_buffer = {};
+    allocate_buffer(&entity_bounding_box_buffer , BoundingBoxNode , entity_active_array.count , AT_frame);
+    
+    array_foreach(entity_index , &entity_active_array)
+    {
+        Entity * entity = entity_active_buffer.data + entity_index;
+        if(entity->respawning) continue;
+        
+        bool pickable = false;
+        if(entity->type == E_hook) pickable = true;
+        if(entity->type == E_small_block) pickable = true;
+        if(entity->type == E_bubble) pickable = true;
+        if(!pickable) continue;
+        
+        ShapeOwner owner = {};
+        owner.is_entity = true;
+        owner.entity_handle = entity_to_handle(entity_active_buffer.data + entity_index);
+        add_box_to_bounding_box_buffer(entity_active_buffer.data[entity_index].box , entity->velocity , owner , &entity_bounding_box_buffer);
+    }
+    
+    BoundingBoxNode * entity_bounding_box_root = split_bounding_box(entity_bounding_box_buffer.data , entity_bounding_box_buffer.count , split_yz , 0);
+    
+    array_foreach(player_index , &player_pool.array)
+    {
+        Player * player = index_to_player(player_index);
+        if(!player) continue;
+        PlayerConnection * player_connection = player_connection_buffer.data + player->connection_index;
         input_state = &player_connection->input_state;
         
-        player->box = get_box();
-        player->box.position = player->position;
-        player->box.size = (Vector3){0.6, 0.6 , 0.6};
-        //player->box.rotation = QuaternionFromVector3ToVector3( (Vector3){0,1,0} , Vector3Normalize( (Vector3){0.5,1,2.63}) );
+        update_player_box(player);
         
         float player_forward = 0;
         float player_right = 0;
@@ -3989,9 +5069,6 @@ internal void world_update()
         if(key_pressing(KEY_D)) player_right += 1;
         if(key_pressing(KEY_A)) player_right -= 1;
         
-        player_forward *= UNIT_SIZE * 0.1f;
-        player_right *= UNIT_SIZE * 0.1f;
-        
         Vector3 player_forward_direction = Vector3Subtract(player->camera_target , player->camera_position);
         Vector3 player_right_direction = Vector3CrossProduct(player_forward_direction , (Vector3){0,1,0});
         player_forward_direction = Vector3CrossProduct((Vector3){0,1,0} , player_right_direction);
@@ -3999,304 +5076,529 @@ internal void world_update()
         player_forward_direction = Vector3Normalize(player_forward_direction);
         player_right_direction = Vector3Normalize(player_right_direction);
         
-        //player_hammer
-#if 0
-        if((fabs(player_forward) + fabs(player_right)) > 0)
-        {
-            Vector3 target_direction = Vector3Add(Vector3Scale(player_forward_direction , player_forward) , Vector3Scale(player_right_direction , player_right));
-            target_direction = Vector3Normalize(target_direction);
-            
-            player->target_direction = Vector3Lerp(player->target_direction , target_direction , 0.2f);
-        }
-        else
-        {
-            Vector3 target_direction = {};
-            target_direction.x = snap_to_fixed_angle(player->target_direction.x);
-            target_direction.z = snap_to_fixed_angle(player->target_direction.z);
-            
-            player->target_direction = Vector3Lerp(player->target_direction , target_direction , 0.2f);
-        }
-#endif
-        
-        int direction_key[4] = {KEY_I , KEY_K , KEY_L , KEY_J};
-        Vector2 direction_key_scaler[4] = {{0,1} , {0,-1} , {1,0} ,{-1,0}};
-        int opposite_direction_key[4] = {KEY_K , KEY_I , KEY_J , KEY_L};
-        
-        float wield_cool_down = 0.4f;
-        float hit_angle = 90;
-        float rest_angle = -30;
-        
-        float hammer_time = 0.1;
-        
-        if(!player->wielding)
-        {
-            player->wield_cool_down += DELTA_TIME;
-            float cool_down_percent = player->wield_cool_down / wield_cool_down;
-            if(cool_down_percent > 1) cool_down_percent = 1;
-            player->hammer_angle = Lerp(hit_angle , rest_angle , ease_out_back(cool_down_percent , 2));
-            
-            if(player->wield_cool_down > wield_cool_down)
-            {
-                if(!player->first_key_pressed)
-                {
-                    for(int key_index = 0 ; key_index < 4 ; key_index++)
-                    {
-                        if(key_pressed(direction_key[key_index])) 
-                        {
-                            player->first_key_pressed = true;
-                            player->first_pressed_key_index = key_index;
-                            
-                            Vector2 scaler = direction_key_scaler[key_index];
-                            
-                            Vector3 hammer_forward = Vector3Scale(player_forward_direction , scaler.y);
-                            Vector3 hammer_right = Vector3Scale(player_right_direction , scaler.x);
-                            
-                            player->target_direction = Vector3Add(hammer_forward , hammer_right);
-                            
-                            break;
-                        }
-                    }
-                    
-                    if(player->first_key_pressed)
-                    {
-                        player->previous_hammer_position = player->hammer_box.position;
-                        player->wield_time = 0;
-                        player->wielding = true;
-                    }
-                }
-            }
-        }
-        
-        if(player->first_key_pressed)
-        {
-            if(!player->second_key_pressed)
-            {
-                if(key_pressing_time(player->first_pressed_key_index) < 0.4)
-                {
-                    for(int key_index = 0 ; key_index < 4 ; key_index++)
-                    {
-                        if(key_index == player->first_pressed_key_index) continue;
-                        if(key_index == opposite_direction_key[player->first_pressed_key_index]) continue;
-                        
-                        if(key_pressed(direction_key[key_index]))
-                        {
-                            Vector2 scaler = direction_key_scaler[key_index];
-                            
-                            Vector3 hammer_forward = Vector3Scale(player_forward_direction , scaler.y);
-                            Vector3 hammer_right = Vector3Scale(player_right_direction , scaler.x);
-                            
-                            player->target_direction = Vector3Add(player->target_direction , Vector3Add(hammer_forward , hammer_right));
-                            player->target_direction = Vector3Normalize(player->target_direction);
-                            
-                            player->second_key_pressed = true;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        
-        Vector3 hammer_up = {0 , 1 , 0};
-        Vector3 hammer_plane = project_on_plane(player->target_direction, hammer_up);
-        float rotate_angle = atan2( hammer_plane.x , hammer_plane.z);;
-        Quaternion hammer_plane_rotation = QuaternionFromAxisAngle((Vector3){0,1,0}, rotate_angle);
-        
-        if(player->wielding)
-        {
-            player->wield_time += DELTA_TIME;
-            player->hammer_angle = Lerp(rest_angle , hit_angle , player->wield_time/hammer_time);
-        }
-        
-        Vector3 hammer_position = {0,GRID_SIZE * 1.2,0};
-        Quaternion hammer_rotation = QuaternionFromEuler( player->hammer_angle * DEG2RAD,0,0);
-        hammer_position = Vector3RotateByQuaternion(hammer_position , hammer_plane_rotation);
-        hammer_rotation = QuaternionMultiply(hammer_plane_rotation , hammer_rotation);
-        
-        hammer_position = Vector3RotateByQuaternion(hammer_position , hammer_rotation);
-        hammer_position = Vector3Add(hammer_position , player->position);
-        hammer_position = Vector3Add(hammer_position , (Vector3){0,GRID_SIZE * 0.5,0});
-        
-        player->previous_hammer_position = player->hammer_box.position;
-        player->hammer_box.position = hammer_position;
-        player->hammer_box.rotation = QuaternionIdentity();
-        player->hammer_box.size = (Vector3){GRID_SIZE * 0.5 , GRID_SIZE * 0.5 , GRID_SIZE * 0.5};
-        
-        if(player->wielding)
-        {
-            ConvexShape hammer_shape = {};
-            hammer_shape.shape.box = player->hammer_box;
-            hammer_shape.shape.box.position = player->previous_hammer_position;
-            hammer_shape.shape.type = ST_box;
-            hammer_shape.velocity = Vector3Subtract(player->hammer_box.position , player->previous_hammer_position);
-            hammer_shape.position = player->previous_hammer_position;
-            hammer_shape.capture_collision = true;
-            RayCastResultBuffer buffer = convex_shape_ray_cast(hammer_shape);
-            
-            if(buffer.count)
-            {
-                float closest_hit_time = FLT_MAX;
-                Vector3 surface_normal = {};
-                for(int buffer_index = 0 ; buffer_index < buffer.count ; buffer_index++)
-                {
-                    RayCastResult result = buffer.data[buffer_index];
-                    if(closest_hit_time > result.hit_time)
-                    {
-                        closest_hit_time = result.hit_time;
-                        surface_normal = result.surface_normal;
-                    }
-                }
-                
-                //printf("hit  %lld %f\n" , game_update_count , closest_hit_time );
-                
-                surface_normal = Vector3Normalize(surface_normal);
-                
-                float current_angle = Lerp(rest_angle , hit_angle , (player->wield_time / hammer_time));
-                
-                player->wield_cool_down = Remap(current_angle , hit_angle , rest_angle , 0 , 1);
-                player->wield_cool_down -= 0.2;
-                if(player->wield_cool_down < 0) player->wield_cool_down = 0;
-                player->wield_cool_down *= wield_cool_down;
-                
-                player->wielding = false;
-                player->grounded = false;
-                player->jumped = true;
-                player->velocity = project_on_plane(player->velocity , surface_normal);
-                player->velocity = Vector3Add(player->velocity , Vector3Scale(surface_normal , UNIT_SIZE * 1.8));
-            }
-            else if(player->wield_time > hammer_time) 
-            {
-                player->wielding = false;
-                player->wield_cool_down = 0;
-            }
-            
-            if(!player->wielding)
-            {
-                player->first_key_pressed = false;
-                player->second_key_pressed = false;
-            }
-        }
-        
-        player->grounded = false;
         Vector3 ground_normal = {0,1,0};
         
         if(player->velocity.y < 0)
         {
-            player->jumped = false;
+            player->moving_upward = false;
         }
         
-        if(!player->jumped)
+        player->floating_in_bubble = false;
+        
+        ConvexShape player_trigger = {};
+        player_trigger.shape.type = ST_box;
+        player_trigger.shape.box = player->box;
+        player_trigger.velocity = (Vector3){0 , 0 , 0};
+        player_trigger.position = player->box.position;
+        player_trigger.capture_collision = false;
+        
+        collision_push_root(entity_bounding_box_root);
+        ShapeUnionBuffer trigger_bufffer = convex_shape_overlap(player_trigger);
+        
+        for(int buffer_index = 0; buffer_index < trigger_bufffer.count; buffer_index++)
         {
-            float player_down_y = -UNIT_SIZE * 4;
-            
-            ConvexShape ray_cast_shape = {};
-            ray_cast_shape.shape.box = player->box;
-            ray_cast_shape.shape.type = ST_box;
-            ray_cast_shape.velocity.y = player_down_y;
-            ray_cast_shape.velocity.x = 0;
-            ray_cast_shape.velocity.z = 0;
-            ray_cast_shape.position = player->position;
-            //ray_cast_shape.capture_collision = true;
-            
-            RayCastResultBuffer ray_cast_result_buffer = convex_shape_ray_cast(ray_cast_shape);
-            
-            float closest_ground_hit_time = FLT_MAX;
-            
-            for(int buffer_index = 0 ; buffer_index < ray_cast_result_buffer.count ; buffer_index++)
+            ShapeUnion trigger = trigger_bufffer.data[buffer_index];
+            if(trigger.type == ST_box)
             {
-                RayCastResult result = ray_cast_result_buffer.data[buffer_index];
-                
-                Vector3 surface_normal = Vector3Normalize(result.surface_normal);
-                float ground_angle = Vector3Angle((Vector3){0,1,0} , surface_normal) * RAD2DEG;
-                
-                if(closest_ground_hit_time > result.hit_time)
+                ShapeOwner owner = trigger.owner;
+                if(owner.is_entity)
                 {
-                    if(ground_angle < 45)
+                    Entity * entity = handle_to_entity(owner.entity_handle);
+                    
+                    if(entity->expanding) player->floating_in_bubble = true;
+                    
+                    if(!entity->unpickable)
                     {
-                        player->grounded = true;
+                        if(!player->is_holding_entity)
+                        {
+                            switch(entity->type)
+                            {
+                                //a little wacky
+                                case E_hook:
+                                case E_small_block:
+                                case E_bubble:
+                                
+                                entity->clearable = false;
+                                entity->clear_timer = 0;
+                                entity->detonable = false;
+                                player->holding_entity_handle = owner.entity_handle;
+                                player->is_holding_entity = true;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                CATCH;
+            }
+        }
+        
+        bool stand_still_on_ground = false;
+        bool stand_still = false;
+        
+        if((fabs(player_forward) + fabs(player_right)) == 0)
+        {
+            stand_still = true;
+            if(player->grounded)
+            {
+                stand_still_on_ground = true;
+            }
+        }
+        
+        bool sliding = false;
+        Vector3 sliding_surface_normal = {};
+        
+        Vector3 slide_direction = {};
+        slide_direction = Vector3Add(slide_direction , Vector3Scale(player_forward_direction , player_forward));
+        slide_direction = Vector3Add(slide_direction , Vector3Scale(player_right_direction , player_right));
+        slide_direction = Vector3Scale(slide_direction , UNIT_SIZE * 2.0f);
+        
+        Box silde_box = player->box;
+        silde_box.size.y -= 1 * UNIT_SIZE;
+        
+        ConvexShape player_slide_box = {};
+        
+        player_slide_box.shape.type = ST_box;
+        player_slide_box.shape.box = silde_box;
+        player_slide_box.velocity = slide_direction;
+        player_slide_box.position = player->position;
+        player_slide_box.capture_collision = false;
+        
+        collision_push_root(bounding_box_in_map_root);
+        RayCastResultBuffer shape_slide_against_buffer = convex_shape_ray_cast(player_slide_box);
+        
+        if(!stand_still)
+        {
+            for(int buffer_index = 0; buffer_index < shape_slide_against_buffer.count; buffer_index++)
+            {
+                if(!player->grounded)
+                {
+                    if(player->velocity.y < 0.0001f)
+                    {
+                        //sliding = true;
+                    }
+                }
+                
+                RayCastResult shape_slide_against = shape_slide_against_buffer.data[buffer_index];
+                sliding_surface_normal = shape_slide_against.surface_normal;
+                
+                if(shape_slide_against.shape_owner.is_entity)
+                {
+                    Entity * entity_slide_against = handle_to_entity(shape_slide_against.shape_owner.entity_handle);
+                    
+                    if(key_pressing(KEY_K))
+                    {
+                        entity_slide_against->charging = true;
+                        entity_slide_against->clearable = true;
+                        entity_slide_against->charge_direction = sliding_surface_normal;
+                    }
+                    
+#if 0
+                    if(sliding)
+                    {
+                        Vector3 offset = Vector3Subtract(entity_slide_against->position , entity_slide_against->previous_position);
                         
-                        closest_ground_hit_time = result.hit_time;
-                        ground_normal = surface_normal;
+                        update_player_box(player);
+                        ConvexShape player_shape = {};
+                        player_shape.shape.box = player->collide_box;
+                        player_shape.shape.type = ST_box;
+                        player_shape.velocity = offset;
+                        player_shape.position = player->collide_box.position;
+                        player_shape.capture_collision = false;
+                        
+                        bounding_box_root_to_check = bounding_box_in_map_root;
+                        CollisionResult collision_result = update_collision(player_shape);
+                        Vector3 total_offset = Vector3Add(collision_result.velocity , collision_result.offset);
+                        
+                        player->position = Vector3Add(player->position , total_offset);
+                        update_player_box(player);
+                    }
+#endif
+                }
+            }
+        }
+        
+        player->grounded = false;
+        bool check_ground = true;
+        if(player->moving_upward) check_ground = false;
+        //if(player->floating_in_bubble) check_ground = false;
+        
+        if(check_ground)
+        {
+            float closest_ground_hit_time = 0;
+            ShapeOwner ground_owner = {};
+            player->grounded = ground_spring(player->collide_box , &player->velocity, player_spring_ray , player_spring_percent , 45 , &ground_normal, &closest_ground_hit_time , &ground_owner);
+            
+            if(player->grounded)
+            {
+                player->float_timer = 1.5f;
+                
+                if(ground_owner.is_entity)
+                {
+                    Entity * ground_entity = handle_to_entity(ground_owner.entity_handle);
+                    Vector3 offset = Vector3Subtract(ground_entity->position , ground_entity->previous_position);
+                    
+                    ConvexShape player_shape = {};
+                    player_shape.shape.box = player->collide_box;
+                    player_shape.shape.type = ST_box;
+                    player_shape.velocity = offset;
+                    player_shape.position = player->position;
+                    player_shape.capture_collision = false;
+                    
+                    CollisionResult collision_result = update_collision(player_shape);
+                    player->position = Vector3Add(player->position , Vector3Add(collision_result.velocity , collision_result.offset));
+                    
+                    update_player_box(player);
+                }
+            }
+        }
+        
+        bool decl jumpable = false;
+        if(player->grounded) jumpable = true;
+        if(player->ground_time < 0.1f) jumpable = true;
+        
+        player->floating = false;
+        
+        if(!player->grounded)
+        {
+            player->ground_time += DELTA_TIME;
+            
+            if(sliding)
+            {
+                //player->velocity = Vector3Add(player->velocity , (Vector3){0,-UNIT_SIZE * 0.02f,0});
+            }
+            
+            if(!jumpable)
+            {
+                if(player->floatable)
+                {
+                    if(key_pressing(KEY_SPACE))
+                    {
+                        if(player->float_timer > 0)
+                        {
+                            player->float_timer -= DELTA_TIME;
+                            player->floating = true;
+                        }
                     }
                 }
             }
             
-            if(player->grounded)
+            if(player->floating_in_bubble)
             {
-                float spring = player_down_y * (closest_ground_hit_time - 0.6) + player->velocity.y;
-                spring *= 0.5f;
-                player->velocity.y = spring;
+                //player->velocity = Vector3Add(player->velocity , (Vector3){0,-UNIT_SIZE * 0.06f,0});
+            }
+            if(player->floating)
+            {
+                player->velocity.y = Lerp(player->velocity.y , 0 , 0.15f);
+            }
+            else
+            {
+                player->velocity = Vector3Add(player->velocity , (Vector3){0,-UNIT_SIZE * 0.05f,0});
             }
         }
-        
-        if(!player->grounded)
+        else
         {
-            player->velocity = Vector3Add(player->velocity , (Vector3){0,-UNIT_SIZE * 0.1f,0});
+            player->ground_time = 0;
         }
         
-        Vector3 walk_velocity = {};
+        Vector3 decl walk_velocity = {};
         
         walk_velocity = Vector3Add(walk_velocity , Vector3Scale(player_forward_direction , player_forward));
         walk_velocity = Vector3Add(walk_velocity , Vector3Scale(player_right_direction , player_right));
         
         walk_velocity = project_on_plane(walk_velocity , ground_normal);
-        walk_velocity = Vector3Scale(walk_velocity , 0.6f);
+        walk_velocity = Vector3Normalize(walk_velocity);
         
-        player->velocity = Vector3Add(player->velocity , walk_velocity);
+        float decl walk_accel = 0.04 * UNIT_SIZE;
         
-        //draw_arrow_ray(player->position , Vector3Scale(ground_normal , 50) , YELLOW);
-        //draw_arrow_ray(player->position , Vector3Scale(walk_velocity , 80) , GREEN);
-        //draw_arrow_ray(player->position , Vector3Scale(player->velocity , 100) , SKYBLUE);
+        player->velocity = Vector3Add(player->velocity , Vector3Scale(walk_velocity , walk_accel));
         
-        if(player->grounded)
+        bool decl throw_entity = false;
+        bool decl throw_down_entity = false;
+        Entity * decl holding_entity = handle_to_entity(player->holding_entity_handle);
+        if(!holding_entity) player->is_holding_entity = false;
+        
+        player->interact = false;
+        
+        if(key_pressing(KEY_I)) player->interact = true;
+        if(key_pressing(KEY_K)) player->interact = true;
+        if(key_pressing(KEY_J)) player->interact = true;
+        if(key_pressing(KEY_L)) player->interact = true;
+        
+        if(player->interact)
         {
-            if(key_pressed(KEY_SPACE))
+            if(key_pressed(KEY_I)) player->interact_input = (Vector2){0,1};
+            if(key_pressed(KEY_K)) player->interact_input = (Vector2){0,-1};
+            if(key_pressed(KEY_L)) player->interact_input = (Vector2){1,0};
+            if(key_pressed(KEY_J)) player->interact_input = (Vector2){-1,0};
+            
+            player->interact_direction = Vector3Add(Vector3Scale(player_forward_direction , player->interact_input.y) , Vector3Scale(player_right_direction , player->interact_input.x));
+            player->interact_direction = Vector3Normalize(player->interact_direction);
+            
+            if(player->is_holding_entity)
             {
-                player->velocity.y = UNIT_SIZE * 2.0f;
+                throw_entity = true;
+            }
+            else
+            {
+                ConvexShape surface_detect = {};
+                Box detect_box = get_box();
+                detect_box.position = player->position;
+                detect_box.size = (Vector3){GRID_SIZE * 0.5 , GRID_SIZE * 0.5 , GRID_SIZE * 0.5};
+                surface_detect.shape.type = ST_box;
+                surface_detect.shape.box = detect_box;
+                surface_detect.velocity = Vector3Scale(player->interact_direction , GRID_SIZE * 0.4);
+                surface_detect.position = detect_box.position;
+                surface_detect.capture_collision = false;
+                
+                collision_push_root(bounding_box_in_map_root);
+                RayCastResultBuffer surface_buffer = convex_shape_ray_cast(surface_detect);
+                
+                for(int buffer_index = 0; buffer_index < surface_buffer.count; buffer_index++)
+                {
+                    RayCastResult result = surface_buffer.data[buffer_index];
+                    
+                    if(result.shape_owner.is_entity)
+                    {
+                        Entity * entity = handle_to_entity(result.shape_owner.entity_handle);
+                        
+                        if(entity->type == E_moving_wall)
+                        {
+                            entity->charging = true;
+                            entity->clearable = true;
+                            entity->clear_timer = 0;
+                            entity->charge_direction = Vector3Negate(result.surface_normal);
+                            entity->charge_timer = 0;
+                        }
+                    }
+                }
+            }
+        }
+        
+        if(player->is_holding_entity)
+        {
+            holding_entity->position = Vector3Add(player->position , (Vector3){0 , GRID_SIZE * 1.0f , 0});
+        }
+        
+        if(player->floating_in_bubble)
+        {
+            if(key_pressing(KEY_SPACE))
+            {
+                //player->velocity.y += UNIT_SIZE * 0.01f;
+            }
+        }
+        else
+        {
+            
+        }
+        
+        player->spring_time += DELTA_TIME;
+        
+        if(key_pressed(KEY_SPACE))
+        {
+            if(player->spring_time < 0.2f)
+            {
+                player->moving_upward = true;
+                player->is_holding_entity = false;
+                player->velocity.y += UNIT_SIZE * 0.8f;
+                player->floatable = false;
+            }
+            
+            if(jumpable)
+            {
+                player->velocity.y = UNIT_SIZE * 0.8f;
                 player->grounded = false;
-                player->jumped = true;
+                player->moving_upward = true;
+                player->floatable = false;
             }
-        }
-        
-        bool player_try_to_stand_still = false;
-        
-        if((fabs(player_forward) + fabs(player_right)) == 0)
-        {
-            if(player->grounded)
+            else
             {
-                player_try_to_stand_still = true;
+                if(player->hook_array.count > 0)
+                {
+                    clear_array(&player->hook_array);
+                    player->moving_upward = true;
+                    player->velocity.y += UNIT_SIZE * 0.8f;
+                    player->floatable = false;
+                }
+                else if(player->is_holding_entity)
+                {
+                    if(!player->grounded)
+                    {
+                        player->floatable = false;
+                        player->velocity.y = UNIT_SIZE * 0.6f;
+                        player->moving_upward = true;
+                        throw_entity = true;
+                        throw_down_entity = true;
+                    }
+                }
             }
         }
         
-        float drag = 0.96f;
-        
-        if(player_try_to_stand_still)
+        if(throw_entity)
         {
-            //printf("standing here %lld\n" , game_update_count);
+            player->is_holding_entity = false;
+            holding_entity->clearable = true;
+            holding_entity->clear_timer = 0;
+            holding_entity->unpickable = true;
+            
+            if(throw_down_entity)
+            {
+                holding_entity->position = Vector3Add(player->position , (Vector3){0 , -GRID_SIZE * 0.2f , 0});
+                holding_entity->charge_direction = (Vector3){0 , -1 , 0};
+            }
+            else
+            {
+                holding_entity->charge_direction = player->interact_direction;
+                holding_entity->position = Vector3Add(player->position , Vector3Scale(player->interact_direction , GRID_SIZE * 1.0f));
+                holding_entity->position = Vector3Add(holding_entity->position , (Vector3){0 , 0.1f * GRID_SIZE , 0});
+            }
+            
+            if(holding_entity->type == E_hook)
+            {
+                player->hook_buffer.data[add_to_array(&player->hook_array)] = entity_to_handle(holding_entity);
+                holding_entity->hook_on_surface = false;
+                holding_entity->detonable = true;
+                holding_entity->charging = true;
+            }
+            else if(holding_entity->type == E_small_block)
+            {
+                holding_entity->solid = true;
+                holding_entity->box.size = (Vector3){GRID_SIZE * 0.7 , GRID_SIZE * 0.7 , GRID_SIZE * 0.7};
+                holding_entity->velocity = (Vector3){};
+                holding_entity->previous_position = holding_entity->position;
+            }
+            else if(holding_entity->type == E_bubble)
+            {
+                holding_entity->expanding = true;
+                holding_entity->box.size = (Vector3){GRID_SIZE , GRID_SIZE , GRID_SIZE};
+            }
+        }
+        
+        if(key_released(KEY_SPACE))
+        {
+            player->floatable = true;
+        }
+        
+        float drag = 0.94f;
+        
+        if(player->floating_in_bubble)
+        {
+            //drag = 0.65;
+        }
+        
+        if(player->floating)
+        {
+            drag = 0.8f;
+        }
+        else if(stand_still_on_ground)
+        {
             drag = 0.85f;
+        }
+        else if(player->grounded)
+        {
+            drag = 0.96f;
         }
         
         player->velocity.x *= drag;
         player->velocity.z *= drag;
-        //player->velocity.y *= drag;
+        
+        if(sliding)
+        {
+            //player->velocity.y *= 0.6;
+        }
+        else
+        {
+            //player->velocity.y *= 0.95;
+        }
+        
+        array_foreach(decl handle_index , &player->hook_array)
+        {
+            Entity * decl entity = handle_to_entity(player->hook_buffer.data[handle_index]);
+            if(!entity) 
+            {
+                delete_from_array(&player->hook_array , handle_index);
+                continue;
+            }
+            
+            bool decl pull_player = false;
+            if(entity->hook_on_surface) pull_player = true;
+            if(Vector3Distance(player->position , entity->position) > GRID_SIZE * 2.5f) pull_player = true; 
+            
+            if(pull_player)
+            {
+                Vector3 decl pull_force = Vector3Subtract(entity->position , player->position);
+                float decl distance = Vector3Length(pull_force);
+                
+                float decl force = 0.003f;
+                
+                if(distance > 1.5f * GRID_SIZE)
+                {
+                    force = 0.003f;
+                }
+                
+                pull_force = Vector3Normalize(pull_force);
+                pull_force = Vector3Scale(pull_force , force * distance);
+                
+                if(distance > 0.5f * GRID_SIZE)
+                {
+                    
+                }
+                
+                //float decl force_distance = Vector3DotProduct(player->velocity , pull_force);
+                //if(force_distance < 0) pull_force = Vector3Scale(pull_force , 1.0f - force_distance);
+                
+                player->velocity = Vector3Add(player->velocity , pull_force);
+                player->moving_upward = true;
+                
+                if(distance < UNIT_SIZE * 2)
+                {
+                    player->spring_time = 0;
+                    delete_from_array(&player->hook_array , handle_index);
+                    continue;
+                }
+                
+                if(!player->floating)
+                {
+                    player->floatable = false;
+                }
+            }
+            
+            if(pull_player)
+            {
+                draw_arrow_line(player->position , entity->position , Fade(ORANGE , 0.5f));
+            }
+            else
+            {
+                draw_arrow_line(player->position , entity->position , Fade(WHITE , 0.5f));
+            }
+        }
         
         ConvexShape player_shape = {};
-        
-        player_shape.shape.box = player->box;
+        player_shape.shape.box = player->collide_box;
         player_shape.shape.type = ST_box;
         player_shape.velocity = player->velocity;
         player_shape.position = player->position;
-        player_shape.capture_collision = true;
+        player_shape.capture_collision = false;
         
-        CollisionResult collision_result = update_convex_collision(player_shape);
-        player->position = Vector3Add( player->position , collision_result.offset);
+        CollisionResult collision_result = update_collision(player_shape);
+        Vector3 player_offset = Vector3Add(collision_result.offset , collision_result.velocity);
         player->velocity = collision_result.velocity;
+        player->position = Vector3Add(player->position , player_offset);
+        update_player_box(player);
         
-        player->position = Vector3Add(player->position , player->velocity);
+        if(collision_result.stucked)
+        {
+            player->position = player_spawn_point;
+        }
+        
+        player->character_position = player->box.position;
+        player->character_position.y += (player->box.size.y - player_box_size.y) * 0.5f;
     }
 }
 
 #define send_all(target_socket , buffer , type , count) send_all_EX( target_socket , buffer , sizeof(type) * count)
-internal void send_all_EX(int target_socket, void * source, int buffer_size)
+internal void function send_all_EX(int target_socket, void * source, int buffer_size)
 {
     unsigned char * buffer = source;
     
@@ -4337,7 +5639,7 @@ internal void send_all_EX(int target_socket, void * source, int buffer_size)
     }
 }
 
-internal void send_pack(int target_socket , NetDataHeaderBuffer * header_buffer , ByteBuffer * byte_buffer)
+internal void function send_pack(int target_socket , NetDataHeaderBuffer * header_buffer , ByteBuffer * byte_buffer)
 {
     send_all(target_socket , &header_buffer->count , int , 1);
     send_all(target_socket , header_buffer->data , NetDataHeader , header_buffer->count);
@@ -4345,8 +5647,8 @@ internal void send_pack(int target_socket , NetDataHeaderBuffer * header_buffer 
     send_all(target_socket , byte_buffer->data , unsigned char , byte_buffer->count);
 }
 
-#define data_pack(flag , data ,count , type ) data_pack_EX(flag , data , sizeof(type) * count)
-internal void data_pack_EX(int flag , void * data , int data_size)
+#define data_pack(flag , data , count , type ) data_pack_EX(flag , data , sizeof(type) * count)
+internal void function data_pack_EX(int flag , void * data , int data_size)
 {
     if(data_size == 0) return;
     if(net_state.header_buffer.count >= net_state.header_buffer.capacity) CATCH;
@@ -4376,7 +5678,7 @@ _hidden_buffer = buffer_pack_EX(flag , sizeof(type) * count);\
 _hidden_buffer[index] = data;\
 }
 
-internal void * buffer_pack_EX(int flag , int data_size)
+internal void * function buffer_pack_EX(int flag , int data_size)
 {
     if(data_size == 0) return 0;
     if(net_state.header_buffer.count >= net_state.header_buffer.capacity) CATCH;
@@ -4392,7 +5694,7 @@ internal void * buffer_pack_EX(int flag , int data_size)
     return net_state.send_buffer.data + data_offset;
 }
 
-internal void update_receive_state(ReceiveState * receive_state)
+internal void function update_receive_state(ReceiveState * receive_state)
 {
     for(;;)
     {
@@ -4519,7 +5821,7 @@ internal void update_receive_state(ReceiveState * receive_state)
 
 global ReceiveState * state_to_unpack = 0;
 
-internal void get_data_from_pack(int flag ,  NetDataHeader * header_result , void ** buffer_result)
+internal void function get_data_from_pack(int flag ,  NetDataHeader * header_result , void ** buffer_result)
 {
     if(buffer_result) (*buffer_result) = 0;
     if(header_result) (*header_result) = (NetDataHeader){};
@@ -4544,7 +5846,7 @@ internal void get_data_from_pack(int flag ,  NetDataHeader * header_result , voi
 }
 
 #define data_unpack(flag , source , count , type) data_unpack_EX(flag , source , sizeof(type) * count) 
-internal void data_unpack_EX(int flag , void * source , int size)
+internal void function data_unpack_EX(int flag , void * source , int size)
 {
     NetDataHeader header = {};
     void * buffer = 0;
@@ -4567,7 +5869,7 @@ get_data_from_pack(flag , 0 , (void **)&_hidden_buffer);\
 if(_hidden_buffer) (*(data_pointer)) = _hidden_buffer[index];\
 }
 
-internal void set_socket_to_unblock(int target_socket)
+internal void function set_socket_to_unblock(int target_socket)
 {
     
 #ifdef BUILD_D_WINDOWS
@@ -4581,8 +5883,10 @@ internal void set_socket_to_unblock(int target_socket)
     
 }
 
-internal void server_update()
+internal void function server_update()
 {
+    double server_update_time = time_stamp();
+    
     initialize_pack_buffer_index++;
     initialize_unpack_buffer_index++;
     
@@ -4613,22 +5917,29 @@ internal void server_update()
     }
     else
     {
-        if(array_full(&player_array))
-        {
-            CATCH;
-        }
-        
         set_socket_to_unblock(connection_socket);
         
-        int new_player_index = add_to_array(&player_array);
-        
-        Player * new_player = player_buffer.data + new_player_index;
+        //it can't handle more than 16 player
+        //you need to reallocate pool manually
+        int chunk_index = -1;
+        set_pool(&player_pool , &chunk_index);
+        Player * new_player = allocate_memory_type(Player , 1 , AT_pool);
         (*new_player) = (Player){};
+        new_player->position = player_spawn_point;
         new_player->box = get_box();
-        new_player->hammer_box = get_box();
-        new_player->hammer_angle = -30;
+        new_player->box.position = new_player->position;
+        new_player->box.size = (Vector3){0.6, 0.6 , 0.6};
+        set_pool(&player_pool , &chunk_index);
+        allocate_buffer(&new_player->hook_buffer , EntityHandle , 16 , AT_pool);
+        set_pool(&player_pool , &chunk_index);
+        new_player->hook_array = allocate_array(16 , AT_pool);
         
-        PlayerConnection * new_connection = player_connection_buffer.data + new_player_index;
+        if(array_full(&player_connection_array)) reallocate_array(&player_connection_array , AT_temp);
+        
+        int new_connection_index = add_to_array(&player_connection_array);
+        PlayerConnection * new_connection = player_connection_buffer.data + new_connection_index;
+        
+        new_player->connection_index = new_connection_index;
         
         new_connection->connection_socket = connection_socket;
         ReceiveState * new_receive_state = &new_connection->receive_state;
@@ -4641,83 +5952,106 @@ internal void server_update()
         new_receive_state->header_count = 0;
     }
     
-    array_foreach(player_index , &player_array)
+    array_foreach(player_index , &player_pool.array)
     {
-        Player * player = player_buffer.data + player_index;
-        PlayerConnection * player_connection = player_connection_buffer.data + player_index;
+        Player decl * player = index_to_player(player_index);
+        if(!player) continue;
+        PlayerConnection decl * player_connection = player_connection_buffer.data + player->connection_index;
         
         input_state = &player_connection->input_state;
-        for(int key_index = 0 ; key_index < INPUT_MAX_KEY ; key_index++)
-        {
-            input_state->pressed_mouse_consumed[key_index] = false;
-        }
         
         update_receive_state(&player_connection->receive_state);
         
         if(player_connection->receive_state.connection_reseted)
         {
-            printf( "%s say goodbye!\n", player_connection->message);
-            if(!delete_from_array(&player_array , player_index)) CATCH;
-            
-            continue;
+            printf("%s say goodbye!\n", player_connection->message);
+            //if(!delete_from_array(&player_array , player_index)) CATCH;
+            if(!delete_from_array(0 , 0)) CATCH;
+            CATCH;
+            //continue;
         }
         
         state_to_unpack = &player_connection->receive_state;
-        data_unpack(DF_pressing_key_count , &input_state->pressing_key_count , 1 , int);
-        data_unpack(DF_pressed_key_count , &input_state->pressed_key_count , 1 , int);
-        data_unpack(DF_released_key_count , &input_state->released_key_count , 1 , int);
-        data_unpack(DF_pressing_mouse_count , &input_state->pressing_mouse_count , 1 , int);
-        data_unpack(DF_pressed_mouse_count , &input_state->pressed_mouse_count , 1 , int);
-        data_unpack(DF_released_mouse_count , &input_state->released_mouse_count , 1 , int);
         
-        data_unpack(DF_pressing_key , input_state->pressing_key , input_state->pressing_key_count , int);
-        data_unpack(DF_pressing_key_time , input_state->pressing_key_time , input_state->pressing_key_count , float);
-        data_unpack(DF_pressed_key , input_state->pressed_key , input_state->pressed_key_count , int);
-        data_unpack(DF_released_key , input_state->released_key , input_state->released_key_count , int);
-        data_unpack(DF_pressing_mouse , input_state->pressing_mouse , input_state->pressing_mouse_count , int);
-        data_unpack(DF_pressed_mouse , input_state->pressed_mouse , input_state->pressed_mouse_count , int);
-        data_unpack(DF_released_mouse , input_state->released_mouse , input_state->released_mouse_count , int);
-        
+        data_unpack(DF_input_state , &player_connection->input_state , 1 , InputState);
         data_unpack(DF_camera_target , &player->camera_target , 1 , Vector3);
         data_unpack(DF_camera_position , &player->camera_position , 1 , Vector3);
     }
     
-    world_update();
+    double decl world_update_time = time_stamp();
+    if(!game_paused) world_update();
+    world_update_time = time_stamp() - world_update_time;
     
     net_state.send_buffer.count = 0;
     net_state.header_buffer.count = 0;
     
-    int  player_count = player_array.count;
+    int decl entity_count = 0;
+    array_foreach(decl array_index , &entity_active_array)
+    {
+        if(entity_active_buffer.data[array_index].respawning) continue;
+        entity_count++;
+    }
+    
+    data_pack(DF_entity_count , &entity_count , 1 , int);
+    
+    int decl pack_index = 0;
+    array_foreach(decl array_index , &entity_active_array)
+    {
+        Entity decl * entity = entity_active_buffer.data + array_index;
+        
+        if(entity->respawning) continue;
+        
+        buffer_pack(DF_whole_entity , (*entity) , pack_index , entity_count , Entity);
+        pack_index++;
+    }
+    
+    int decl player_count = 0;
+    array_foreach(decl player_index , &player_pool.array)
+    {
+        if(!index_to_player(player_index)) continue;
+        player_count++;
+    }
+    
     data_pack(DF_player_count , &player_count , 1 , int );
     
-    array_foreach_B(array_index , player_index , &player_array)
+    int player_index = 0;
+    array_foreach(array_index , &player_pool.array)
     {
-        Player * player = player_buffer.data + array_index;
-        
+        Player * player = index_to_player(array_index);
+        if(!player) continue;
         buffer_pack(DF_whole_player , (*player) , player_index , player_count , Player);
         
-        //buffer_pack(DF_player_position , player->position , player_index , player_count , Vector3);
-        //buffer_pack(DF_player_velocity , player->velocity , player_index , player_count , Vector3);
-        //buffer_pack(DF_player_grounded , player->grounded , player_index , player_count , bool);
+        player_index++;
     }
     
     bool * player_owned_array = buffer_pack_EX(DF_player_owned , player_count * sizeof(bool));
     
-    array_foreach_B(array_index , player_index , &player_array)
+    player_index = 0;
+    array_foreach(array_index , &player_pool.array)
     {
+        Player * player = index_to_player(array_index);
+        if(!player) continue;
+        
         for(int owner_index = 0; owner_index < player_count ; owner_index++)
         {
             player_owned_array[owner_index] = false;
             if(player_index == owner_index) player_owned_array[owner_index] = true;
         }
         
-        PlayerConnection * player_connection = player_connection_buffer.data + array_index;
+        PlayerConnection * player_connection = player_connection_buffer.data + player->connection_index;
         send_pack(player_connection->connection_socket , &net_state.header_buffer , &net_state.send_buffer);
+        
+        player_index++;
     }
+    
+    server_update_time = time_stamp() - server_update_time;
+    int used_memory = run_time_memory.current_memory - run_time_memory.start_memory;
+    int memory_per_frame = frame_time_memory.current_memory - frame_time_memory.start_memory;
+    //printf("\nserver: %f\nworld only: %f\nused memory: %d\nmemory per frame:%d\n" , server_update_time / 1000.0 , world_update_time / 1000.0 , used_memory , memory_per_frame);
 }
 
 #ifdef BUILD_D_WINDOWS
-internal void client_update()
+internal void function client_network_update()
 {
     if(!net_state.connected_to_server)
     {
@@ -4790,21 +6124,8 @@ internal void client_update()
         initialize_pack_buffer_index++;
         initialize_unpack_buffer_index++;
         
-        data_pack(DF_pressing_key_count , &input_state->pressing_key_count , 1 , int );
-        data_pack(DF_pressed_key_count , &input_state->pressed_key_count , 1 , int );
-        data_pack(DF_released_key_count , &input_state->released_key_count , 1 , int);
-        data_pack(DF_pressing_mouse_count , &input_state->pressing_mouse_count , 1 , int);
-        data_pack(DF_pressed_mouse_count , &input_state->pressed_mouse_count , 1 , int);
-        data_pack(DF_released_mouse_count , &input_state->released_mouse_count , 1 ,int);
-        
-        data_pack(DF_pressing_key, input_state->pressing_key , input_state->pressing_key_count , int);
-        data_pack(DF_pressing_key_time , input_state->pressing_key_time , input_state->pressing_key_count , float);
-        data_pack(DF_pressed_key, input_state->pressed_key , input_state->pressed_key_count , int);
-        data_pack(DF_released_key, input_state->released_key , input_state->released_key_count , int);
-        data_pack(DF_pressing_mouse, input_state->pressing_mouse , input_state->pressing_mouse_count , int);
-        data_pack(DF_pressed_mouse, input_state->pressed_mouse , input_state->pressed_mouse_count , int);
-        data_pack(DF_released_mouse, input_state->released_mouse , input_state->released_mouse_count , int);
-        
+        input_state = &client_input_state;
+        data_pack(DF_input_state , input_state , 1 , InputState);
         data_pack(DF_camera_target , &world_camera.target , 1 , Vector3);
         data_pack(DF_camera_position , &world_camera.position , 1 , Vector3);
         
@@ -4815,35 +6136,49 @@ internal void client_update()
         
         int player_count = 0;
         data_unpack(DF_player_count , &player_count , 1 , int);
-        clear_array(&player_array);
-        if(player_count > player_array.capacity)
+        if(player_count > client_player_buffer.capacity)
         {
-            reallocate_array(&player_array , AT_temp);
-            reallocate_buffer(&player_buffer , AT_temp);
+            int new_capacity = client_player_buffer.capacity;
+            for(;new_capacity < player_count; new_capacity*=2);
+            reallocate_buffer_EX(&client_player_buffer , new_capacity , AT_temp);
         }
+        
+        client_player_buffer.count = player_count;
         
         for(int player_index = 0 ; player_index < player_count ; player_index++)
         {
-            int new_player_index = add_to_array(&player_array);
-            Player * player = player_buffer.data + new_player_index;
-            PlayerConnection * player_connection = player_connection_buffer.data + new_player_index;
+            Player * player = client_player_buffer.data + player_index;
             
             buffer_unpack(DF_whole_player , player , player_index , Player);
-            //buffer_unpack(DF_player_position , &player->position , player_index , Vector3);
-            //buffer_unpack(DF_player_velocity , &player->velocity , player_index , Vector3);
-            //buffer_unpack(DF_player_grounded , &player->grounded , player_index , bool);
             buffer_unpack(DF_player_owned , &player->it_is_me , player_index , bool);
+        }
+        
+        int entity_count = 0;
+        data_unpack(DF_entity_count , &entity_count , 1 , int);
+        if(entity_count > client_entity_buffer.capacity)
+        {
+            int new_capacity = client_player_buffer.capacity;
+            for(;new_capacity < player_count; new_capacity*=2);
+            reallocate_buffer_EX(&client_entity_buffer , new_capacity , AT_temp);
+        }
+        
+        client_entity_buffer.count = entity_count;
+        for(int entity_index = 0; entity_index < entity_count; entity_index++)
+        {
+            Entity * entity = client_entity_buffer.data + entity_index;
+            buffer_unpack(DF_whole_entity , entity , entity_index , Entity);
         }
     }
 }
 #endif
 
-internal void start_connection()
+internal void function start_connection()
 {
     allocate_buffer(&net_state.header_buffer , NetDataHeader , 256 , AT_temp);
     allocate_buffer(&net_state.send_buffer , unsigned char , 1024 * 64 , AT_temp);
     
-    allocate_buffer(&player_connection_buffer , PlayerConnection , player_array.capacity , AT_temp);
+    allocate_buffer(&player_connection_buffer , PlayerConnection , 16 , AT_temp);
+    player_connection_array = allocate_array(16 , AT_temp);
     
     default_receive_state = (ReceiveState){};
     default_receive_state.available_buffer_index = -1;
@@ -4901,7 +6236,7 @@ internal void start_connection()
     }
 }
 
-internal void end_connection()
+internal void function end_connection()
 {
 #ifdef BUILD_D_LINUX
     close(net_state.listening_socket);

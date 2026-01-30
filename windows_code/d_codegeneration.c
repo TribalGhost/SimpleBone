@@ -1662,7 +1662,7 @@ static void generate_meta_data(TokenHeaderList* token_list,TypeData * type_data_
 		}
 	}
     
-	fprintf(meta_data_file, "internal StructMetaData * get_all_type_member_info()\n{\nStructMetaData * all_struct = malloc(sizeof(StructMetaData) * _MT_type_count);\n");
+	fprintf(meta_data_file, "internal StructMetaData * collect_all_collision_type_member_info()\n{\nStructMetaData * all_struct = malloc(sizeof(StructMetaData) * _MT_type_count);\n");
     
 	for (TypeData* current_data = type_data_header; current_data->next_data; current_data = current_data->next_data)
 	{

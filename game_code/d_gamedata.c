@@ -1,25 +1,4 @@
 //===game===
-typedef struct GameMemory GameMemory;
-struct GameMemory
-{
-	unsigned char* start_memory;
-	unsigned char* current_memory;
-	int size;
-};
-
-global GameMemory run_time_memory = {};
-global GameMemory frame_time_memory = {};
-global GameMemory arena_memory = {};
-
-#define EPSILON 0.000001f
-
-#ifdef BUILD_D_WINDOWS
-global char * map_save_name = "Game\\map_data.ma";
-#endif
-
-#ifdef BUILD_D_LINUX
-global char * map_save_name = "Game/map_data.ma";
-#endif
 
 //so far this is better
 //i have type instead of void pointer 
@@ -34,6 +13,16 @@ int data_size; \
 int count; \
 int capacity; \
 }
+
+#define EPSILON 0.000001f
+
+#ifdef BUILD_D_WINDOWS
+global char * map_save_name = "Game\\map_data.ma";
+#endif
+
+#ifdef BUILD_D_LINUX
+global char * map_save_name = "Game/map_data.ma";
+#endif
 
 typedef struct ListNode ListNode;
 struct ListNode
@@ -75,8 +64,8 @@ struct Array
 {
 	bool * valid_array;
     
-    int count;
 	int capacity;
+    int count;
 	int upper_bound;
 	int lowest_index;
 };
@@ -118,11 +107,47 @@ struct HashTable
 
 BUFFER(Vector3Buffer , Vector3);
 
-typedef enum AllocatorType AllocatorType;
-enum AllocatorType
+typedef struct D_Memory D_Memory;
+struct D_Memory
+{
+	unsigned char* start_memory;
+	unsigned char* current_memory;
+	int size;
+};
+
+global D_Memory run_time_memory = {};
+global D_Memory frame_time_memory = {};
+
+typedef struct Chunk Chunk;
+struct Chunk
+{
+    int allocated_size;
+    int chunk_count;
+    int previous;
+};
+
+BUFFER(ChunkBuffer , Chunk);
+
+typedef struct ChunkPool ChunkPool;
+struct ChunkPool
+{
+    int allocate_type;
+    int chunk_size;
+    int pool_size;
+    ChunkBuffer buffer;
+    Array array;
+    unsigned char * memory_start;
+};
+
+global ChunkPool * current_pool_to_allocate = 0;
+global int * current_chunk_index = 0;
+
+typedef enum AllocationType AllocationType;
+enum AllocationType
 {
     AT_temp,
     AT_frame,
+    AT_pool,
 };
 
 #define FIXED_STRING_SIZE 64
@@ -180,11 +205,13 @@ typedef struct Quad Quad;
 struct Quad
 {
 	Vector3 vertex_position[quad_vertex_count];
-	Vector4 vertex_color[quad_vertex_count];// do i even what you here?
+	Vector4 vertex_color[quad_vertex_count];// do i need you here?
 };
 
 BUFFER(QuadBuffer , Quad);
 
+//TODO: the front face and back front are wrong
+//no idea why and it is cold, i can barely move my figures
 typedef enum BoxFace BoxFace;
 enum BoxFace
 {
@@ -229,6 +256,13 @@ struct Box
     Vector3 position;
     Vector3 size;
     Quaternion rotation;
+    
+    float top_front;
+    float top_right;
+    float right_top;
+    float right_front;
+    float front_top;
+    float front_right;
 };
 
 BUFFER(BoxBuffer , Box);
@@ -257,7 +291,28 @@ struct GJK_State
     int simplex_count;
     Vector3 search_direction;
     Vector3 origin;
+    
+    int simplex_index[4];
 };
+
+typedef struct TriangleIndex TriangleIndex;
+struct TriangleIndex
+{
+    int a_index;
+    int b_index;
+    int c_index;
+};
+
+BUFFER(TriangleIndexBuffer , TriangleIndex);
+
+typedef struct NewEdge NewEdge;
+struct NewEdge
+{
+    int a_index;
+    int b_index;
+};
+
+BUFFER(NewEdgeBuffer , NewEdge);
 
 typedef enum ShapeType ShapeType;
 enum ShapeType
@@ -265,7 +320,30 @@ enum ShapeType
     ST_invalid,
     ST_quad,
     ST_box,
-    ST_capsule,
+    ST_capsule,//TODO: didn't work, try again
+};
+
+typedef struct EntityHandle EntityHandle;
+struct EntityHandle
+{
+    int entity_index;
+    int generation_index;
+};
+
+BUFFER(EntityHandleBuffer , EntityHandle);
+
+typedef struct ShapeOwner ShapeOwner;
+struct ShapeOwner
+{
+    bool is_entity;
+    bool is_player;
+    
+    union
+    {
+        EntityHandle entity_handle;
+        //no need to use handle yet
+        int player_index;
+    };
 };
 
 typedef struct ShapeUnion ShapeUnion;
@@ -277,6 +355,9 @@ struct ShapeUnion
         Box box;
         Quad quad;
     };
+    
+    Vector3 velocity;
+    ShapeOwner owner;
 };
 
 BUFFER(ShapeUnionBuffer , ShapeUnion);
@@ -292,11 +373,11 @@ struct ConvexShape
     Vector3 velocity;
     Vector3 position;
     
+    bool collect_all_collision;
+    bool capture_collision;
+    
     Vector3 * shape_vertices;
     int shape_vertices_count;
-    
-    bool get_all;
-    bool capture_collision;
 };
 
 typedef struct RayCastResult RayCastResult;
@@ -304,25 +385,19 @@ struct RayCastResult
 {
     Vector3 surface_normal;
     float hit_time;
+    ShapeOwner shape_owner;
 };
+
+BUFFER(RayCastResultBuffer , RayCastResult);
 
 typedef struct CollisionResult CollisionResult;
 struct CollisionResult
 {
     Vector3 velocity;
     Vector3 offset;
+    bool collided;
+    bool stucked;
 };
-
-BUFFER(RayCastResultBuffer , RayCastResult);
-
-typedef struct Shape Shape;
-struct Shape
-{
-    int type;
-    int index;
-};
-
-BUFFER(ShapeBuffer , Shape);
 
 typedef struct BoundingBoxNode BoundingBoxNode;
 struct BoundingBoxNode
@@ -330,13 +405,14 @@ struct BoundingBoxNode
     Vector3 right_top_forward;
     Vector3 left_bottom_backward;
     
-    Shape shape;
+    ShapeUnion shape;
     
     BoundingBoxNode * left;
     BoundingBoxNode * right;
 };
 
 BUFFER(BoundingBoxNodeBuffer , BoundingBoxNode);
+BUFFER(BoundingBoxNodePointerBuffer , BoundingBoxNode *);
 
 typedef enum SplitType SplitType;
 enum SplitType
@@ -347,7 +423,8 @@ enum SplitType
     split_count,
 };
 
-global BoundingBoxNode * bounding_box_root = 0;
+global BoundingBoxNode * bounding_box_in_map_root = 0;
+global BoundingBoxNodePointerBuffer bounding_box_root_stack = {};
 
 typedef struct CellIterator CellIterator;
 struct CellIterator
@@ -378,74 +455,148 @@ BUFFER(CameraTriggerBuffer , CameraTrigger);
 
 #define INPUT_MAX_KEY 16
 
+typedef struct InputArray InputArray;
+struct InputArray
+{
+    int count;
+    int array[INPUT_MAX_KEY];
+    bool consumed_array[INPUT_MAX_KEY];
+};
+
+typedef enum InputArrayType InputArrayType;
+enum InputArrayType
+{
+    IA_pressing_key,
+    IA_pressed_key,
+    IA_released_key,
+    IA_pressing_mouse,
+    IA_pressed_mouse,
+    IA_released_mouse,
+    IA_count,
+};
+
 typedef struct InputState InputState;
 struct InputState
 {
-    int pressing_key[INPUT_MAX_KEY];
-    float pressing_key_time[INPUT_MAX_KEY];
-    int pressing_key_count;
-    
-	int pressed_key[INPUT_MAX_KEY];
-	int pressed_key_count;
-    
-	int released_key[INPUT_MAX_KEY];
-	int released_key_count;
-    
-    int pressing_mouse[INPUT_MAX_KEY];
-    int pressing_mouse_count;
-    
-	int released_mouse[INPUT_MAX_KEY];
-	int released_mouse_count;
-    
-	int pressed_mouse[INPUT_MAX_KEY];
-	int pressed_mouse_count;
-    
-    bool pressed_mouse_consumed[INPUT_MAX_KEY];
+    InputArray input_array[IA_count];
 };
+
+typedef enum ChargeDirection ChargeDirection;
+enum ChargeDirection
+{
+    CD_forward,
+    CD_backward,
+    CD_right,
+    CD_left,
+    CD_up,
+    CD_bottom,
+    
+    CD_count,
+};
+
+typedef enum EntityType EntityType;
+enum EntityType
+{
+    E_moving_wall,
+    E_small_block,
+    E_hook,
+    E_bubble,
+    
+    E_count,
+};
+
+typedef struct Entity Entity;
+struct Entity
+{
+    int generation_index;
+    int entity_index;
+    
+    int type;
+    
+    Vector3 position;
+    Vector3 velocity;
+    Vector3 previous_position;
+    
+    float velocity_multipler;
+    float gravity_force;
+    
+    Box box;
+    
+    bool respawnable;
+    bool unpickable;
+    
+    bool clearable;
+    bool cleared;
+    float clear_timer;
+    bool override_clear_time;
+    float clear_time;
+    
+    bool respawning;
+    float respawn_timer;
+    bool override_respawn_time;
+    float respawn_time;
+    
+    float charge_timer;
+    bool charging;
+    Vector3 charge_direction;
+    
+    bool hook_on_surface;
+    
+    bool expanding;
+    bool stop_expanding;
+    
+    bool solid;
+    float solid_timer;
+    
+    bool detonable;
+};
+
+global Color entity_color_array[E_count] = {};
+
+BUFFER(EntityBuffer , Entity);
 
 typedef struct Player Player;
 struct Player
 {
+    int chunk_index;
+    
     bool it_is_me;
+    int connection_index;
     
     Vector3 camera_target;
     Vector3 camera_position;
     
     Vector3 position;
     Vector3 velocity;
+    
+    Vector3 interact_direction;
+    Vector2 interact_input;
+    bool interact;
+    
+    float no_both_direction_timer;
+    Vector3 character_position;
     Box box;
+    Box collide_box;
     
+    float ground_time;
+    
+    float spring_time;
+    bool is_holding_entity;
+    EntityHandle holding_entity_handle;
+    
+    bool floating_in_bubble;
     bool grounded;
+    bool moving_upward;
     
-    Vector3 target_direction;
-    Box hammer_box;
-    Vector3 previous_hammer_position;
+    bool floatable;
+    bool floating;
+    float float_timer;
     
-    float hammer_angle;
-    bool wielding;
-    float wield_time;
-    float wield_cool_down;
-    
-    int first_pressed_key_index;
-    bool first_key_pressed;
-    bool second_key_pressed;
-    
-    bool jumped;
+    EntityHandleBuffer hook_buffer;
+    Array hook_array;
 };
 
 BUFFER(PlayerBuffer , Player);
-
-typedef struct Entity Entity;
-struct Entity
-{
-    int generation_index;
-    
-    Vector3 position;
-    Vector3 velocity;
-    Box box;
-};
-
-BUFFER(EntityBuffer , Entity);
 
 typedef struct Int3 Int3;
 struct Int3
@@ -487,6 +638,8 @@ struct CollisionVisual
     bool collided;
     Vector3 collision_point;
     Vector3 collision_normal;
+    Vector3 offset;
+    Vector3 direction;
     
     ShapeUnion shape_a;
     ShapeUnion shape_b;
@@ -504,8 +657,10 @@ enum CollisionType
 typedef struct FrameCollision FrameCollision;
 struct FrameCollision
 {
+    int update_index;
     int collision_type;
     Vector3 collision_visual_offset;
+    //TODO: something wrong, this index is 1 less
     int slice_start;
     int slice_end;
     
@@ -515,12 +670,24 @@ struct FrameCollision
 
 BUFFER(FrameCollisionBuffer , FrameCollision);
 
-global long long previous_update_count = -1;
-global Box debug_box = {};
+BUFFER(FloatBuffer , float);
+BUFFER(Int32Buffer , int);
+BUFFER(BoolBuffer , bool);
+BUFFER(ByteBuffer , unsigned char);
 
-#define SUBDIVISION (10)
+//global long long previous_update_count = -1;
+
+//change this to 8
+#define SUBDIVISION (8)
 #define GRID_SIZE (1.0)
 #define UNIT_SIZE (GRID_SIZE / ((double)SUBDIVISION))
+
+global float default_entity_clear_time = 5.0f;
+global float default_entity_respawn_time = 1.0f;
+
+//global Vector3 player_box_size = {GRID_SIZE * 0.4 , GRID_SIZE * 0.6 , GRID_SIZE * 0.4};
+global Vector3 player_box_size = {GRID_SIZE * 0.6 , GRID_SIZE * 0.96 , GRID_SIZE * 0.6};
+global Vector3 entity_box_size = {GRID_SIZE * 1.0 , GRID_SIZE * 1.0 , GRID_SIZE * 1.0};
 
 global Camera3D world_camera = {};
 
@@ -541,6 +708,9 @@ global Vector3 right_direction = {1,0,0};
 global Vector3 up_direction = {0,1,0};
 global Vector3 forward_direction = {0,0,1};
 
+global float player_spring_percent = 0.8f;
+global Vector3 player_spring_ray = {0, -UNIT_SIZE * 5, 0};
+
 global Vector3 * convex_shape_a_vertices = 0;
 global int convex_shape_a_vertices_count = 0;
 
@@ -552,6 +722,7 @@ global int current_frame_collision_index = 0;
 global FrameCollisionBuffer frame_collision_buffer = {};
 global FrameCollision * current_frame_collision = 0;
 
+global bool show_bounding_box = false;
 global bool capture_collision = false;
 global bool capture_collision_non_stop = false;
 global bool display_all_visual = false;
@@ -569,9 +740,16 @@ global CollisionVisualBuffer collision_visual_buffer = {};
 global InputState * input_state = 0;
 
 global long long game_update_count = 0;
+global bool game_paused = false;
+global bool game_step = false;
+global bool entity_initialized = false;
 
-global PlayerBuffer player_buffer = {};
-global Array player_array = {};
+global ChunkPool player_pool = {};
+global int player_chunk_size = 0;
+
+//global BlockBuffer player_block_buffer = {};
+//global Array player_block_array = {};
+//global unsigned char * player_buffer = 0;
 
 global EntityBuffer entity_layout_buffer = {};
 global Array entity_layout_array = {};
@@ -592,30 +770,17 @@ global QuadBuffer quad_in_map_buffer = {};
 typedef enum DataFlag DataFlag;
 enum DataFlag
 {
-    DF_pressing_key_count,
-    DF_pressed_key_count,
-    DF_released_key_count,
-    DF_pressing_mouse_count,
-    DF_pressed_mouse_count,
-    DF_released_mouse_count,
-    
-    DF_pressing_key,
-    DF_pressing_key_time,
-    DF_pressed_key,
-    DF_released_key,
-    DF_pressing_mouse,
-    DF_pressed_mouse,
-    DF_released_mouse,
+    DF_input_state,
     
     DF_camera_target,
     DF_camera_position,
     
     DF_player_count,
-    //DF_player_position,
-    //DF_player_velocity,
-    //DF_player_grounded,
     DF_whole_player,
     DF_player_owned,
+    
+    DF_entity_count,
+    DF_whole_entity,
 };
 
 typedef enum ReceiveOrder ReceiveOrder;
@@ -637,7 +802,6 @@ struct NetDataHeader
 };
 
 BUFFER(NetDataHeaderBuffer , NetDataHeader);
-BUFFER(ByteBuffer , unsigned char);
 
 #define MAX_RECEIVE_BUFFER 1024 * 16
 #define MAX_RECEIVE_HEADER 128
@@ -698,6 +862,7 @@ struct NetState
 
 //===network data===
 
+global Array player_connection_array = {};
 global PlayerConnectionBuffer player_connection_buffer = {};
 global ReceiveState default_receive_state = {};
 global NetState net_state = {};

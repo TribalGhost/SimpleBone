@@ -192,7 +192,7 @@ internal float get_total_string_width(const wchar_t* text,float scale)
 internal float get_total_string_width_B(char * text,float scale)
 {
     int text_length = strlen(text);
-    wchar_t * temp_text = (wchar_t *)allocate_frame(wchar_t , text_length + 2);
+    wchar_t * temp_text = (wchar_t *)allocate_memory_type(wchar_t , text_length + 2 , AT_frame);
     
     for(int char_index = 0 ; char_index < text_length ; char_index++)
     {
@@ -346,7 +346,7 @@ internal void D_draw_text_screen(Vector3 position ,char * text , float size, Col
 	rect.size.y = size;
     
 	int string_length = strlen(text);
-	wchar_t * converted_string = allocate_frame(wchar_t , string_length + 1);
+    wchar_t * converted_string = allocate_memory_type(wchar_t , string_length + 1 , AT_frame);
 	for (int char_index = 0; char_index < string_length; char_index++) converted_string[char_index] = text [char_index];
     
 	Vector3 right = {view_matrix.m0 , view_matrix.m4 , view_matrix.m8 };
@@ -395,7 +395,7 @@ internal void D_draw_text_D(Vector3 position, const wchar_t* string, Color text_
 internal void D_draw_text_E(Vector3 position , float size , char * string , Color text_color , bool centre)
 {
 	int string_length = strlen(string);
-	wchar_t * convert_string = allocate_frame(wchar_t , string_length + 1);
+    wchar_t * convert_string = allocate_memory_type(wchar_t , string_length + 1 , AT_frame);
 	for (int char_index = 0; char_index < string_length; char_index++) convert_string[char_index] = string[char_index];
     
 	D_draw_text_D(position , convert_string, text_color , size , centre);
@@ -404,7 +404,7 @@ internal void D_draw_text_E(Vector3 position , float size , char * string , Colo
 internal void D_draw_text_F(Vector2 position , float size , char * string , Color text_color , bool centre)
 {
 	int string_length = strlen(string);
-	wchar_t * convert_string = allocate_frame(wchar_t , string_length + 1);
+    wchar_t * convert_string = allocate_memory_type(wchar_t , string_length + 1 , AT_frame);
 	for (int char_index = 0; char_index < string_length; char_index++) convert_string[char_index] = string[char_index];
     
 	D_draw_text_C(position , convert_string, text_color , size , centre);

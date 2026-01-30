@@ -4,7 +4,7 @@ global D_App_Data _GlobalData = {};
 
 internal GAME_LOOP(GameLoopStub) {}
 
-internal double time_stamp()
+internal double function time_stamp()
 {
 	LARGE_INTEGER frequency = {};
 	LARGE_INTEGER end_time = {};
@@ -15,13 +15,14 @@ internal double time_stamp()
 }
 
 //this is kinda dumb
-internal void combine_file_path(const char* file_name,char * result_path)
+internal void function combine_file_path(const char* file_name,char * result_path)
 {
 	strcat(result_path, app_data->application_path);
 	strcat(result_path, file_name);
 }
 
-internal void APIENTRY DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,GLsizei length, const GLchar* message, const void* user)
+//thx Martins
+internal void function DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,GLsizei length, const GLchar* message, const void* user)
 {
     if(type != GL_DEBUG_TYPE_PERFORMANCE)
     {
@@ -42,7 +43,7 @@ internal void APIENTRY DebugCallback(GLenum source, GLenum type, GLuint id, GLen
     }
 }
 
-internal bool compare_string( char * string_A, char * string_B)
+internal bool function compare_string( char * string_A, char * string_B)
 {
     int string_B_length = 0;
     for(int char_index = 0 ; string_B[char_index] != '\0' ; char_index++ ,string_B_length++);
@@ -65,12 +66,14 @@ internal bool compare_string( char * string_A, char * string_B)
 
 #define malloc_and_memset(type,count) (type*)memset(malloc(sizeof(type)*count),0,sizeof(type)*count)
 
-int main(int parameter_count, char ** parameters)
+extern int function main(int parameter_count, char ** parameters)
 {
 	app_data = &_GlobalData;
     app_data->is_server = false;
     app_data->is_client = false;
     app_data->host_name = "192.168.10.8";
+    
+    timeBeginPeriod(1);
     
     for(int parameter_index = 0 ; parameter_index < parameter_count ; parameter_index++)
     {
@@ -227,8 +230,8 @@ int main(int parameter_count, char ** parameters)
 		{
 			ModuleModTime = GetFileModTime(DLLPath);
 			
-			if (app_data->game_unload)
-				app_data->game_unload();
+			if (app_data->game_unload_function)
+				app_data->game_unload_function();
             
 			if (!FreeLibrary(GameModule))
 			{
@@ -261,8 +264,8 @@ int main(int parameter_count, char ** parameters)
         
 		if (glfwWindowShouldClose(all_windows[main_window]))
 		{
-            if (app_data->game_unload)
-                app_data->game_unload();
+            if (app_data->game_unload_function)
+                app_data->game_unload_function();
 			
             glfwDestroyWindow(all_windows[main_window]);
 			break;
@@ -312,7 +315,7 @@ int main(int parameter_count, char ** parameters)
             
 			if (current_window_index == main_window)
 			{
-				app_data->game_loop();
+				app_data->game_loop_function();
 			}
 		}
         

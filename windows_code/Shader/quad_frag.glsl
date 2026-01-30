@@ -17,16 +17,19 @@ void main()
 {
 	vec4 textureColor = texture(texture0, fragTexCoord);
     
-    
 	finalColor = textureColor;
 	finalColor*= fragColor;
     
     if(drawFlag == 1)
     {
-        vec3 directionToCamera = fragPosition - cameraPosition;
-        directionToCamera = normalize(directionToCamera);
+        vec3 frag_to_camera = fragPosition - cameraPosition;
+        float distance_to_camera = length(frag_to_camera);
         
-        finalColor.xyz *= dot(directionToCamera , -fragNormal);
+        frag_to_camera = normalize(frag_to_camera);
+        
+        distance_to_camera = (1.0 / distance_to_camera) * 10;
+        distance_to_camera = min(1.2 , distance_to_camera);
+        
+        finalColor.xyz *= dot(frag_to_camera , -fragNormal) * distance_to_camera;
     }
-    
 }

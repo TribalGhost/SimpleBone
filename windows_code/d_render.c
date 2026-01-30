@@ -12,8 +12,7 @@ internal ShaderBuffer* get_GPU_buffer_info(void * data)
 //it will allocate data on both cpu ram and gpu ram.
 internal void * create_buffer_for_GPU(const char * buffer_name , int primitive_type,int component_count , int max_size)
 {
-    
-    ShaderBuffer* current_buffer = allocate_temp(ShaderBuffer,1);
+    ShaderBuffer* current_buffer = allocate_memory_type(ShaderBuffer , 1 , AT_temp);
     
     current_buffer->primitive_data_type = primitive_type;
     current_buffer->name = buffer_name;
@@ -35,7 +34,7 @@ internal void * create_buffer_for_GPU(const char * buffer_name , int primitive_t
     
     int data_size = current_buffer->max_data_size * current_buffer->components_count * type_size;
     
-    unsigned char * buffer_data =allocate_temp_(data_size); 
+    unsigned char * buffer_data =allocate_memory(data_size , AT_temp); 
     current_buffer->data =buffer_data;
     current_buffer->buffer_size = data_size;
     
@@ -122,12 +121,12 @@ internal void render_state_init()
         
 		switch (render_state.shader_uniform_type[UniformIndex])
 		{
-            case RL_SHADER_UNIFORM_MATRIX: *uniform_data = allocate_temp_(sizeof(Matrix)); break;
-            case RL_SHADER_UNIFORM_SAMPLER2D: *uniform_data = allocate_temp_(sizeof(unsigned int)); break;
-            case RL_SHADER_UNIFORM_INT: *uniform_data = allocate_temp_(sizeof(int)); break;
-			case RL_SHADER_UNIFORM_VEC2: *uniform_data = allocate_temp_(sizeof(Vector2)); break;
-			case RL_SHADER_UNIFORM_FLOAT: *uniform_data = allocate_temp_(sizeof(float)); break;
-            case RL_SHADER_UNIFORM_VEC3: *uniform_data = allocate_temp_(sizeof(Vector3)); break;
+            case RL_SHADER_UNIFORM_MATRIX: *uniform_data = allocate_memory(sizeof(Matrix) , AT_temp); break;
+            case RL_SHADER_UNIFORM_SAMPLER2D: *uniform_data = allocate_memory(sizeof(unsigned int) , AT_temp); break;
+            case RL_SHADER_UNIFORM_INT: *uniform_data = allocate_memory(sizeof(int) , AT_temp); break;
+			case RL_SHADER_UNIFORM_VEC2: *uniform_data = allocate_memory(sizeof(Vector2) , AT_temp); break;
+			case RL_SHADER_UNIFORM_FLOAT: *uniform_data = allocate_memory(sizeof(float) , AT_temp); break;
+            case RL_SHADER_UNIFORM_VEC3: *uniform_data = allocate_memory(sizeof(Vector3) , AT_temp); break;
             
 			default: CATCH; break;
 		}
@@ -426,7 +425,7 @@ internal void shader_init()
 			GL_CATCH;
 		}
         
-        current_shader_property->vertex_buffer_location_array = allocate_temp(int,shader_buffer_count);
+        current_shader_property->vertex_buffer_location_array = allocate_memory_type(int,shader_buffer_count , AT_temp);
         
 		for (int buffer_index = 0; buffer_index < shader_buffer_count; buffer_index++)
 		{
@@ -882,7 +881,6 @@ internal void draw_model(D_Model * model , Bone * all_bone , Bone * all_initial_
 
 internal void draw_triangle(Vector3* all_vertices ,Vector4 vertex_color)
 {
-    
 	int target_texture = render_state.default_white_image;
     
 	quad_draw_check(target_texture);
@@ -2169,54 +2167,15 @@ internal void draw_screen_flat_B(int texture_index ,Color color , bool multi_sam
 	draw_screen_flat(texture_index , color_to_linear(color) , multi_sample);
 }
 
-internal void get_box_face( Rect * temp_box_rect , Box box)
-{
-    Vector3 position = box.position;
-    Vector3 size = box.size;
-    Quaternion rotation = box.rotation;
-    
-    for(int face_index = 0 ; face_index < face_count ; face_index++) 
-    {
-        temp_box_rect[face_index] = box_rect[face_index];
-    }
-    
-    Vector3 half_extend = size;
-    half_extend.x *= 0.5f;
-    half_extend.y *= 0.5f;
-    half_extend.z *= 0.5f;
-    
-    temp_box_rect[face_top].position = (Vector3){0,half_extend.y,0};
-    temp_box_rect[face_bottom].position = (Vector3){0,-half_extend.y,0};
-    temp_box_rect[face_right].position = (Vector3){half_extend.x,0,0};
-    temp_box_rect[face_left].position = (Vector3){-half_extend.x,0,0};
-    temp_box_rect[face_front].position = (Vector3){0,0,half_extend.z};
-    temp_box_rect[face_back].position = (Vector3){0,0,-half_extend.z};
-    
-    temp_box_rect[face_top].size = (Vector2){size.x,size.z};
-    temp_box_rect[face_bottom].size = (Vector2){size.x,size.z};
-    temp_box_rect[face_right].size = (Vector2){size.z,size.y};
-    temp_box_rect[face_left].size = (Vector2){size.z,size.y};
-    temp_box_rect[face_front].size = (Vector2){size.x,size.y};
-    temp_box_rect[face_back].size = (Vector2){size.x,size.y};
-    
-    for(int face_index = 0 ; face_index < face_count ; face_index++) 
-    {
-        temp_box_rect[face_index].position = Vector3RotateByQuaternion(temp_box_rect[face_index].position , rotation);
-        temp_box_rect[face_index].position = Vector3Add( temp_box_rect[face_index].position , position);
-        
-        temp_box_rect[face_index].rotation = QuaternionMultiply(rotation ,temp_box_rect[face_index].rotation );
-    }
-}
-
 //TODO : if we need to draw many box maybe don't use this
-internal void draw_box( Box box , Color box_color)
+internal void draw_box(Box box , Color box_color)
 {
-    Rect temp_box_rect[face_count] = {};
-    get_box_face(temp_box_rect , box);
+    Quad temp_box_quad[face_count] = {};
+    get_box_face(temp_box_quad , box);
     
     for(int face_index = 0 ; face_index < face_count ; face_index++) 
     {
-        draw_quad_D(rect_to_quad(temp_box_rect[face_index])  , box_color );
+        draw_quad_D(temp_box_quad[face_index]  , box_color );
     }
 }
 
@@ -2225,12 +2184,12 @@ internal void draw_box( Box box , Color box_color)
 //how am i gonna port this to a orange pie?
 internal void draw_box_line(Box box , Color line_color , float line_size)
 {
-    Rect temp_box_rect[face_count] = {};
+    Quad temp_box_quad[face_count] = {};
     
-    get_box_face(temp_box_rect , box);
+    get_box_face(temp_box_quad , box);
     
     for(int face_index = 0 ; face_index < face_count ; face_index++) 
     {
-        draw_quad_line(rect_to_quad(temp_box_rect[face_index])  , line_color , line_size );
+        draw_quad_line(temp_box_quad[face_index]  , line_color , line_size );
     }
 }

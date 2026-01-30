@@ -1,4 +1,3 @@
-
 typedef struct BlenderFileBlockHeader BlenderFileBlockHeader;
 struct BlenderFileBlockHeader
 {
@@ -74,7 +73,6 @@ struct FieldResult
 typedef struct BlenderBone BlenderBone;
 struct BlenderBone
 {
-    
     int parent_index;
     
     FixedStringW name;
@@ -84,7 +82,6 @@ struct BlenderBone
     Quaternion rotation;
     
     Matrix rotation_matrix;//i guess it just rotation
-    
 };
 
 BUFFER(BlenderBoneBuffer , BlenderBone);
@@ -143,7 +140,7 @@ struct BlenderWeight
     float weight;
 };
 
-global float model_scale = 1.0;
+global float model_scale = 10.0;
 
 //global BlenderBone * all_bone = 0;
 global BlenderBoneBuffer bone_buffer = {};
@@ -173,12 +170,12 @@ global BlenderFileBlockHeader * all_block_header = 0;
 global int all_block_header_count = 0;
 
 
-internal char * get_type_name_by_structure_index(int structure_index)
+internal char * function get_type_name_by_structure_index(int structure_index)
 {
     return all_types[ all_structures[structure_index].type ];
 }
 
-internal int address_hash(unsigned long long address)
+internal int function address_hash(unsigned long long address)
 {
     
     address = address % 4294967295;
@@ -190,7 +187,7 @@ internal int address_hash(unsigned long long address)
     
 }
 
-internal BlenderFileBlockHeader * get_block_by_address(unsigned long long address)
+internal BlenderFileBlockHeader * function get_block_by_address(unsigned long long address)
 {
     
     hash_table_iterate(block_index , address_hash(address) , &block_address_hash_table)
@@ -209,9 +206,9 @@ internal BlenderFileBlockHeader * get_block_by_address(unsigned long long addres
     return 0;
 }
 
-internal char** decompose_long_string(unsigned char ** memory_pointer , int count)
+internal char ** function decompose_long_string(unsigned char ** memory_pointer , int count)
 {
-    char ** all_strings = allocate_frame(char *, count);
+    char ** all_strings = allocate_memory_type(char *, count , AT_frame);
     
     unsigned char * memory = (*memory_pointer);
     
@@ -236,7 +233,7 @@ internal char** decompose_long_string(unsigned char ** memory_pointer , int coun
     return all_strings;
 }
 
-internal int get_DNA_structure_flatten_field_count( DNA_Structure structure)
+internal int function get_DNA_structure_flatten_field_count( DNA_Structure structure)
 {
     int field_count = 0;
     
@@ -300,7 +297,7 @@ internal int get_DNA_structure_flatten_field_count( DNA_Structure structure)
     return field_count;
 }
 
-internal void parse_DNA_structure_flatten( char * previous_field_name , DNA_Structure structure , FlattenFieldInfo * all_flatten_field , int * all_flatten_field_count)
+internal void function parse_DNA_structure_flatten( char * previous_field_name , DNA_Structure structure , FlattenFieldInfo * all_flatten_field , int * all_flatten_field_count)
 {
     
     for(int field_index = 0 ; field_index < structure.field_count ; field_index++)
@@ -390,12 +387,11 @@ internal void parse_DNA_structure_flatten( char * previous_field_name , DNA_Stru
     
 }
 
-internal FlattenFieldInfo * get_flatten_fields(int DNA_structure_index , int * count)
+internal FlattenFieldInfo * function get_flatten_fields(int DNA_structure_index , int * count)
 {
-    
     int allocate_size = get_DNA_structure_flatten_field_count( all_structures[DNA_structure_index]);
     
-    FlattenFieldInfo * all_flatten_field = allocate_frame(FlattenFieldInfo , allocate_size);
+    FlattenFieldInfo * all_flatten_field = allocate_memory_type(FlattenFieldInfo , allocate_size , AT_frame);
     int all_flatten_field_count = 0;
     
     parse_DNA_structure_flatten( 0, all_structures[DNA_structure_index] , all_flatten_field , &all_flatten_field_count);
@@ -405,12 +401,12 @@ internal FlattenFieldInfo * get_flatten_fields(int DNA_structure_index , int * c
     
 }
 
-internal void print_depth(int depth)
+internal void function print_depth(int depth)
 {
     for(int depth_index = 0 ; depth_index < depth ; depth_index++) printf("\t");
 }
 
-internal bool iterate_fields(FieldIterator * iterator , unsigned char * block_memory , int structure_index)
+internal bool function iterate_fields(FieldIterator * iterator , unsigned char * block_memory , int structure_index)
 {
     if(!structure_index) CATCH;
     
@@ -448,7 +444,7 @@ internal bool iterate_fields(FieldIterator * iterator , unsigned char * block_me
     return true;
 }
 
-internal FieldResult get_field( char * name , unsigned char * block_memory , int structure_index)
+internal FieldResult function get_field( char * name , unsigned char * block_memory , int structure_index)
 {
     
     FieldResult result = {};
@@ -474,13 +470,13 @@ internal FieldResult get_field( char * name , unsigned char * block_memory , int
     return (FieldResult){};
 }
 
-internal void print_position(unsigned char * data)
+internal void function print_position(unsigned char * data)
 {
     Vector3 position = (*((Vector3*)data));
     printf( " (%f,%f,%f)" , position.x, position.y , position.z);
 }
 
-internal void print_all_fields(unsigned char * block_memory , int structure_index)
+internal void function print_all_fields(unsigned char * block_memory , int structure_index)
 {
     
     for(FieldIterator iterator = {} ; iterate_fields(&iterator , block_memory , structure_index) ;)
@@ -556,7 +552,7 @@ internal void print_all_fields(unsigned char * block_memory , int structure_inde
     printf("\n");
 }
 
-internal void blender_iterate_bone(unsigned long long address , int type , int stack_count , int parent_index)
+internal void function blender_iterate_bone(unsigned long long address , int type , int stack_count , int parent_index)
 {
     for(;;)
     {
@@ -572,7 +568,7 @@ internal void blender_iterate_bone(unsigned long long address , int type , int s
         
         if(bone_buffer.count == bone_buffer.capacity)
         {
-            reallocate_buffer( &bone_buffer , AT_frame);
+            reallocate_buffer(&bone_buffer , AT_frame);
         }
         int bone_index = bone_buffer.count++;
         BlenderBone * new_bone = bone_buffer.data + bone_index;
@@ -627,10 +623,9 @@ internal void blender_iterate_bone(unsigned long long address , int type , int s
     
 }
 
-internal void load_header_and_DNA(FILE * blend_file)
+internal void function load_header_and_DNA(FILE * blend_file)
 {
-    
-    BlenderFileBlockHeaderNode * block_list_head = allocate_temp(BlenderFileBlockHeaderNode , 1);
+    BlenderFileBlockHeaderNode * block_list_head = allocate_memory_type(BlenderFileBlockHeaderNode , 1 , AT_temp);
     BlenderFileBlockHeaderNode * block_list_current = block_list_head;
     
     int * main_block_data_block_count = 0;
@@ -651,7 +646,7 @@ internal void load_header_and_DNA(FILE * blend_file)
         fread(&SDNA_index , 4 , 1 , blend_file);
         fread(&SDNA_count , 4 , 1 , blend_file);
         
-        unsigned char * block_memory = allocate_frame_(block_size);
+        unsigned char * block_memory = allocate_memory(block_size , AT_frame);
         fread(block_memory , block_size , 1 , blend_file);
         
         //printf("%.*s\n" , 4,block_name);
@@ -681,7 +676,7 @@ internal void load_header_and_DNA(FILE * blend_file)
             data_block_count++;
         }
         
-        block_list_current->next = allocate_temp(BlenderFileBlockHeaderNode , 1);
+        block_list_current->next = allocate_memory_type(BlenderFileBlockHeaderNode , 1 , AT_temp);
         (*block_list_current->next) = (BlenderFileBlockHeaderNode){};
         block_list_current = block_list_current->next;
         all_block_header_count++;
@@ -719,13 +714,13 @@ internal void load_header_and_DNA(FILE * blend_file)
             
             if(void_type_index == -1) CATCH;
             
-            type_to_structure = allocate_frame( int , type_count);
+            type_to_structure = allocate_memory_type(int , type_count , AT_frame);
             
             for(int i = 0 ; i < type_count ; i++) type_to_structure[i] = -1;
             
             DNA_memory += 4;
             
-            all_types_byte_length = allocate_frame(short , type_count);
+            all_types_byte_length = allocate_memory_type(short , type_count , AT_frame);
             
             for(int type_index = 0 ; type_index < type_count ; type_index++ )
             {
@@ -743,9 +738,9 @@ internal void load_header_and_DNA(FILE * blend_file)
             int structure_count = *((int *)DNA_memory);
             DNA_memory+=4;
             
-            all_structures = allocate_frame(DNA_Structure , structure_count);
-            all_structure_field = allocate_frame(FlattenFieldInfo * , structure_count);
-            all_structure_field_count = allocate_frame(int , structure_count);
+            all_structures = allocate_memory_type(DNA_Structure , structure_count , AT_frame);
+            all_structure_field = allocate_memory_type(FlattenFieldInfo * , structure_count , AT_frame);
+            all_structure_field_count = allocate_memory_type(int , structure_count , AT_frame);
             
             for(int structure_index = 0 ; structure_index < structure_count ; structure_index++ )
             {
@@ -761,8 +756,8 @@ internal void load_header_and_DNA(FILE * blend_file)
                 int field_count = (*((short*) DNA_memory));
                 DNA_memory += 2;
                 
-                short * all_fields = allocate_frame(short , field_count);
-                short * all_field_name_index = allocate_frame(short , field_count);
+                short * all_fields = allocate_memory_type(short , field_count , AT_frame);
+                short * all_field_name_index = allocate_memory_type(short , field_count , AT_frame);
                 
                 current_structure->field_count = field_count;
                 current_structure->all_fields = all_fields;
@@ -785,7 +780,7 @@ internal void load_header_and_DNA(FILE * blend_file)
         
     }
     
-    all_block_header = allocate_temp( BlenderFileBlockHeader , all_block_header_count);
+    all_block_header = allocate_memory_type( BlenderFileBlockHeader , all_block_header_count , AT_temp);
     block_address_hash_table = allocate_hash_table(all_block_header_count * 1.5 , AT_temp);
     
     int all_block_header_index = 0;
@@ -800,7 +795,7 @@ internal void load_header_and_DNA(FILE * blend_file)
     
 }
 
-internal void add_to_mesh_indices(unsigned short index)
+internal void function add_to_mesh_indices(unsigned short index)
 {
     if(mesh_indices_buffer.count == mesh_indices_buffer.capacity)
     {
@@ -809,9 +804,8 @@ internal void add_to_mesh_indices(unsigned short index)
     mesh_indices_buffer.data[mesh_indices_buffer.count++] = index;
 }
 
-internal void load_blend_file()
+internal void function load_blend_file()
 {
-    
     FILE * blend_file = fopen(get_app_file_path("Asset\\test.blend") , "rb");
     
     allocate_buffer(&mesh_indices_buffer , unsigned short , 1024 , AT_frame);
@@ -820,7 +814,6 @@ internal void load_blend_file()
     
     if(blend_file)
     {
-        
         char header[12] = {};
         
         fread(header , 12 , 1 , blend_file);
@@ -831,7 +824,6 @@ internal void load_blend_file()
         
         for(int block_index = 0 ; block_index < all_block_header_count ; block_index++)
         {
-            
             BlenderFileBlockHeader * current_block = all_block_header + block_index;
             
             if(compare_string_C(current_block->block_name , "GLOB" , 4))
@@ -935,9 +927,9 @@ internal void load_blend_file()
                     new_model->vertex_count = vertex_count;
                     new_model->index_count = index_count;
                     
-                    new_model->vertices = allocate_temp(Vector3  , vertex_count);
-                    new_model->indices = allocate_temp(unsigned short  , index_count);
-                    new_model->normals = allocate_temp(Vector3 , index_count);
+                    new_model->vertices = allocate_memory_type(Vector3  , vertex_count , AT_temp);
+                    new_model->indices = allocate_memory_type(unsigned short  , index_count , AT_temp);
+                    new_model->normals = allocate_memory_type(Vector3 , index_count , AT_temp);
                     
                     for(int vertex_index = 0 ; vertex_index < vertex_count ; vertex_index++)
                     {
@@ -1008,7 +1000,7 @@ internal void load_blend_file()
                         
                     }
                     
-                    DeformVertexSlice * all_deform_vertex_slice = allocate_temp(DeformVertexSlice , vertex_count);
+                    DeformVertexSlice * all_deform_vertex_slice = allocate_memory_type(DeformVertexSlice , vertex_count , AT_temp);
                     
                     //DeformVertex * deform_vertex_data = 0;
                     DeformVertexBuffer deform_vertex_buffer = {};
@@ -1063,7 +1055,7 @@ internal void load_blend_file()
                     }
                     
                     new_model->deform_vertex_slice = all_deform_vertex_slice;
-                    new_model->all_deform_vertex = allocate_temp(DeformVertex , deform_vertex_count);
+                    new_model->all_deform_vertex = allocate_memory_type(DeformVertex , deform_vertex_count , AT_temp);
                     new_model->deform_vertex_count = deform_vertex_count;
                     
                     for(int deform_vertex_index = 0 ; deform_vertex_index < deform_vertex_count ; deform_vertex_index++)
@@ -1196,7 +1188,7 @@ internal void load_blend_file()
                                 
                             }
                             
-                            int * bone_map = allocate_frame(int , new_model->bone_buffer.count);
+                            int * bone_map = allocate_memory_type(int , new_model->bone_buffer.count , AT_frame);
                             
                             for(int bone_index = 0 ; bone_index < bone_count ; bone_index++)
                             {

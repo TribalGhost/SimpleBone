@@ -190,6 +190,7 @@ struct Camera3D {
 
 #define CATCH ((*(int *)0)=1)
 
+#define function
 #define internal static
 #define local_persist static
 #define global static

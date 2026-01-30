@@ -38,6 +38,8 @@ typedef ADDRINFOA addrinfo;
 
 #define CATCH ((*(int *)0)=1)
 
+#define function //tag for function implementation
+#define decl //tag for variable declaration
 #define internal static
 #define local_persist static
 #define global static
@@ -120,8 +122,8 @@ struct D_App_Data
 {
     int loop_count;
     
-	GameUnloadFunction * game_unload;
-	GameLoopFunction * game_loop;
+	GameUnloadFunction * game_unload_function;
+	GameLoopFunction * game_loop_function;
     
 	double loop_time;
     
@@ -163,13 +165,13 @@ struct D_App_Data
 
 global D_App_Data* app_data = 0;
 
-internal void char_callback(GLFWwindow* window, unsigned int codepoint)
+internal void function char_callback(GLFWwindow* window, unsigned int codepoint)
 {
 	app_data->codepoint_queue[app_data->codepoint_queue_count] = codepoint;
 	app_data->codepoint_queue_count++;
 }
 
-internal unsigned int char_pressed()
+internal unsigned int function char_pressed()
 {
 	if (app_data->codepoint_queue_indedx == app_data->codepoint_queue_count)
 		return 0;
@@ -180,12 +182,12 @@ internal unsigned int char_pressed()
     
 }
 
-internal void mosue_scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+internal void function mosue_scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
 	app_data->mouse_scroll_delta += yoffset;
 }
 
-internal void focus_callback(GLFWwindow* window, int focused)
+internal void function focus_callback(GLFWwindow* window, int focused)
 {
 	if (focused == GLFW_TRUE)
 	{
@@ -202,7 +204,7 @@ internal void focus_callback(GLFWwindow* window, int focused)
 	}
 }
 
-internal void refresh_callback(GLFWwindow* window)
+internal void function refresh_callback(GLFWwindow* window)
 {
 	//TODO: fix real time windows resizing
 	//not sure what happening here but i wanna clean up the "windows focus" things

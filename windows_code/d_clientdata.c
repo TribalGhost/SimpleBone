@@ -21,7 +21,7 @@ struct DrawingMenu
     
 	float current_button_left;
     
-	bool button_hover;
+	bool button_hovered;
 	bool button_clicked;
     
 	int menu_type;
@@ -254,11 +254,11 @@ enum EditorType
     edit_base_pose,
     edit_animation,
     edit_world,
-    demo,
     
     editor_type_count,
 };
 
+global bool in_game = false;
 global int editor_type = edit_base_pose;
 
 typedef enum MapEditType MapEditType;
@@ -268,7 +268,6 @@ enum MapEditType
     MET_quad,
     MET_box,
     MET_camera_trigger,
-    MET_entity,
     MET_count,
 };
 
@@ -278,11 +277,25 @@ enum EditType
     edit_move,
     edit_rotate,
     edit_stretch,
+    edit_tilt,
     edit_drag_new_box,
-    edit_camera_offset,
     edit_add_entity,
+    edit_player_position,
+    edit_camera_offset,
     edit_count,
 };
+
+typedef struct BoxRayData BoxRayData;
+struct BoxRayData
+{
+    int box_face_index;
+    float hit_time;
+    int data_index;
+    bool is_entity;
+    bool is_box;
+};
+
+BUFFER(BoxRayDataBuffer , BoxRayData);
 
 typedef struct EditorData EditorData;
 struct EditorData
@@ -363,6 +376,7 @@ global bool within_viewport = false;
 global Vector2 mouse_position = {};
 
 global int grid_normal_index = 0;
+global Vector3 mouse_on_grid_centre = {};
 
 typedef struct SplitViewport SplitViewport;
 struct SplitViewport
@@ -384,16 +398,31 @@ global InputState client_input_state = {};
 
 global int current_map_edit_type = MET_none;
 global int current_edit_type = edit_move;
+global int current_edit_entity_type = E_moving_wall;
+
+global bool box_menu_on = false;
+global Vector2 box_menu_position = {};
+
+global float drag_grid_size = GRID_SIZE;
+
+global bool stretching_box = false;
+global bool try_stretch_box = false;
+global bool start_stretch_box = false;
 
 global Box * last_clicked_box = 0;
-global Box * hovering_box = 0;
+global Entity * last_clicked_entity = 0;
+
+global Vector3 player_spawn_point = {};
 
 global Vector3 game_camera_position = {};
 global Vector3 game_camera_offset = {};
+
+global PlayerBuffer client_player_buffer = {};
+global EntityBuffer client_entity_buffer = {};
 
 global Array camera_array = {};
 global CameraTriggerBuffer camera_buffer = {};
 global BoxBuffer camera_zone_buffer = {};
 
 global List camera_within_list = {};
-global Vector3 last_camera_offset = {};
+global Vector3 last_camera_offset = {GRID_SIZE * 0 , -GRID_SIZE * 10, -GRID_SIZE * 6};
